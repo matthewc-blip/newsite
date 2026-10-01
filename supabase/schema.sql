@@ -1,0 +1,252 @@
+-- MCC Solutions booking database for Supabase (Postgres).
+-- Run once in Supabase: SQL Editor > New query > paste > Run.
+-- (The server also creates these tables on first start if they are missing.)
+
+create table if not exists settings (
+  key text primary key,
+  value jsonb not null
+);
+
+create table if not exists notaries (
+  id integer generated always as identity primary key,
+  name text not null,
+  email text,
+  phone text,
+  states text default '',
+  ron integer default 0,
+  rin integer default 0,
+  active integer default 1,
+  notes text default '',
+  created_at timestamptz default now()
+);
+
+create table if not exists bookings (
+  id integer generated always as identity primary key,
+  ref text unique not null,
+  token text not null,
+  service text not null check (service in ('mobile','ron','rin')),
+  category text not null,
+  is_loan integer default 0,
+  signers integer default 1,
+  start_utc timestamptz not null,
+  end_utc timestamptz not null,
+  customer_tz text,
+  address text, city text, state text, zip text,
+  signer_location text, signer_state text,
+  in_us integer,
+  mailing_address text,
+  docs_delivery text,
+  contact_name text not null,
+  contact_email text not null,
+  contact_phone text not null,
+  signer_names text, company text, file_number text, notes text,
+  est_fee double precision,
+  quoted_fee double precision,
+  status text not null default 'requested'
+    check (status in ('requested','confirmed','assigned','completed','canceled','no_show')),
+  notary_id integer references notaries(id) on delete set null,
+  internal_notes text default '',
+  source text default 'web',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_bookings_start on bookings(start_utc);
+create index if not exists idx_bookings_service on bookings(service, status);
+
+create table if not exists booking_events (
+  id integer generated always as identity primary key,
+  booking_id integer not null references bookings(id) on delete cascade,
+  at timestamptz default now(),
+  actor text,
+  text text
+);
+create index if not exists idx_events_booking on booking_events(booking_id);
+
+create table if not exists applications (
+  id integer generated always as identity primary key,
+  data jsonb not null,
+  status text default 'new',
+  created_at timestamptz default now()
+);
+
+create table if not exists messages (
+  id integer generated always as identity primary key,
+  name text, email text, topic text, message text,
+  handled integer default 0,
+  created_at timestamptz default now()
+);
+
+-- Lock the tables away from Supabase's public API (anon/authenticated keys).
+-- Only your server, which connects with the database password, can read or write them.
+alter table settings enable row level security;
+alter table notaries enable row level security;
+alter table bookings enable row level security;
+alter table booking_events enable row level security;
+alter table applications enable row level security;
+alter table messages enable row level security;
+
+-- ===== Notary onboarding, assignments and payouts (added in v2; safe to re-run) =====
+alter table notaries add column if not exists commission_number text;
+alter table notaries add column if not exists commission_expires date;
+alter table notaries add column if not exists eo_amount text;
+alter table notaries add column if not exists eo_expires date;
+alter table notaries add column if not exists background_date date;
+alter table notaries add column if not exists agreement_name text;
+alter table notaries add column if not exists agreement_at timestamptz;
+alter table notaries add column if not exists agreement_ip text;
+alter table notaries add column if not exists agreement_version text;
+alter table notaries add column if not exists sms_ok integer default 1;
+alter table notaries add column if not exists last_login_at timestamptz;
+create unique index if not exists idx_notaries_email on notaries (lower(email)) where email is not null and email <> '';
+
+alter table bookings add column if not exists notary_status text;          -- offered | accepted | declined
+alter table bookings add column if not exists notary_fee double precision;  -- what you pay the notary
+alter table bookings add column if not exists notary_paid_at timestamptz;
+alter table bookings add column if not exists notary_responded_at timestamptz;
+alter table bookings add column if not exists return_tracking text;
+alter table bookings add column if not exists completed_at timestamptz;
+alter table bookings add column if not exists offer_count integer default 0;
+
+create table if not exists notary_documents (
+  id integer generated always as identity primary key,
+  notary_id integer not null references notaries(id) on delete cascade,
+  kind text not null check (kind in ('commission','eo','background','w9','certification','other')),
+  filename text not null,
+  content_type text not null,
+  size_bytes integer not null,
+  storage text not null default 'db',     -- 'db' or 'supabase'
+  path text,                              -- object path when storage = 'supabase'
+  data bytea,                             -- file bytes when storage = 'db'
+  uploaded_by text,
+  uploaded_at timestamptz default now()
+);
+create index if not exists idx_docs_notary on notary_documents(notary_id);
+
+create table if not exists notary_login_tokens (
+  token_hash text primary key,
+  notary_id integer not null references notaries(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
+create table if not exists reminders_sent (
+  notary_id integer not null references notaries(id) on delete cascade,
+  kind text not null,          -- commission | eo | background
+  threshold text not null,     -- 30d | 7d | expired
+  for_date date not null,      -- the expiration date this reminder was about
+  sent_at timestamptz default now(),
+  primary key (notary_id, kind, threshold, for_date)
+);
+
+alter table notary_documents enable row level security;
+alter table notary_login_tokens enable row level security;
+alter table reminders_sent enable row level security;
+
+-- ===== Documents, client accounts and auto-dispatch (added in v3; safe to re-run) =====
+create table if not exists client_accounts (
+  id integer generated always as identity primary key,
+  company text not null,
+  phone text,
+  billing_email text,
+  instructions text default '',        -- standing signing/return instructions shown to notaries
+  notes text default '',               -- desk-only notes
+  active integer default 1,
+  created_at timestamptz default now()
+);
+
+create table if not exists client_users (
+  id integer generated always as identity primary key,
+  account_id integer not null references client_accounts(id) on delete cascade,
+  name text not null,
+  email text not null,
+  active integer default 1,
+  last_login_at timestamptz,
+  created_at timestamptz default now()
+);
+create unique index if not exists idx_client_users_email on client_users (lower(email));
+
+create table if not exists client_login_tokens (
+  token_hash text primary key,
+  user_id integer not null references client_users(id) on delete cascade,
+  expires_at timestamptz not null
+);
+
+create table if not exists booking_documents (
+  id integer generated always as identity primary key,
+  booking_id integer not null references bookings(id) on delete cascade,
+  kind text not null check (kind in ('package','scanback','other')),
+  filename text not null,
+  content_type text not null,
+  size_bytes integer not null,
+  storage text not null default 'db',
+  path text,
+  data bytea,
+  uploaded_by text not null,           -- client | desk | notary
+  uploaded_by_name text,
+  review_status text,                  -- scanbacks: pending | approved | rejected
+  review_note text,
+  reviewed_at timestamptz,
+  downloaded_at timestamptz,           -- first time the notary downloaded a package file
+  purged_at timestamptz,               -- file contents deleted under the retention policy
+  created_at timestamptz default now()
+);
+create index if not exists idx_bdocs_booking on booking_documents(booking_id);
+
+alter table bookings add column if not exists client_account_id integer references client_accounts(id) on delete set null;
+alter table bookings add column if not exists client_user_id integer references client_users(id) on delete set null;
+alter table bookings add column if not exists scanback_status text;      -- pending | approved | rejected
+alter table bookings add column if not exists auto_dispatch integer default 0;
+alter table bookings add column if not exists offer_expires_at timestamptz;
+alter table bookings add column if not exists declined_notary_ids integer[] default '{}';
+
+alter table notaries add column if not exists home_zip text;
+alter table notaries add column if not exists travel_miles integer default 30;
+
+alter table client_accounts enable row level security;
+alter table client_users enable row level security;
+alter table client_login_tokens enable row level security;
+alter table booking_documents enable row level security;
+
+-- ===== State-specific notary attestations (added in v4; safe to re-run) =====
+alter table notaries add column if not exists attestations jsonb default '{}'::jsonb;
+
+-- ===== Billing (added in v5; safe to re-run) =====
+alter table client_accounts add column if not exists payment_terms_days integer default 30;
+alter table bookings add column if not exists notarial_fee double precision;   -- state-capped notarial portion of the client price
+alter table bookings add column if not exists invoice_id integer;
+
+create table if not exists invoices (
+  id integer generated always as identity primary key,
+  client_account_id integer references client_accounts(id) on delete set null,
+  bill_to_name text not null,
+  bill_to_email text not null,
+  number text,
+  invoice_date date not null,
+  due_date date not null,
+  period_start date,
+  period_end date,
+  amount double precision not null,
+  status text not null default 'draft',        -- draft | open | paid | void
+  provider text not null default 'manual',     -- stripe | manual
+  payment_url text,
+  sent_at timestamptz,
+  paid_at timestamptz,
+  last_synced_at timestamptz,
+  error text,
+  created_at timestamptz default now()
+);
+create table if not exists invoice_items (
+  id integer generated always as identity primary key,
+  invoice_id integer not null references invoices(id) on delete cascade,
+  booking_id integer references bookings(id) on delete set null,
+  name text not null,
+  quantity double precision not null default 1,
+  unit_price double precision not null
+);
+create index if not exists idx_invoice_items_invoice on invoice_items(invoice_id);
+alter table invoices enable row level security;
+alter table invoice_items enable row level security;
+
+-- ===== Stripe billing ids (added in v6; safe to re-run) =====
+alter table client_accounts add column if not exists stripe_customer_id text;
+alter table invoices add column if not exists stripe_invoice_id text;
