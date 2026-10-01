@@ -1,0 +1,22 @@
+{
+  "name": "mcc-solutions",
+  "version": "1.0.0",
+  "description": "MCC Solutions website with mobile notary, RON and RIN booking and dispatch dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.13",
+    "pg": "^8.23.1",
+    "stripe": "^23.0.0",
+    "zipcodes": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
