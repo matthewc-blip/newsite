@@ -1,0 +1,169 @@
+const nodemailer = require("nodemailer");
+const { fmt } = require("./time");
+
+const enabled = !!process.env.SMTP_HOST;
+const transport = enabled
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: String(process.env.SMTP_PORT) === "465",
+      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+    })
+  : null;
+
+const FROM = process.env.MAIL_FROM || "MCC Solutions <no-reply@example.com>";
+const DESK = process.env.DESK_EMAIL || "";
+const BASE = (process.env.PUBLIC_URL || "http://localhost:3000").replace(/\/$/, "");
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function send({ to, subject, text, html, attachments }) {
+  if (!to) return;
+  if (!enabled) {
+    console.log(`[email disabled] To: ${to} | ${subject}\n${text}\n`);
+    return;
+  }
+  try {
+    await transport.sendMail({ from: FROM, to, subject, text, html, attachments });
+  } catch (e) {
+    console.error("Email failed:", e.message);
+  }
+}
+
+const SERVICE_NAMES = { mobile: "Mobile notary", ron: "Remote Online Notarization (RON)", rin: "Remote Ink-Signed Notarization (RIN)" };
+
+function summaryLines(b, settings) {
+  const tz = b.customer_tz || settings.business.timezone;
+  const lines = [
+    ["Booking", b.ref],
+    ["Service", SERVICE_NAMES[b.service]],
+    ["Type", b.category],
+    ["When", fmt(new Date(b.start_utc), tz)],
+    ["Signers", String(b.signers)],
+  ];
+  if (b.service === "mobile") lines.push(["Location", [b.address, b.city, b.state, b.zip].filter(Boolean).join(", ")]);
+  else lines.push(["Signer location", b.signer_location]);
+  if (b.service === "rin" && b.mailing_address) lines.push(["Paper docs mailed to", b.mailing_address]);
+  return lines;
+}
+
+function manageUrl(b) {
+  return `${BASE}/manage.html?ref=${encodeURIComponent(b.ref)}&token=${encodeURIComponent(b.token)}`;
+}
+
+function wrapHtml(title, intro, lines, footer) {
+  return `<div style="font-family:Arial,sans-serif;max-width:560px;color:#14231d">
+  <h2 style="margin:0 0 8px">${esc(title)}</h2><p>${intro}</p>
+  <table style="border-collapse:collapse;width:100%;font-size:14px">${lines
+    .map(([k, v]) => `<tr><td style="padding:6px 10px 6px 0;color:#6a7a72;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0;font-weight:600">${esc(v)}</td></tr>`)
+    .join("")}</table>
+  <p style="margin-top:18px">${footer}</p></div>`;
+}
+
+const NEXT_STEPS = {
+  mobile: "A coordinator will confirm your appointment and assign a notary. Have unexpired photo ID ready for every signer, and do not sign documents before the notary arrives.",
+  ron: "A coordinator will confirm your session and email the secure signing link. You will need unexpired government photo ID and a device with a camera and microphone.",
+  rin: "A coordinator will confirm eligibility for your state and document, then arrange for the paper documents to reach you. You will sign in ink on a video call, then ship the originals to the notary using the label we provide.",
+};
+
+async function bookingCreated(b, settings, ics) {
+  const lines = summaryLines(b, settings);
+  const link = manageUrl(b);
+  const text = `We received your request.\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${NEXT_STEPS[b.service]}\n\nView or cancel: ${link}\nQuestions: ${settings.business.phone} / ${settings.business.email}`;
+  await send({
+    to: b.contact_email,
+    subject: `Booking request received · ${b.ref}`,
+    text,
+    html: wrapHtml("Booking request received", esc(NEXT_STEPS[b.service]), lines, `<a href="${esc(link)}">View or cancel this booking</a><br>Questions: ${esc(settings.business.phone)} · ${esc(settings.business.email)}`),
+    attachments: ics ? [{ filename: `${b.ref}.ics`, content: ics, contentType: "text/calendar" }] : undefined,
+  });
+  await send({
+    to: DESK,
+    subject: `New ${b.service.toUpperCase()} booking ${b.ref} · ${b.category}`,
+    text: `${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\nContact: ${b.contact_name} · ${b.contact_phone} · ${b.contact_email}\nCompany: ${b.company || "-"}\nNotes: ${b.notes || "-"}\n\nOpen the dashboard: ${BASE}/admin/`,
+  });
+}
+
+async function bookingStatusChanged(b, settings, notary) {
+  const msgs = {
+    confirmed: ["Your booking is confirmed", "Your appointment is confirmed. We will send the notary's details once assigned."],
+    assigned: ["Your notary is assigned", notary ? `Your notary is ${notary.name}${notary.phone ? ", " + notary.phone : ""}.` : "A notary has been assigned to your appointment."],
+    canceled: ["Your booking was canceled", "This booking has been canceled. Contact the desk if this is a mistake."],
+    completed: ["Thank you", "Your signing is complete. Thank you for choosing MCC Solutions."],
+  };
+  const m = msgs[b.status];
+  if (!m) return;
+  const lines = summaryLines(b, settings);
+  const link = manageUrl(b);
+  await send({
+    to: b.contact_email,
+    subject: `${m[0]} · ${b.ref}`,
+    text: `${m[1]}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${link}`,
+    html: wrapHtml(m[0], esc(m[1]), lines, `<a href="${esc(link)}">View booking</a>`),
+  });
+}
+
+async function deskNotice(subject, text) {
+  await send({ to: DESK, subject, text });
+}
+
+module.exports = { bookingCreated, bookingStatusChanged, deskNotice, manageUrl, SERVICE_NAMES, emailEnabled: enabled };
+
+/* ---------- notary emails ---------- */
+function jobLines(b, settings) {
+  const tz = settings.business.timezone;
+  const lines = [
+    ["Booking", b.ref],
+    ["Service", SERVICE_NAMES[b.service]],
+    ["Type", `${b.category} · ${b.signers} signer${b.signers > 1 ? "s" : ""}`],
+    ["When", fmt(new Date(b.start_utc), b.service === "mobile" && b.customer_tz ? b.customer_tz : tz)],
+    [b.service === "mobile" ? "Area" : "Signer at", b.service === "mobile" ? [b.city, b.state, b.zip].filter(Boolean).join(", ") : b.signer_location],
+  ];
+  if (b.notary_fee != null) lines.push(["Your fee", "$" + Number(b.notary_fee).toFixed(2)]);
+  return lines;
+}
+
+async function notaryOffer(b, n, settings, link) {
+  const lines = jobLines(b, settings);
+  await send({
+    to: n.email,
+    subject: `New assignment offer · ${b.service.toUpperCase()} · ${b.ref}`,
+    text: `Hi ${n.name},\n\nYou have a new assignment offer.\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\nAccept or decline: ${link}\n\nFull address and signer contact details appear after you accept.`,
+    html: wrapHtml("New assignment offer", `Hi ${esc(n.name)}, you have a new assignment. Full address and signer contact details appear after you accept.`, lines, `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Accept or decline</a>`),
+  });
+}
+
+async function notarySignIn(n, link, settings) {
+  await send({
+    to: n.email,
+    subject: `Your ${settings.business.name} notary portal sign-in link`,
+    text: `Hi ${n.name},\n\nUse this link to sign in to the notary portal. It works once and expires in 30 minutes.\n\n${link}\n\nIf you didn't ask for this, ignore this email.`,
+    html: wrapHtml("Sign in to the notary portal", `Hi ${esc(n.name)}, this link works once and expires in 30 minutes.`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a><br><br>If you didn't ask for this, ignore this email.`),
+  });
+}
+
+async function notaryWelcome(n, link, settings) {
+  const steps = "1. Upload your commission certificate, E&O policy, background check and W-9\n2. Enter your expiration dates\n3. Sign the contractor agreement";
+  await send({
+    to: n.email,
+    subject: `Welcome to ${settings.business.name}: finish your onboarding`,
+    text: `Hi ${n.name},\n\nYour application was approved. Finish onboarding in the notary portal so we can start sending you assignments:\n\n${steps}\n\n${link}\n\nThis link expires in 7 days. After that, sign in at ${BASE}/portal/ with this email address.`,
+    html: wrapHtml("You're approved", `Hi ${esc(n.name)}, finish onboarding so we can start sending you assignments:<br><br>1. Upload your commission certificate, E&amp;O policy, background check and W-9<br>2. Enter your expiration dates<br>3. Sign the contractor agreement`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Finish onboarding</a><br><br>This link expires in 7 days. After that, sign in at ${esc(BASE)}/portal/`),
+  });
+}
+
+async function credentialReminder(n, items) {
+  const text = items.map((i) => `- ${i}`).join("\n");
+  await send({
+    to: n.email,
+    subject: "Action needed: notary credentials expiring",
+    text: `Hi ${n.name},\n\n${text}\n\nUpload the renewed documents and new dates in the notary portal: ${BASE}/portal/\n\nWe can't send assignments while a commission or E&O policy is expired.`,
+  });
+}
+
+module.exports.notaryOffer = notaryOffer;
+module.exports.notarySignIn = notarySignIn;
+module.exports.notaryWelcome = notaryWelcome;
+module.exports.credentialReminder = credentialReminder;
+module.exports.BASE = BASE;
+module.exports.send = send;
