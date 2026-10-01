@@ -66,7 +66,7 @@ window.MCC = (function () {
     while (walker.nextNode()) nodes.push(walker.currentNode);
     nodes.forEach((n) => {
       if (n.nodeValue.includes("(908) 444-6373")) n.nodeValue = n.nodeValue.replaceAll("(908) 444-6373", c.business.phone);
-      if (n.nodeValue.includes("booking@mcc-solutions.com")) n.nodeValue = n.nodeValue.replaceAll("booking@mcc-solutions.com", c.business.email);
+      if (n.nodeValue.includes("booking@mcc-solutionsnj.com")) n.nodeValue = n.nodeValue.replaceAll("booking@mcc-solutionsnj.com", c.business.email);
     });
     return c;
   }).catch(() => null);

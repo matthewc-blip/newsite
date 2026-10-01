@@ -7,7 +7,7 @@ const DEFAULT_SETTINGS = {
   business: {
     name: "MCC Solutions",
     phone: "(908) 444-6373",
-    email: "booking@mcc-solutions.com",
+    email: "booking@mcc-solutionsnj.com",
     timezone: "America/New_York",
   },
   services: {
