@@ -620,6 +620,7 @@
           <div class="field"><label>Name</label><input data-b="name" value="${esc(s.business.name)}"></div>
           <div class="field"><label>Desk phone</label><input data-b="phone" value="${esc(s.business.phone)}"></div>
           <div class="field"><label>Desk email</label><input data-b="email" value="${esc(s.business.email)}"></div>
+          <div class="field"><label>Send a test email to</label><div style="display:flex;gap:8px"><input id="testTo" type="email" placeholder="you@example.com" style="flex:1"><button type="button" class="btn" id="testEmailBtn">Send test</button></div><p class="form-msg" id="testEmailMsg" role="status"></p></div>
           <div class="field"><label>Desk time zone</label><select data-b="timezone">${["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"].map((z) => `<option ${z === s.business.timezone ? "selected" : ""}>${z}</option>`).join("")}</select></div>
           <div class="field"><label>RIN states (where your RIN notaries are commissioned)</label><input id="rinStates" value="${esc(s.rinStates.join(", "))}"></div>
           <div class="field"><label>States where you dispatch mobile notaries now</label><input id="liveStates" value="${esc((s.coverage?.liveStates || []).join(", "))}"></div>
@@ -704,6 +705,17 @@
     settings = s;
     return s;
   }
+
+  document.addEventListener("click", async (ev) => {
+    if (!ev.target.closest || !ev.target.closest("#testEmailBtn")) return;
+    const m = $("#testEmailMsg"), btn = $("#testEmailBtn");
+    btn.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+    try {
+      const r = await api("/api/admin/test-email", { method: "POST", body: { to: $("#testTo").value.trim() } });
+      m.className = "form-msg ok"; m.textContent = `Sent from ${r.from} to ${r.to}. Check that inbox (and spam).`;
+    } catch (e) { m.className = "form-msg"; m.textContent = e.message; }
+    btn.disabled = false;
+  });
 
   $("#saveSettings").addEventListener("click", async () => {
     const m = $("#settingsMsg");

@@ -167,3 +167,14 @@ module.exports.notaryWelcome = notaryWelcome;
 module.exports.credentialReminder = credentialReminder;
 module.exports.BASE = BASE;
 module.exports.send = send;
+// Send one message and report the real result (used by the admin "Send test email" button).
+module.exports.sendTest = async (to) => {
+  if (!enabled) return { ok: false, error: "Email is off: SMTP_HOST is not set on the server." };
+  try {
+    await transport.verify();
+    const info = await transport.sendMail({ from: FROM, to, subject: "MCC Solutions test email", text: `This is a test from your MCC Solutions site.\n\nSent from: ${FROM}\nServer: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}\n\nIf you got this, booking emails are working.` });
+    return { ok: true, from: FROM, to, id: info.messageId };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+};

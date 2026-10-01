@@ -294,6 +294,13 @@ app.post("/api/admin/logout", (req, res) => {
   res.setHeader("Set-Cookie", "mcc_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
   res.json({ ok: true });
 });
+app.post("/api/admin/test-email", requireAdmin, rateLimit(10, 15 * 60000), async (req, res) => {
+  const to = str(req.body.to, 200) || process.env.DESK_EMAIL || "";
+  if (!emailOk(to)) return res.status(400).json({ error: "Enter a valid email address." });
+  const r = await mail.sendTest(to);
+  if (!r.ok) return res.status(502).json({ error: "Email failed: " + r.error });
+  res.json(r);
+});
 app.get("/api/admin/me", requireAdmin, (req, res) => res.json({ ok: true, emailEnabled: mail.emailEnabled, smsEnabled: require("./src/sms").smsEnabled }));
 
 /* ---------------- admin: bookings ---------------- */
