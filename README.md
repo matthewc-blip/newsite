@@ -61,7 +61,7 @@ The data lives in Supabase, so the web host doesn't need a disk. Any Node.js hos
 ### Option A: Render (simplest)
 1. Put this folder in a GitHub repository (private is fine).
 2. On render.com: **New → Blueprint**, then pick the repository. `render.yaml` sets everything up.
-3. When Render asks, fill in `DATABASE_URL`, `ADMIN_PASSWORD`, `PUBLIC_URL` (e.g. `https://www.mccsolutions.com`), `DESK_EMAIL` and the SMTP values.
+3. When Render asks, fill in `DATABASE_URL`, `ADMIN_PASSWORD`, `PUBLIC_URL` (e.g. `https://www.mcc-solutionsnj.com`), `DESK_EMAIL` and the SMTP values.
 4. Under **Settings → Custom Domains**, add your domain and point DNS to Render as instructed.
 
 The free plan works but sleeps when idle, so the first visitor after a quiet period waits about a minute. Use a paid instance for a business site.

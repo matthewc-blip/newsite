@@ -6,8 +6,8 @@ const weekdays = (open, close) => ({ 0: null, 1: [open, close], 2: [open, close]
 const DEFAULT_SETTINGS = {
   business: {
     name: "MCC Solutions",
-    phone: "(000) 000-0000",
-    email: "orders@mccsolutions.com",
+    phone: "(908) 444-6373",
+    email: "booking@mcc-solutions.com",
     timezone: "America/New_York",
   },
   services: {
