@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MCC Solutions</title>
+<meta name="description" content="MCC Solutions: notary and loan signing services, launching in New Jersey. Bookkeeping, tax preparation and investment advising coming soon.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: parent-brand landing — the hero is a ruled practice ledger (one line per MCC practice, with live/coming status); notary spotlight in ink, coming-soon practices with a shared waitlist */
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#14231d; --ink-2:#3d4f47; --muted:#6a7a72; --line:#d6ded9; --rule:#c9d8cf;
+  --deep:#10261e; --deep-fg:#e9f0eb; --deep-muted:#9fb5aa;
+  --brass:#a8751f; --brass-soft:#f3e7cf; --brass-ink:#6e4b10;
+  --ok:#2f7d4f; --ok-soft:#dcefe3; --warn:#9a6a00; --warn-soft:#f6ecd0;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --wrap:1160px; --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
+  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
+  --brass:#d8a24a; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
+  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
+  --brass:#d8a24a; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2.4rem,5.6vw,4.3rem);font-weight:800}
+h2{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:750}
+h3{font-size:1.25rem;font-weight:700;font-stretch:95%}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.lede{font-size:1.15rem;color:var(--ink-2);max-width:60ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 .95rem/1 var(--f-body);padding:13px 20px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--brass);color:#fff}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{border-color:var(--line);background:var(--surface);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink-2)}
+.btn-sm{padding:9px 13px;font-size:.88rem}
+
+/* header */
+header.site{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.seal{width:40px;height:40px;border-radius:50%;background:var(--brass);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-stretch:70%;font-size:.95rem;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--brass)}
+.brand-name{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.35rem;line-height:1}
+nav.main{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav.main a{text-decoration:none;font-size:.92rem;font-weight:500;padding:8px 11px;border-radius:4px;color:var(--ink-2)}
+nav.main a:hover{background:var(--surface);color:var(--ink)}
+@media (max-width:760px){nav.main{display:none}.hdr-cta{margin-left:auto}}
+@media (max-width:380px){.brand-name{font-size:1.1rem}}
+
+/* hero */
+.hero{padding-block:56px 64px}
+.hero-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:48px;align-items:center}
+.hero-grid > *{min-width:0}
+@media (max-width:960px){.hero-grid{grid-template-columns:1fr;gap:36px}}
+.hero h1 em{font-style:normal;color:var(--brass)}
+.hero .lede{margin-top:18px}
+.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+
+/* ledger */
+.ledger{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 30px 60px -36px rgba(16,38,30,.45);overflow:hidden}
+.ledger-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 18px 12px 64px;border-bottom:2px solid var(--ink);font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ledger-head b{color:var(--ink);font-weight:500}
+.ledger ol{list-style:none;margin:0;padding:0;position:relative}
+.ledger ol::before{content:"";position:absolute;top:0;bottom:0;left:48px;border-left:3px double var(--brass);opacity:.7}
+.line{display:grid;grid-template-columns:48px 1fr auto;gap:0 16px;align-items:center;padding:16px 18px 16px 0;border-bottom:1px solid var(--rule);min-height:84px}
+.line:last-child{border-bottom:0}
+.line .no{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);text-align:center}
+.line .what{min-width:0;padding-left:16px}
+.line .what strong{display:block;font-family:var(--f-display);font-stretch:85%;font-size:1.2rem;font-weight:750;line-height:1.15}
+.line .what span{display:block;font-size:.88rem;color:var(--ink-2);margin-top:3px}
+.line .act{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.status{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.status.st-open{background:var(--ok-soft);color:var(--ok)}
+.status.st-open::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
+.status.st-soon{background:var(--warn-soft);color:var(--warn)}
+.line.live{background:linear-gradient(90deg,var(--brass-soft),transparent 70%)}
+.line .act a,.line .act button{font:600 .82rem var(--f-body);color:var(--brass-ink);background:none;border:0;padding:2px 0;cursor:pointer;text-decoration:none}
+.line .act a:hover,.line .act button:hover{text-decoration:underline}
+@media (max-width:520px){.line{grid-template-columns:36px 1fr;row-gap:10px}.ledger ol::before{left:36px}.ledger-head{padding-left:52px}.line .act{grid-column:2;flex-direction:row;align-items:center;justify-content:space-between;padding-left:16px}}
+
+/* bands */
+section.band{padding-block:76px}
+.band.dark{background:var(--deep);color:var(--deep-fg)}
+.band.dark .lede{color:var(--deep-muted)}
+.band.alt{background:var(--surface);border-block:1px solid var(--line)}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:36px;max-width:740px}
+
+/* notary spotlight */
+.spot{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.spot{grid-template-columns:1fr}}
+.spot a{display:flex;flex-direction:column;gap:10px;padding:26px;border:1px solid color-mix(in srgb,var(--deep-fg) 16%,transparent);border-radius:8px;text-decoration:none;transition:border-color .15s,background .15s;min-width:0}
+.spot a:hover{border-color:var(--brass);background:color-mix(in srgb,var(--deep-fg) 4%,transparent)}
+.spot .abbr{font-family:var(--f-display);font-stretch:62%;font-weight:900;font-size:3.2rem;line-height:.9;color:var(--brass)}
+.spot p{color:var(--deep-muted);font-size:.95rem}
+.spot .go{margin-top:auto;font-weight:600;font-size:.92rem;color:var(--deep-fg)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:30px;font-size:.92rem;color:var(--deep-muted)}
+.facts span::before{content:"✓";color:var(--brass);margin-right:8px;font-weight:700}
+
+/* coming soon */
+.soon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media (max-width:900px){.soon-grid{grid-template-columns:1fr}}
+.soon{display:flex;flex-direction:column;gap:14px;padding:26px;background:var(--paper);border:1px solid var(--line);border-radius:8px;min-width:0}
+.soon-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.soon .code{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;color:var(--brass)}
+.soon p{color:var(--ink-2);font-size:.95rem}
+.soon ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:.93rem;display:flex;flex-direction:column;gap:5px}
+.soon .fine{font-size:.78rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;margin-top:auto}
+
+/* waitlist */
+.wait{display:grid;grid-template-columns:1fr 1.1fr;gap:40px;align-items:start;margin-top:44px;padding:32px;background:var(--deep);color:var(--deep-fg);border-radius:10px}
+.wait > *{min-width:0}
+@media (max-width:860px){.wait{grid-template-columns:1fr;gap:24px;padding:24px}}
+.wait p{color:var(--deep-muted)}
+.wait form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wait .full{grid-column:1/-1}
+@media (max-width:520px){.wait form{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+label{font-size:.85rem;font-weight:600}
+input[type=text],input[type=email]{font:inherit;font-size:.95rem;padding:12px;border-radius:5px;border:1px solid color-mix(in srgb,var(--deep-fg) 22%,transparent);background:color-mix(in srgb,var(--deep-fg) 6%,transparent);color:var(--deep-fg);width:100%}
+input::placeholder{color:var(--deep-muted)}
+input[aria-invalid="true"]{border-color:var(--warn)}
+.picks{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}
+.picks legend{font-size:.85rem;font-weight:600;margin-bottom:8px;padding:0}
+.picks label{display:flex;align-items:center;gap:8px;font-weight:500;padding:9px 13px;border-radius:999px;border:1px solid color-mix(in srgb,var(--deep-fg) 22%,transparent);cursor:pointer}
+.picks input{accent-color:var(--brass);margin:0}
+.picks label:has(input:checked){border-color:var(--brass);background:color-mix(in srgb,var(--brass) 22%,transparent)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.form-msg{font-size:.9rem}
+.form-msg.ok{color:var(--ok)}
+.form-msg.err{color:var(--warn)}
+.form-msg:empty{display:none}
+
+/* why */
+.why{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
+.why > div{padding:22px 24px 0 0;min-width:0}
+.why p{color:var(--ink-2);margin-top:8px;font-size:.96rem}
+@media (max-width:800px){.why{grid-template-columns:1fr}.why > div{padding-right:0;padding-bottom:6px}}
+
+/* contact */
+.contact{display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
+.contact-lines{display:flex;flex-wrap:wrap;gap:12px 36px}
+.contact-lines div{display:flex;flex-direction:column}
+.contact-lines small{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.contact-lines b{font-family:var(--f-display);font-stretch:85%;font-size:1.4rem;user-select:all}
+
+footer{background:var(--deep);color:var(--deep-muted);padding-block:48px 28px;font-size:.9rem}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px}
+@media (max-width:760px){footer .cols{grid-template-columns:1fr}}
+footer h4{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--deep-fg);font-weight:500;margin:0 0 12px}
+footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+footer a{text-decoration:none}
+footer a:hover{color:var(--brass)}
+footer .brand-name{color:var(--deep-fg)}
+footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)}
+.legal{border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent);margin-top:36px;padding-top:18px;font-size:.78rem;display:flex;flex-direction:column;gap:8px;max-width:90ch}
+
+@media (prefers-reduced-motion:no-preference){
+  .line{animation:ink .5s ease-out both}
+  .line:nth-child(2){animation-delay:.08s}.line:nth-child(3){animation-delay:.16s}.line:nth-child(4){animation-delay:.24s}
+  @keyframes ink{from{transform:translateX(-6px)}to{transform:none}}
+}
+</style>
+</head>
+<body>
+
+<header class="site"><div class="wrap">
+  <a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a>
+  <nav class="main" aria-label="Main">
+    <a href="/notary/">Notary</a>
+    <a href="#coming">Coming soon</a>
+    <a href="#why">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <a class="btn btn-primary btn-sm hdr-cta" href="/notary/#order">Book a Notary</a>
+</div></header>
+
+<main>
+  <section class="hero"><div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">MCC Solutions</p>
+      <h1 style="margin-top:14px">The paperwork side of life, <em>handled in one place.</em></h1>
+      <p class="lede">We start where the paperwork is most urgent: notary and loan signing services, now dispatching across New Jersey and growing nationwide. Bookkeeping, tax preparation and investment advising are on the way.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="/notary/#order">Book a Notary</a>
+        <a class="btn btn-ghost" href="#coming">See what's coming</a>
+      </div>
+    </div>
+
+    <article class="ledger" aria-label="MCC Solutions practices">
+      <div class="ledger-head"><b>Practices</b><span>Status</span></div>
+      <ol>
+        <li class="line live">
+          <span class="no">01</span>
+          <span class="what"><strong>Notary &amp; Loan Signing</strong><span>Mobile notary, RON, remote paper notarization and loan signings. New Jersey now, more states next.</span></span>
+          <span class="act"><span class="status st-open">Open now</span><a href="/notary/#order">Book →</a></span>
+        </li>
+        <li class="line">
+          <span class="no">02</span>
+          <span class="what"><strong>Bookkeeping</strong><span>Monthly books, reconciliations and reports for small businesses</span></span>
+          <span class="act"><span class="status st-soon">Coming soon</span><button type="button" data-notify="bookkeeping">Notify me</button></span>
+        </li>
+        <li class="line">
+          <span class="no">03</span>
+          <span class="what"><strong>Tax Preparation</strong><span>Individual and small-business returns</span></span>
+          <span class="act"><span class="status st-soon">Coming soon</span><button type="button" data-notify="tax">Notify me</button></span>
+        </li>
+        <li class="line">
+          <span class="no">04</span>
+          <span class="what"><strong>Investment Advising</strong><span>Financial planning and portfolio guidance</span></span>
+          <span class="act"><span class="status st-soon">Coming soon</span><button type="button" data-notify="investing">Notify me</button></span>
+        </li>
+      </ol>
+    </article>
+  </div></section>
+
+  <section class="band dark" id="notary"><div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Available now</p>
+      <h2>Notary and loan signing, three ways</h2>
+      <p class="lede">Book online in a few minutes. A coordinator confirms your appointment and sends your notary's details.</p>
+    </div>
+    <div class="spot">
+      <a href="/notary/#services"><span class="abbr">MOBILE</span><h3>We come to you</h3><p>Home, office, hospital or closing table. Loan signings, powers of attorney, affidavits, titles and more.</p><span class="go">Mobile notary →</span></a>
+      <a href="/notary/#ron"><span class="abbr">RON</span><h3>Notarize online</h3><p>Remote Online Notarization: sign electronic documents on a secure video call, finished in one session.</p><span class="go">How RON works →</span></a>
+      <a href="/notary/#rin"><span class="abbr">RIN</span><h3>Ink, over video</h3><p>Remote Ink-Signed Notarization: sign paper originals while the notary watches, then ship them back.</p><span class="go">How RIN works →</span></a>
+    </div>
+    <div class="facts"><span>Background-screened, E&amp;O-insured agents</span><span>Now dispatching across New Jersey</span><span>Title, lenders, law firms and individuals</span></div>
+    <div class="ctas"><a class="btn btn-primary" href="/notary/#order">Book a Notary</a><a class="btn btn-ghost" href="/notary/" style="background:transparent;color:var(--deep-fg);border-color:color-mix(in srgb,var(--deep-fg) 30%,transparent)">Visit the notary site</a></div>
+  </div></section>
+
+  <section class="band alt" id="coming"><div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Coming soon</p>
+      <h2>Three more practices in development</h2>
+      <p class="lede">Join the list for any of them and we'll email you when it opens. No other mail.</p>
+    </div>
+    <div class="soon-grid">
+      <article class="soon">
+        <div class="soon-top"><span class="code">02 · BOOKKEEPING</span><span class="status st-soon">Coming soon</span></div>
+        <h3>Bookkeeping</h3>
+        <p>Clean, current books so you always know where your business stands.</p>
+        <ul><li>Monthly bank and card reconciliation</li><li>Profit &amp; loss and balance sheet reports</li><li>Catch-up for books that fell behind</li><li>Year-end package ready for your tax preparer</li></ul>
+      </article>
+      <article class="soon">
+        <div class="soon-top"><span class="code">03 · TAX</span><span class="status st-soon">Coming soon</span></div>
+        <h3>Tax Preparation</h3>
+        <p>Returns prepared carefully, with your documents organized from the start.</p>
+        <ul><li>Individual federal and state returns</li><li>Sole proprietors and small businesses</li><li>Quarterly estimated tax reminders</li><li>Secure document collection</li></ul>
+      </article>
+      <article class="soon">
+        <div class="soon-top"><span class="code">04 · INVESTING</span><span class="status st-soon">Coming soon</span></div>
+        <h3>Investment Advising</h3>
+        <p>Planning-first guidance for saving, retirement and long-term goals.</p>
+        <ul><li>Financial planning conversations</li><li>Retirement and savings goals</li><li>Portfolio review</li><li>Plain-language explanations, no jargon</li></ul>
+        <p class="fine">MCC Solutions does not currently provide investment advice. Advisory services will be offered only after all required registrations are in place.</p>
+      </article>
+    </div>
+
+    <div class="wait" id="waitlist">
+      <div>
+        <p class="eyebrow">Waitlist</p>
+        <h2 style="margin-top:10px">Be first to know</h2>
+        <p style="margin-top:12px">Pick the services you're interested in. We'll send one email when each one launches.</p>
+      </div>
+      <form id="waitForm" novalidate>
+        <fieldset class="picks full" id="picks">
+          <legend>I'm interested in</legend>
+          <label><input type="checkbox" name="services" value="bookkeeping"> Bookkeeping</label>
+          <label><input type="checkbox" name="services" value="tax"> Tax preparation</label>
+          <label><input type="checkbox" name="services" value="investing"> Investment advising</label>
+        </fieldset>
+        <div class="field"><label for="w-name">Name <span style="font-weight:400;opacity:.7">(optional)</span></label><input type="text" id="w-name" autocomplete="name" placeholder="Jordan Ellis"></div>
+        <div class="field"><label for="w-email">Email</label><input type="email" id="w-email" autocomplete="email" placeholder="jordan@example.com"></div>
+        <div class="hp" aria-hidden="true"><label for="w-website">Website</label><input type="text" id="w-website" tabindex="-1" autocomplete="off"></div>
+        <div class="full" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn btn-primary" type="submit">Join the List</button><p class="form-msg" id="waitMsg" role="status"></p></div>
+      </form>
+    </div>
+  </div></section>
+
+  <section class="band" id="why"><div class="wrap">
+    <div class="sec-head"><p class="eyebrow">About MCC Solutions</p><h2>Built around the documents that matter</h2></div>
+    <div class="why">
+      <div><h3>Accuracy first</h3><p>Notarial work leaves no room for a missed initial or wrong date. We bring that same page-by-page care to every practice we add.</p></div>
+      <div><h3>One point of contact</h3><p>A coordinator answers the phone and owns your request from start to finish, whether it's a closing tonight or a question next tax season.</p></div>
+      <div><h3>Growing carefully</h3><p>Each new practice opens only when the right people, credentials and processes are in place. Join the list and we'll tell you when.</p></div>
+    </div>
+  </div></section>
+
+  <section class="band alt" id="contact" style="padding-block:52px"><div class="wrap contact">
+    <div class="contact-lines">
+      <div><small>Phone</small><b data-biz="phone">(000) 000-0000</b></div>
+      <div><small>Email</small><b data-biz="email">orders@mccsolutions.com</b></div>
+      <div><small>Hours (ET)</small><b style="font-size:1.05rem;font-family:var(--f-body)">Mon–Fri 7–9 · Sat 9–5</b></div>
+    </div>
+    <a class="btn btn-primary" href="/notary/#order">Book a Notary</a>
+  </div></section>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div style="display:flex;flex-direction:column;gap:12px"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary and loan signing services today. Bookkeeping, tax preparation and investment advising coming soon.</p></div>
+    <div><h4>Notary</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/#services">Loan signings</a></li><li><a href="/notary/#ron">Remote Online Notarization</a></li><li><a href="/notary/#rin">Remote Ink-Signed Notarization</a></li><li><a href="/notary/#notaries">Join as a notary</a></li></ul></div>
+    <div><h4>Coming soon</h4><ul><li><a href="#coming">Bookkeeping</a></li><li><a href="#coming">Tax preparation</a></li><li><a href="#coming">Investment advising</a></li><li><a href="#waitlist">Join the waitlist</a></li></ul></div>
+  </div>
+  <div class="legal">
+    <p>Notaries and signing agents cannot give legal advice or explain the legal effect of documents. MCC Solutions is not a law firm.</p>
+    <p>Bookkeeping, tax preparation and investment advising are not yet offered. Nothing on this site is tax, legal or investment advice. Investment advisory services will be provided only after required registrations are complete.</p>
+    <p>© <span id="yr">2026</span> MCC Solutions. All rights reserved.</p>
+  </div>
+</div></footer>
+
+<script>
+(function () {
+  document.getElementById("yr").textContent = new Date().getFullYear();
+
+  // Fill in real desk phone/email when the site is running on the server.
+  fetch("/api/config").then((r) => (r.ok ? r.json() : null)).then((c) => {
+    if (!c) return;
+    document.querySelectorAll('[data-biz="phone"]').forEach((e) => (e.textContent = c.business.phone));
+    document.querySelectorAll('[data-biz="email"]').forEach((e) => (e.textContent = c.business.email));
+  }).catch(() => {});
+
+  // "Notify me" in the ledger pre-checks that service and jumps to the form.
+  document.querySelectorAll("[data-notify]").forEach((b) => b.addEventListener("click", () => {
+    const box = document.querySelector(`#picks input[value="${b.dataset.notify}"]`);
+    if (box) box.checked = true;
+    document.getElementById("waitlist").scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => document.getElementById("w-email").focus({ preventScroll: true }), 400);
+  }));
+
+  const form = document.getElementById("waitForm");
+  const msg = document.getElementById("waitMsg");
+  const say = (t, kind) => { msg.textContent = t; msg.className = "form-msg " + kind; };
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("w-email");
+    const services = [...form.querySelectorAll('input[name="services"]:checked')].map((i) => i.value);
+    email.removeAttribute("aria-invalid");
+    if (!services.length) return say("Choose at least one service.", "err");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.value.trim())) { email.setAttribute("aria-invalid", "true"); email.focus(); return say("Enter a valid email address.", "err"); }
+    const btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    try {
+      const r = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: document.getElementById("w-name").value, email: email.value, services, website: document.getElementById("w-website").value }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "send");
+      form.reset();
+      say("You're on the list. We'll email you when it launches.", "ok");
+    } catch (err) {
+      const addr = document.querySelector('[data-biz="email"]').textContent;
+      say(err.message && err.message !== "send" && !/fetch/i.test(err.message) ? err.message : `We couldn't save that right now. Email ${addr} and we'll add you.`, "err");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Dispatch Desk · MCC Solutions</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <form class="form-card login-card" id="loginForm">
+    <div class="brand"><span class="seal">MCC</span><span><span class="brand-name">Dispatch Desk</span><span class="brand-sub">MCC Solutions</span></span></div>
+    <div class="field"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary" type="submit">Sign In</button>
+    <p class="form-msg" id="loginMsg" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="adm-top">
+    <a class="brand" href="/admin/"><span class="seal">MCC</span><span><span class="brand-name">Dispatch Desk</span><span class="brand-sub" id="tzLabel">MCC Solutions</span></span></a>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button data-tab="board" aria-current="page">Bookings</button>
+      <button data-tab="notaries">Notaries <span class="badge" id="badgeCred" hidden></span></button>
+      <button data-tab="payouts">Payouts</button>
+      <button data-tab="clients">Clients</button>
+      <button data-tab="billing">Billing</button>
+      <button data-tab="applications">Applications <span class="badge" id="badgeApps" hidden></span></button>
+      <button data-tab="messages">Messages <span class="badge" id="badgeMsgs" hidden></span></button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+    <div class="top-actions"><a class="btn btn-ghost btn-sm" href="/" target="_blank" rel="noopener">View site</a><button class="btn btn-ghost btn-sm" id="logout">Sign out</button></div>
+  </header>
+  <div class="email-warn" id="emailWarn" hidden>Email is not set up, so customers and the desk are not getting booking emails. Add SMTP settings on the server (see README).</div>
+
+  <!-- BOARD -->
+  <section class="tab" data-tab="board">
+    <div class="tiles" id="tiles"></div>
+    <div class="toolbar">
+      <div class="seg" id="viewSeg" role="group" aria-label="View">
+        <button data-view="upcoming" aria-pressed="true">Upcoming</button><button data-view="today">Today</button><button data-view="requested">Needs confirming</button><button data-view="unfilled">Needs notary</button><button data-view="scanbacks">Scanbacks</button><button data-view="past">Past</button><button data-view="canceled">Canceled</button>
+      </div>
+      <select id="svcFilter" aria-label="Service"><option value="">All services</option><option value="mobile">Mobile</option><option value="ron">RON</option><option value="rin">RIN</option></select>
+      <input id="search" type="search" placeholder="Search ref, name, company, file #, ZIP" aria-label="Search">
+      <a class="btn btn-ghost btn-sm" href="/api/admin/export.csv">Export CSV</a>
+      <button class="btn btn-primary btn-sm" id="newBooking">New Booking</button>
+    </div>
+    <div id="board"></div>
+  </section>
+
+  <!-- NOTARIES -->
+  <section class="tab" data-tab="notaries" hidden>
+    <div class="toolbar"><h2 class="tab-title">Notary roster</h2><button class="btn btn-primary btn-sm" id="addNotary">Add Notary</button></div>
+    <form class="form-card notary-form" id="notaryForm" hidden>
+      <input type="hidden" id="n-id">
+      <fieldset><legend id="nFormTitle">Add notary</legend>
+        <div class="field"><label for="n-name">Name</label><input id="n-name" required></div>
+        <div class="field"><label for="n-phone">Phone</label><input id="n-phone"></div>
+        <div class="field"><label for="n-email">Email</label><input id="n-email" type="email"></div>
+        <div class="field"><label for="n-states">Commission states</label><input id="n-states" placeholder="GA, SC"></div>
+        <div class="field full"><div class="radio-row"><label><input type="checkbox" id="n-ron"> RON authorized</label><label><input type="checkbox" id="n-rin"> RIN capable</label><label><input type="checkbox" id="n-active" checked> Active</label></div></div>
+        <div class="field"><label for="n-cnum">Commission number</label><input id="n-cnum"></div>
+        <div class="field"><label for="n-cexp">Commission expires</label><input id="n-cexp" type="date"></div>
+        <div class="field"><label for="n-eoamt">E&amp;O amount</label><input id="n-eoamt" placeholder="$100,000"></div>
+        <div class="field"><label for="n-eoexp">E&amp;O expires</label><input id="n-eoexp" type="date"></div>
+        <div class="field"><label for="n-bg">Background check date</label><input id="n-bg" type="date"></div>
+        <div class="field"><label for="n-zip">Home ZIP</label><input id="n-zip" maxlength="5" inputmode="numeric"></div>
+        <div class="field"><label for="n-miles">Travels up to (miles)</label><input id="n-miles" type="number" min="1" max="200" value="30"></div>
+        <div class="field full"><label for="n-notes">Notes</label><textarea id="n-notes" rows="2" placeholder="Coverage area, printer, languages"></textarea></div>
+      </fieldset>
+      <div class="form-foot"><button class="btn btn-ghost" type="button" id="nCancel">Cancel</button><button class="btn btn-primary" type="submit">Save Notary</button></div>
+    </form>
+    <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Contact</th><th>States</th><th>Remote</th><th>Onboarding</th><th>Jobs</th><th>Unpaid</th><th>Status</th><th></th></tr></thead><tbody id="notaryRows"></tbody></table></div>
+  </section>
+
+  <!-- PAYOUTS -->
+  <section class="tab" data-tab="payouts" hidden>
+    <div class="toolbar"><h2 class="tab-title">Notary payouts</h2><a class="btn btn-ghost btn-sm" href="/api/admin/payouts.csv">Export CSV</a></div>
+    <p style="color:var(--ink-2);margin-bottom:16px;font-size:.92rem">Completed jobs with a notary fee. Pay the notary however you normally do, then mark the jobs paid here so they see it in their portal.</p>
+    <div id="payoutGroups"></div>
+    <h3 style="margin:30px 0 10px">Recently paid</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>Paid</th><th>Notary</th><th>Job</th><th>Fee</th><th></th></tr></thead><tbody id="paidRows"></tbody></table></div>
+  </section>
+
+  <!-- BILLING -->
+  <section class="tab" data-tab="billing" hidden>
+    <div class="toolbar"><h2 class="tab-title">Billing</h2><span id="billState"></span></div>
+    <div class="tiles" id="billTiles"></div>
+    <h3 style="margin:8px 0 10px">Ready to invoice</h3>
+    <div class="toolbar" style="margin-bottom:10px"><label class="switch">Bill jobs through <input type="date" id="billThrough" style="width:auto;padding:6px 8px"></label><span style="font-size:.86rem;color:var(--muted)">Completed jobs not on an invoice yet. Client accounts get one invoice for the period; individuals get one each.</span></div>
+    <div class="cards" id="unbilled"></div>
+    <h3 style="margin:28px 0 10px">Invoices</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>Invoice</th><th>Bill to</th><th>Issued</th><th>Due</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="invoiceRows"></tbody></table></div>
+    <p class="form-msg" id="billMsg"></p>
+  </section>
+
+  <!-- CLIENTS -->
+  <section class="tab" data-tab="clients" hidden>
+    <div class="toolbar"><h2 class="tab-title">Client accounts</h2><button class="btn btn-primary btn-sm" id="addClient">Add Client</button></div>
+    <p style="color:var(--ink-2);margin-bottom:16px;font-size:.92rem">Title companies, lenders and law firms. Their team signs in at <span class="mono" id="clientUrl"></span> to place orders, upload closing packages and download approved scanbacks.</p>
+    <form class="form-card" id="clientForm" hidden style="margin-bottom:16px">
+      <input type="hidden" id="cl-id">
+      <fieldset class="grid2"><legend id="clTitle" style="font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);grid-column:1/-1">Add client</legend>
+        <div class="field"><label for="cl-company">Company</label><input id="cl-company" placeholder="Peachtree Title &amp; Escrow"></div>
+        <div class="field"><label for="cl-phone">Phone</label><input id="cl-phone"></div>
+        <div class="field"><label for="cl-billing">Billing email</label><input id="cl-billing" type="email"></div>
+        <div class="field"><label for="cl-terms">Payment terms (days)</label><input id="cl-terms" type="number" min="0" max="120" value="30"></div>
+        <div class="field"><label class="switch" style="margin-top:28px"><input type="checkbox" id="cl-active" checked> Active</label></div>
+        <div class="field full"><label for="cl-instr">Standing instructions (notaries see these on every order)</label><textarea id="cl-instr" rows="3" placeholder="Return FedEx Priority Overnight with the label in the package. Scan the full package, 300 dpi."></textarea></div>
+        <div class="field full"><label for="cl-notes">Desk notes (private)</label><textarea id="cl-notes" rows="2"></textarea></div>
+      </fieldset>
+      <div class="form-foot"><button class="btn btn-ghost" type="button" id="clCancel">Cancel</button><button class="btn btn-primary" type="submit">Save Client</button></div>
+    </form>
+    <div class="cards" id="clientCards"></div>
+  </section>
+
+  <!-- APPLICATIONS -->
+  <section class="tab" data-tab="applications" hidden>
+    <div class="toolbar"><h2 class="tab-title">Notary applications</h2></div>
+    <div class="cards" id="appCards"></div>
+  </section>
+
+  <!-- MESSAGES -->
+  <section class="tab" data-tab="messages" hidden>
+    <div class="toolbar"><h2 class="tab-title">Website messages</h2></div>
+    <div class="cards" id="msgCards"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tab" data-tab="settings" hidden>
+    <div class="toolbar"><h2 class="tab-title">Booking settings</h2><button class="btn btn-primary btn-sm" id="saveSettings">Save Settings</button></div>
+    <p class="form-msg" id="settingsMsg" role="status"></p>
+    <div id="settingsBody"></div>
+  </section>
+</div>
+
+<!-- booking drawer -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Booking details">
+  <div class="drawer-head"><div><p class="eyebrow" id="dSvc"></p><h2 id="dTitle"></h2></div><button class="btn btn-ghost btn-sm" id="dClose" aria-label="Close">Close</button></div>
+  <div class="drawer-body" id="dBody"></div>
+</aside>
+
+<!-- notary drawer -->
+<aside class="drawer" id="notaryDrawer" hidden aria-label="Notary details">
+  <div class="drawer-head"><div><p class="eyebrow" id="ndSub"></p><h2 id="ndTitle"></h2></div><button class="btn btn-ghost btn-sm" id="ndClose">Close</button></div>
+  <div class="drawer-body" id="ndBody"></div>
+</aside>
+
+<!-- new booking dialog -->
+<div class="drawer" id="newDrawer" hidden aria-label="New booking">
+  <div class="drawer-head"><div><p class="eyebrow">Phone or email order</p><h2>New booking</h2></div><button class="btn btn-ghost btn-sm" id="nbClose">Close</button></div>
+  <form class="drawer-body" id="nbForm" novalidate>
+    <fieldset class="grid2">
+      <div class="field"><label for="nb-service">Service</label><select id="nb-service"><option value="mobile">Mobile</option><option value="ron">RON</option><option value="rin">RIN</option></select></div>
+      <div class="field"><label for="nb-category">For</label><input id="nb-category" list="nbCats" placeholder="Refinance"><datalist id="nbCats"><option>Refinance</option><option>Purchase · buyer</option><option>Purchase · seller</option><option>HELOC</option><option>Reverse mortgage</option><option>Loan modification</option><option>Hybrid e-closing</option><option>Real estate closing</option><option>Power of attorney</option><option>Affidavit or sworn statement</option><option>Trust or estate documents</option><option>Other documents</option></datalist></div>
+      <div class="field"><label for="nb-start">Start (<span class="bizTz"></span>)</label><input id="nb-start" type="datetime-local"></div>
+      <div class="field"><label for="nb-signers">Signers</label><input id="nb-signers" type="number" min="1" max="10" value="1"></div>
+      <div class="field full nb-mobile"><label for="nb-address">Street address</label><input id="nb-address"></div>
+      <div class="field nb-mobile"><label for="nb-city">City</label><input id="nb-city"></div>
+      <div class="field nb-mobile grid2"><div class="field"><label for="nb-state">State</label><input id="nb-state" maxlength="2" placeholder="GA"></div><div class="field"><label for="nb-zip">ZIP</label><input id="nb-zip" maxlength="5"></div></div>
+      <div class="field full nb-remote" hidden><label for="nb-sloc">Signer location</label><input id="nb-sloc" placeholder="Mobile, AL"></div>
+      <div class="field full nb-rin" hidden><label for="nb-mail">Mail paper docs to</label><input id="nb-mail"></div>
+      <div class="field"><label for="nb-cname">Contact name</label><input id="nb-cname"></div>
+      <div class="field"><label for="nb-cphone">Contact phone</label><input id="nb-cphone"></div>
+      <div class="field full"><label for="nb-cemail">Contact email</label><input id="nb-cemail" type="email"></div>
+      <div class="field"><label for="nb-co">Company</label><input id="nb-co"></div>
+      <div class="field"><label for="nb-file">File #</label><input id="nb-file"></div>
+      <div class="field full"><label for="nb-notes">Notes</label><textarea id="nb-notes" rows="3"></textarea></div>
+      <div class="field full"><div class="radio-row"><label><input type="checkbox" id="nb-force" checked> Allow outside open hours / over capacity</label><label><input type="checkbox" id="nb-notify"> Email confirmation to contact</label></div></div>
+    </fieldset>
+    <p class="form-msg" id="nbMsg" role="alert"></p>
+    <button class="btn btn-primary" type="submit">Create Booking</button>
+  </form>
+</div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>

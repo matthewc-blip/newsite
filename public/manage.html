@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Your Booking · MCC Solutions</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/css/site.css">
+<style>
+  .status-big{display:inline-block;margin-top:8px}
+  .cancel-box{border-top:1px solid var(--line);padding-top:20px;margin-top:8px;display:flex;flex-direction:column;gap:12px}
+  .btn-danger{background:transparent;border-color:var(--warn);color:var(--warn)}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="brand" href="/notary/"><span class="seal">MCC</span><span><span class="brand-name">MCC Solutions</span><span class="brand-sub">Notary &amp; Signing Dispatch</span></span></a>
+  <a class="btn btn-ghost" href="/notary/#order" style="margin-left:auto">Book another</a>
+</div></header>
+<main>
+  <section class="page-hero"><div class="wrap">
+    <p class="eyebrow">Your booking</p>
+    <h1 id="title">Loading…</h1>
+    <span class="pill status-big" id="status" hidden></span>
+  </div></section>
+  <section class="band"><div class="wrap form-layout">
+    <div class="form-card" id="card">
+      <dl class="review" id="details"></dl>
+      <div class="hero-ctas" id="actions" hidden><a class="btn btn-primary" id="ics" href="#">Add to calendar</a></div>
+      <div class="cancel-box" id="cancelBox" hidden>
+        <h3>Need to cancel?</h3>
+        <div class="field"><label for="reason">Reason <span class="opt">(optional)</span></label><input id="reason" placeholder="Closing moved to next week"></div>
+        <div id="confirmRow" hidden><p style="color:var(--ink-2);margin-bottom:10px">Cancel booking <b id="cref"></b>? This frees the time for someone else.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-danger" id="yes" type="button">Yes, cancel it</button><button class="btn btn-ghost" id="no" type="button">Keep my booking</button></div></div>
+        <button class="btn btn-ghost" id="cancel" type="button" style="align-self:flex-start">Cancel booking</button>
+      </div>
+      <p class="form-msg" id="msg" role="alert"></p>
+    </div>
+    <aside class="aside-card"><p class="eyebrow">Questions or changes</p><p>To reschedule or change details, call or email the desk with your booking number.</p><span class="big mono">(000) 000-0000</span><p class="mono" style="color:var(--deep-fg)">orders@mccsolutions.com</p></aside>
+  </div></section>
+</main>
+<script>
+(async function () {
+  const q = new URLSearchParams(location.search);
+  const ref = q.get("ref"), token = q.get("token");
+  const $ = (s) => document.querySelector(s);
+  const STATUS = { requested: ["Requested · awaiting confirmation", "p-warn"], confirmed: ["Confirmed", "p-info"], assigned: ["Notary assigned", "p-ok"], completed: ["Completed", "p-ok"], canceled: ["Canceled", "p-warn"], no_show: ["Missed", "p-warn"] };
+  const SVC = { mobile: "Mobile notary", ron: "Remote Online Notarization (RON)", rin: "Remote Ink-Signed Notarization (RIN)" };
+  const msg = (t, ok) => { $("#msg").textContent = t; $("#msg").className = "form-msg" + (ok ? " ok" : ""); };
+
+  fetch("/api/config").then(r => r.json()).then(c => {
+    document.querySelectorAll(".aside-card .big").forEach(e => e.textContent = c.business.phone);
+    document.querySelectorAll(".aside-card .mono:not(.big)").forEach(e => e.textContent = c.business.email);
+  }).catch(() => {});
+
+  function render(b) {
+    $("#title").textContent = `Booking ${b.ref}`;
+    const [label, cls] = STATUS[b.status] || [b.status, "p-info"];
+    const s = $("#status"); s.hidden = false; s.textContent = label; s.className = "pill status-big " + cls;
+    const when = new Intl.DateTimeFormat("en-US", { timeZone: b.tz, weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(b.start));
+    const rows = [["Service", SVC[b.service]], ["For", b.category], ["When", when], ["Signers", String(b.signers)], [b.service === "mobile" ? "Where" : "Signer at", b.location]];
+    if (b.mailingAddress) rows.push(["Docs mailed to", b.mailingAddress]);
+    if (b.notary) rows.push(["Your notary", b.notary.name + (b.notary.phone ? " · " + b.notary.phone : "")]);
+    if (b.estFee != null) rows.push(["Fee", "$" + Number(b.estFee).toFixed(2) + (b.feeIsQuote ? "" : " estimated")]);
+    const dl = $("#details"); dl.innerHTML = "";
+    rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
+    $("#actions").hidden = b.status === "canceled";
+    $("#ics").href = `/api/bookings/${encodeURIComponent(b.ref)}/ics?token=${encodeURIComponent(token)}`;
+    $("#cancelBox").hidden = !b.canCancel;
+    $("#cref").textContent = b.ref;
+  }
+
+  if (!ref || !token) { $("#title").textContent = "Booking link incomplete"; msg("Open the link from your confirmation email, or call the desk."); return; }
+  try {
+    const r = await fetch(`/api/bookings/${encodeURIComponent(ref)}?token=${encodeURIComponent(token)}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    render(j.booking);
+  } catch (e) { $("#title").textContent = "Booking not found"; msg(e.message); }
+
+  $("#cancel").onclick = () => { $("#confirmRow").hidden = false; $("#cancel").hidden = true; };
+  $("#no").onclick = () => { $("#confirmRow").hidden = true; $("#cancel").hidden = false; };
+  $("#yes").onclick = async () => {
+    $("#yes").disabled = true;
+    try {
+      const r = await fetch(`/api/bookings/${encodeURIComponent(ref)}/cancel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, reason: $("#reason").value }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      render(j.booking);
+      msg("Your booking is canceled. We emailed a confirmation.", true);
+    } catch (e) { msg(e.message); $("#yes").disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

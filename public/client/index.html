@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Client Portal · MCC Solutions</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/css/site.css">
+<style>
+  body{font-size:15px}
+  .c-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+  .c-top .wrap{display:flex;align-items:center;gap:14px;padding-block:10px;flex-wrap:wrap}
+  .c-tabs{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap;align-items:center}
+  .c-tabs button{background:none;border:0;font:500 .92rem var(--f-body);color:var(--ink-2);padding:9px 12px;border-radius:4px;cursor:pointer}
+  .c-tabs button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 -2px 0 var(--brass)}
+  main.c{padding-block:26px 64px}
+  .c-sec{display:flex;flex-direction:column;gap:16px}
+  .c-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  .c-head h2{font-size:1.6rem}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+  .seg button{background:none;border:0;border-right:1px solid var(--line);padding:8px 13px;font:500 .86rem var(--f-body);color:var(--ink-2);cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--deep);color:var(--deep-fg)}
+  .orders{display:flex;flex-direction:column;gap:8px}
+  .orow{display:grid;grid-template-columns:120px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.9fr) 150px;gap:14px;align-items:center;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+  .orow:hover{border-color:var(--ink-2)}
+  .orow > *{min-width:0}
+  .orow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .orow small{display:block;color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .orow .when b{font-variant-numeric:tabular-nums}
+  .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+  @media (max-width:860px){.orow{grid-template-columns:1fr 1fr}.orow .hide-sm{display:none}}
+  .empty{padding:32px;text-align:center;color:var(--ink-2);background:var(--surface);border:1px dashed var(--line);border-radius:8px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:22px}
+  .kvs{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:7px 16px;margin:0;font-size:.94rem}
+  .kvs dt{color:var(--muted)}
+  .kvs dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+  .detail-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
+  .detail-grid > *{min-width:0}
+  @media (max-width:860px){.detail-grid{grid-template-columns:1fr}}
+  .sub{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin:0 0 10px}
+  .files{display:flex;flex-direction:column;gap:8px}
+  .file{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:.92rem;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+  .file a{color:var(--brass-ink);font-weight:600}
+  .timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:.9rem}
+  .timeline li{display:grid;grid-template-columns:120px 1fr;gap:10px}
+  .timeline time{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid2 .full{grid-column:1/-1}
+  @media (max-width:640px){.grid2{grid-template-columns:1fr}}
+  .radio-row label{font-weight:500}
+  .msg{font-size:.9rem}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--warn)}
+  .msg:empty{display:none}
+  .login{max-width:420px;margin:60px auto;display:flex;flex-direction:column;gap:16px}
+  .linkbtn{background:none;border:0;color:var(--warn);font:600 .84rem var(--f-body);cursor:pointer;padding:0 4px}
+  .drop{border:2px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--ink-2);font-size:.92rem}
+  .drop.over{border-color:var(--brass);background:var(--brass-soft)}
+</style>
+</head>
+<body>
+<header class="c-top"><div class="wrap">
+  <a class="brand" href="/client/"><span class="seal">MCC</span><span><span class="brand-name">Client Portal</span><span class="brand-sub" id="who">MCC Solutions</span></span></a>
+  <nav class="c-tabs" id="tabs" hidden>
+    <button data-tab="orders" aria-current="page">Orders</button>
+    <button data-tab="new">New Order</button>
+    <button data-tab="invoices">Invoices</button>
+    <button data-tab="account">Account</button>
+    <button id="logout">Sign out</button>
+  </nav>
+</div></header>
+
+<main class="c wrap">
+  <section id="signin" hidden>
+    <form class="card login" id="loginForm" novalidate>
+      <p class="eyebrow">Client portal</p>
+      <h2>Sign in</h2>
+      <p style="color:var(--ink-2)">For title companies, lenders and law firms with an MCC Solutions account. Enter your work email and we'll send a sign-in link.</p>
+      <div class="field"><label for="l-email">Work email</label><input id="l-email" type="email" autocomplete="email" placeholder="you@company.com"></div>
+      <button class="btn btn-primary" type="submit">Email Me a Link</button>
+      <p class="msg" id="loginMsg" role="status"></p>
+      <p style="font-size:.85rem;color:var(--muted)">Need an account? <a href="/notary/#contact">Contact the desk</a>.</p>
+    </form>
+  </section>
+
+  <!-- ORDERS -->
+  <section class="c-sec" data-tab="orders" hidden>
+    <div class="c-head"><h2>Orders</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div class="seg" id="filter"><button data-f="open" aria-pressed="true">Open</button><button data-f="done">Completed</button><button data-f="all">All</button></div>
+        <input id="q" type="search" placeholder="Search file #, signer, ref" aria-label="Search orders" style="width:220px;padding:8px 10px">
+        <button class="btn btn-primary btn-sm" data-go="new">New Order</button>
+      </div></div>
+    <div class="orders" id="orders"></div>
+  </section>
+
+  <!-- ORDER DETAIL -->
+  <section class="c-sec" data-tab="detail" hidden>
+    <div class="c-head"><div><button class="linkbtn" style="color:var(--brass-ink);padding:0" data-go="orders">← All orders</button><h2 id="dTitle" style="margin-top:6px"></h2></div><span id="dStatus"></span></div>
+    <div class="detail-grid">
+      <div class="c-sec">
+        <div class="card"><p class="sub">Signing</p><dl class="kvs" id="dKv"></dl></div>
+        <div class="card"><p class="sub">Documents</p>
+          <div class="files" id="dFiles"></div>
+          <div class="drop" id="drop" style="margin-top:12px">Drag the closing package here, or <label style="color:var(--brass-ink);font-weight:600;cursor:pointer">choose files<input type="file" id="dUpload" accept="application/pdf,image/*" multiple hidden></label>. PDF, up to 60 MB each.</div>
+          <p class="msg" id="dMsg"></p>
+        </div>
+      </div>
+      <div class="c-sec">
+        <div class="card"><p class="sub">Progress</p><ul class="timeline" id="dTimeline"></ul></div>
+        <div class="card" id="dCancelBox"><p class="sub">Cancel</p>
+          <div class="field"><label for="dReason">Reason <span class="opt">(optional)</span></label><input id="dReason" placeholder="Closing moved to next week"></div>
+          <div class="row" style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="dCancel" style="border-color:var(--warn);color:var(--warn)">Cancel Order</button></div>
+          <p class="msg" id="dCancelMsg"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEW ORDER -->
+  <section class="c-sec" data-tab="new" hidden>
+    <h2>New order</h2>
+    <form class="card" id="newForm" novalidate>
+      <div class="grid2">
+        <div class="field full"><label>Service</label><div class="radio-row" id="nSvc">
+          <label><input type="radio" name="nsvc" value="mobile" checked> Mobile signing</label>
+          <label><input type="radio" name="nsvc" value="ron"> RON</label>
+          <label><input type="radio" name="nsvc" value="rin"> RIN</label></div></div>
+        <div class="field"><label for="n-cat">Package type</label><select id="n-cat"></select></div>
+        <div class="field"><label for="n-signers">Signers</label><select id="n-signers"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="field"><label for="n-snames">Signer names</label><input id="n-snames" placeholder="Marcus Hill, Dana Hill"></div>
+        <div class="field"><label for="n-phone">Signer phone</label><input id="n-phone" type="tel" placeholder="(555) 330-7712"></div>
+        <div class="field"><label for="n-file">File / loan number</label><input id="n-file" class="mono" placeholder="PT-25-0418"></div>
+        <div class="field"><label for="n-email">Signer email <span class="opt">(required for RON)</span></label><input id="n-email" type="email"></div>
+        <div class="field full nm"><label for="n-addr">Signing address</label><input id="n-addr" placeholder="2140 Pleasant Hill Rd"></div>
+        <div class="field nm"><label for="n-city">City</label><input id="n-city"></div>
+        <div class="field nm grid2" style="gap:10px"><div class="field"><label for="n-state">State</label><input id="n-state" maxlength="2" placeholder="GA"></div><div class="field"><label for="n-zip">ZIP</label><input id="n-zip" maxlength="5" inputmode="numeric"></div></div>
+        <div class="field full nm"><label for="n-docs">Documents</label><select id="n-docs"><option>E-docs: we'll upload the package here</option><option>Courier delivers the package</option><option>Signer already has the documents</option></select></div>
+        <div class="field full nr" hidden><label for="n-sloc">Signer location (city, state or country)</label><input id="n-sloc"></div>
+        <div class="field full nrin" hidden><label for="n-mail">Mail paper documents to</label><input id="n-mail"></div>
+        <div class="field"><label for="n-date">Date</label><input id="n-date" type="date"></div>
+        <div class="field"><label for="n-time">Time <span class="opt" id="tzLbl"></span></label><select id="n-time"><option value="">Pick a date first</option></select></div>
+        <div class="field full"><label for="n-notes">Instructions for this signing</label><textarea id="n-notes" rows="3" placeholder="Collect $1,240 cashier's check. Second signer arrives at 6:45."></textarea></div>
+        <div class="field full"><label for="n-pkg">Closing package <span class="opt">(optional now, you can add it later)</span></label><input id="n-pkg" type="file" accept="application/pdf,image/*" multiple></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px"><button class="btn btn-primary" type="submit">Place Order</button><p class="msg" id="nMsg"></p></div>
+    </form>
+  </section>
+
+  <!-- INVOICES -->
+  <section class="c-sec" data-tab="invoices" hidden>
+    <h2>Invoices</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>Invoice</th><th>Period</th><th>Due</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="invRows"></tbody></table></div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section class="c-sec" data-tab="account" hidden>
+    <h2 id="aCompany"></h2>
+    <div class="detail-grid">
+      <div class="card"><p class="sub">Standing instructions</p><p id="aInstr" style="white-space:pre-wrap;color:var(--ink-2)"></p><p style="font-size:.85rem;color:var(--muted);margin-top:12px">Notaries see these on every order. Ask the desk to update them.</p></div>
+      <div class="card"><p class="sub">Your team</p><ul class="timeline" id="aTeam"></ul><p style="font-size:.85rem;color:var(--muted);margin-top:12px">To add a teammate, contact the desk: <span id="aDesk"></span></p></div>
+    </div>
+  </section>
+</main>
+<script src="/client/client.js"></script>
+</body>
+</html>
