@@ -54,6 +54,8 @@ const DEFAULT_SETTINGS = {
   rinStates: ["AL", "MT", "NJ", "SD", "WY"],
   // States where you dispatch mobile notaries today. Shown on the site; other states are "coming soon".
   coverage: { liveStates: ["NJ"] },
+  // "Starting at" prices shown on the website (blank = hidden). Typical NJ market prices; adjust in Settings.
+  publicPrices: { ...require("./prices").DEFAULTS },
   blackouts: [], // [{ date: "2026-11-26", service: "all" | "mobile" | "ron" | "rin", note: "Thanksgiving" }]
   // Automatic dispatch: offer each new booking to the nearest ready notary, then the next one if they
   // decline or don't answer in time.

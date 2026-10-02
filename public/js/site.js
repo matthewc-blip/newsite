@@ -68,6 +68,8 @@ window.MCC = (function () {
       if (n.nodeValue.includes("(908) 444-6373")) n.nodeValue = n.nodeValue.replaceAll("(908) 444-6373", c.business.phone);
       if (n.nodeValue.includes("booking@mcc-solutionsnj.com")) n.nodeValue = n.nodeValue.replaceAll("booking@mcc-solutionsnj.com", c.business.email);
     });
+    const digits = String(c.business.phone || "").replace(/\D/g, "").replace(/^1/, "");
+    if (digits.length === 10) document.querySelectorAll('a[href^="tel:"]').forEach((a) => (a.href = "tel:+1" + digits));
     return c;
   }).catch(() => null);
 

@@ -218,6 +218,8 @@ Settings → Google reviews: paste your Google Business Profile review link and 
 4. Enter prices, or leave them blank so customers see "Quoted when we confirm".
 5. Check the **RIN states** list against current law and your notaries' commissions.
 6. Add your notaries in **Notaries**.
+7. Check **Starting prices on the website**. These "starting at" prices show on the homepage and service pages. They ship with typical New Jersey market prices (mobile visit $75, loan signing $150, hospital visit $125, process serving $85, apostille $125, recording $50); change them to yours, or clear one to hide it.
+8. In Render, set `PUBLIC_URL` to the exact address you want Google to use (for example `https://www.mcc-solutionsnj.com`). Visits to the other version (with or without `www`) are redirected to it, and every page's canonical link uses it.
 
 ## Things to know
 - **RON video sessions** have to happen on a state-approved RON platform (your RON notaries will already use one). This system books and tracks the appointment. The desk sends the signer the platform link when it confirms.

@@ -2,6 +2,7 @@
 // plus sitemap.xml and robots.txt. Pages are rendered on the server so search engines see full HTML.
 const { getSettings } = require("./db");
 const { COUNTIES, SERVICES } = require("./seo-data");
+const prices = require("./prices");
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const bySlug = Object.fromEntries(COUNTIES.map((c) => [c.slug, c]));
@@ -60,7 +61,10 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(canonical)}">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="${esc(url)}/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,17 +75,17 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 </head>
 <body class="seo">
 <div class="strip"><div class="wrap">
-  <span>Dispatch desk: <a class="mono" href="${telHref(biz.phone)}" style="color:inherit"><b>${phone}</b></a> · <b>${email}</b></span>
-  <span>Mon–Fri 7AM–9PM ET · Sat 9AM–5PM · <a href="/" style="color:inherit">← MCC Solutions home</a></span>
+  <span>Dispatch desk: <a class="mono" href="${telHref(biz.phone)}" style="color:inherit"><b>${phone}</b></a><span class="strip-extra"> · <b>${email}</b></span></span>
+  <span class="strip-extra">Mon–Fri 7AM–9PM ET · Sat 9AM–5PM · <a href="/" style="color:inherit">← MCC Solutions home</a></span>
 </div></div>
 <header class="site"><div class="wrap">
   <a class="brand" href="/notary/"><span class="seal">MCC</span><span><span class="brand-name">MCC Solutions</span><span class="brand-sub">Notary &amp; Signing Dispatch</span></span></a>
   <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mainNav">Menu</button>
   <nav class="main" id="mainNav" aria-label="Main">
+    <a href="${NJ_HUB}#services">Services</a>
     <a href="/notary/loan-signing-agent">Loan Signings</a>
     <a href="/notary/mobile-notary">Mobile Notary</a>
-    <a href="/notary/hospital-notary">Hospital Visits</a>
-    <a href="/notary/remote-online-notarization">RON</a>
+    <a href="/notary/process-serving">Process Serving</a>
     <a href="${NJ_HUB}">NJ Counties</a>
     <a href="/notary/#faq">FAQ</a>
     <a href="/notary/#contact">Contact</a>
@@ -247,14 +251,16 @@ function register(app) {
 
   for (const s of SERVICES) {
     app.get(servicePath(s), async (req, res) => {
-      const biz = await business();
+      const settings = await getSettings().catch(() => null);
+      const biz = settings ? settings.business : await business();
       const url = base(req);
       const path = servicePath(s);
+      const from = settings ? prices.forSlug(settings, s.slug) : null;
       const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], [s.name, path]];
       res.send(layout({
         req, biz, path, crumbs, title: s.title, description: s.description,
         body: {
-          hero: `<p class="eyebrow">${esc(s.code)}</p><h1 style="margin-top:10px">${esc(s.h1)}</h1><p class="lede" style="margin-top:14px">${esc(s.lede)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="${s.requestType ? "#request" : "/notary/#order"}">${s.requestType ? "Request service" : "Book now"}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
+          hero: `<p class="eyebrow">${esc(s.code)}</p><h1 style="margin-top:10px">${esc(s.h1)}</h1><p class="lede" style="margin-top:14px">${esc(s.lede)}</p>${from ? `<p class="from-price"><span>Starting at</span> <b>${prices.money(from.price)}</b> <small>${esc(from.note)}</small></p>` : ""}<div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="${s.requestType ? "#request" : "/notary/#order"}">${s.requestType ? "Request service" : "Book now"}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
           main: `${s.requestType ? requestForm(s) : ""}<section class="band"><div class="wrap split">
             <div class="stack"><p class="eyebrow">What's included</p><h2>Every ${esc(s.short.toLowerCase())} order</h2><ul class="checks">${s.included.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
             <div class="stack"><p class="eyebrow">Who uses it</p><h2>Built for</h2><ul class="checks">${s.who.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>

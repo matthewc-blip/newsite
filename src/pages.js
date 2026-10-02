@@ -29,7 +29,7 @@ function register(app) {
             <h2>Why I started MCC Solutions</h2>
             <p class="lede">I started MCC Solutions in New Jersey because signings fail for simple reasons: a notary who doesn't confirm, a missed initial, a package that ships late, a client left calling for updates.</p>
             <p>So we built a desk that fixes each of those. Every order is confirmed and assigned to a verified notary. Clients see status at each step. Every package is checked before it ships, and the tracking number goes straight to the people waiting on it.</p>
-            <p>We serve title companies, lenders, attorneys, hospitals and families across New Jersey, in person and remotely. Notary work is where MCC starts. Bookkeeping, tax preparation and investment advising are coming next, for the same clients we already serve.</p>
+            <p>We serve title companies, lenders, attorneys, hospitals and families across New Jersey, in person and remotely. Beyond notarizations, the same desk handles process serving, document recording, apostilles and the other paperwork that comes with a closing, a lawsuit or an estate.</p>
           </div>
         </div></section>
         <section class="band alt"><div class="wrap">

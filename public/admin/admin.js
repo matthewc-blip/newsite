@@ -738,6 +738,7 @@
   }
 
   /* ---------- settings ---------- */
+  const STARTING = [["mobile", "Mobile notary visit"], ["loan", "Loan signing"], ["hospital", "Hospital or care facility visit"], ["process_serve", "Process serving"], ["apostille", "Apostille (per document)"], ["recording", "Document recording (per document)"]];
   function renderSettings() {
     const s = settings;
     const svcCard = (k) => {
@@ -808,6 +809,11 @@
             <label class="switch" style="margin:0;min-width:0;flex:1"><input type="checkbox" data-ad-on="${i}" ${a.enabled !== false ? "checked" : ""}> ${esc(a.label)}</label>
             <input type="number" min="0" step="0.01" data-ad-price="${i}" value="${a.price}" style="max-width:110px" aria-label="${esc(a.label)} price"></div>`).join("")}
         </div>
+        <div class="set-card"><h3>Starting prices on the website</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">Shown as "starting at" on the homepage and service pages. Leave one blank to hide it. Each job's actual quote is still yours to set.</p>
+          ${STARTING.map(([k, label]) => `<div class="inline" style="margin-top:8px;align-items:center"><label for="sp-${k}" style="flex:1;min-width:0">${esc(label)}</label>
+            <input type="number" min="0" step="1" id="sp-${k}" data-sp="${k}" value="${s.publicPrices && s.publicPrices[k] != null ? s.publicPrices[k] : ""}" placeholder="Hidden" style="max-width:110px"></div>`).join("")}
+        </div>
         <div class="set-card"><h3>Google reviews</h3>
           <p style="font-size:.86rem;color:var(--ink-2)">After a job is completed, the customer gets one email asking for a Google review. Each email address is asked at most once per ${Number(s.reviews?.repeatDays) || 180} days and can opt out.</p>
           <label class="switch"><input type="checkbox" id="rvOn" ${s.reviews?.enabled ? "checked" : ""}> Send review requests</label>
@@ -867,6 +873,8 @@
         }
       }
     });
+    s.publicPrices = s.publicPrices || {};
+    $$("[data-sp]").forEach((i) => { s.publicPrices[i.dataset.sp] = i.value === "" ? null : Number(i.value); });
     $$("[data-p]").forEach((i) => {
       const [k, f] = i.dataset.p.split(".");
       s.pricing[k][f] = i.value === "" ? null : Number(i.value);

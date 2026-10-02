@@ -24,6 +24,27 @@ if (!ADMIN_PASSWORD) console.warn("ADMIN_PASSWORD is not set. The dispatch dashb
 const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
+
+// One web address for search engines: if PUBLIC_URL is https://www.example.com, visits to example.com
+// (or the reverse) are sent to it permanently. Only the www/non-www twin is redirected, never other hosts.
+const PUBLIC_ORIGIN = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+const PUBLIC_HOST = (() => { try { return PUBLIC_ORIGIN ? new URL(PUBLIC_ORIGIN).host : ""; } catch { return ""; } })();
+app.use((req, res, next) => {
+  if (!PUBLIC_HOST || (req.method !== "GET" && req.method !== "HEAD") || req.path.startsWith("/api/")) return next();
+  const host = (req.get("host") || "").toLowerCase();
+  if (host !== PUBLIC_HOST && (host === "www." + PUBLIC_HOST || "www." + host === PUBLIC_HOST)) return res.redirect(301, PUBLIC_ORIGIN + req.originalUrl);
+  next();
+});
+// The homepage and notary page are static files written with www.mcc-solutionsnj.com links; serve them
+// with PUBLIC_URL instead so every page points search engines at the same address.
+const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html" };
+app.get(Object.keys(STATIC_CANON), (req, res, next) => {
+  if (!PUBLIC_ORIGIN || PUBLIC_ORIGIN === "https://www.mcc-solutionsnj.com") return next();
+  require("fs").readFile(path.join(__dirname, "public", STATIC_CANON[req.path]), "utf8", (err, html) => {
+    if (err) return next();
+    res.type("html").send(html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN));
+  });
+});
 // Stripe webhooks need the raw body for signature checks, so this route comes before the JSON parser.
 app.post("/api/webhooks/stripe", express.raw({ type: "application/json", limit: "1mb" }), (req, res) => require("./src/billing").handleStripeWebhook(req, res));
 app.use(express.json({ limit: "100kb" }));
@@ -79,7 +100,7 @@ app.get("/api/config", async (req, res) => {
     const c = s.services[k];
     services[k] = { label: c.label, enabled: c.enabled, durationMin: c.durationMin, maxDaysAhead: c.maxDaysAhead };
   }
-  res.json({ business: s.business, services, pricing: s.pricing, addons: addons.catalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
+  res.json({ business: s.business, services, pricing: s.pricing, startingPrices: require("./src/prices").list(s), addons: addons.catalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
 });
 
 app.get("/api/health", async (req, res) => {
@@ -590,6 +611,16 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     const p = Number(s.billing.minMarginPct);
     if (!(p >= 0 && p <= 90)) return res.status(400).json({ error: "Minimum margin must be between 0 and 90%." });
     s.billing.minMarginPct = p;
+  }
+  if (s.publicPrices !== undefined) {
+    if (!s.publicPrices || typeof s.publicPrices !== "object") return res.status(400).json({ error: "Invalid starting prices." });
+    for (const k of Object.keys(s.publicPrices)) {
+      if (!require("./src/prices").DEFAULTS.hasOwnProperty(k)) { delete s.publicPrices[k]; continue; }
+      const v = s.publicPrices[k];
+      if (v === null || v === "") { s.publicPrices[k] = null; continue; }
+      if (!(Number(v) >= 0 && Number(v) <= 10000)) return res.status(400).json({ error: "Starting prices must be between $0 and $10,000." });
+      s.publicPrices[k] = Math.round(Number(v) * 100) / 100;
+    }
   }
   if (s.addons !== undefined) {
     if (!Array.isArray(s.addons) || s.addons.length > 20) return res.status(400).json({ error: "Add-ons must be a list of up to 20 items." });
