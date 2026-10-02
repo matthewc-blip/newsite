@@ -237,10 +237,10 @@ ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</la
 </urlset>`);
   });
 
-  // Google Analytics loader. Set GA_MEASUREMENT_ID (G-XXXXXXX) on the server to turn it on.
+  // Google Analytics loader. Uses the MCC GA4 property by default; GA_MEASUREMENT_ID overrides it.
   // Loaded only on public pages; the admin, notary and client portals never include it.
   app.get("/js/ga.js", (req, res) => {
-    const id = String(process.env.GA_MEASUREMENT_ID || "").trim();
+    const id = String(process.env.GA_MEASUREMENT_ID || "G-YD3R9MMYGZ").trim(); // set GA_MEASUREMENT_ID to override, or "off" to disable
     res.type("application/javascript").set("Cache-Control", "public, max-age=300");
     if (!/^G-[A-Z0-9]{4,}$/.test(id)) return res.send("window.mccTrack=function(){};");
     res.send(`(function(){
