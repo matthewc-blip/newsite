@@ -3,7 +3,15 @@
 const { layout, business, telHref, base, esc } = require("./seo");
 
 const UPDATED = "October 2, 2026";
-const FOUNDER = { name: "Matthew Coleman", role: "Founder", photo: "/img/matthew-coleman.jpg" };
+const FOUNDER = { name: "Matthew Coleman", role: "Founder & Principal", photo: "/img/matthew-coleman.jpg" };
+// From Matthew's resume. Only list credentials that are current; add new ones here as they're earned.
+const CREDENTIALS = [
+  ["New Jersey Notary Public", "Commissioned by the State of New Jersey"],
+  ["NNA Certified Loan Signing Agent", "National Notary Association certification"],
+  ["E&O insured", "$100,000 errors and omissions coverage"],
+  ["QuickBooks ProAdvisor, Gold", "Intuit's certification for bookkeeping professionals"],
+  ["B.S.B.A., Accounting & Finance", "Kutztown University of Pennsylvania, 2025"],
+];
 
 function legal(sections) {
   return `<section class="band"><div class="wrap legal-doc">${sections.map(([h, body]) => `<h2>${esc(h)}</h2>${body}`).join("")}</div></section>`;
@@ -20,7 +28,7 @@ function register(app) {
     res.send(layout({
       req, biz, path: "/about", crumbs,
       title: "About MCC Solutions | New Jersey Notary & Signing Desk",
-      description: `Meet ${FOUNDER.name}, founder of MCC Solutions, a New Jersey notary and loan signing desk built to show up on time and keep clients updated.`,
+      description: `Meet ${FOUNDER.name}, founder of MCC Solutions in Cranford, NJ: NJ notary, NNA Certified Loan Signing Agent, $100K E&O insured, accounting & finance graduate.`,
       body: {
         hero: `<p class="eyebrow">About MCC Solutions</p><h1 style="margin-top:10px">A signing desk built on one promise: the closing happens on time.</h1>`,
         main: `<section class="band"><div class="wrap split">
@@ -30,7 +38,14 @@ function register(app) {
             <p class="lede">I started MCC Solutions in New Jersey because signings fail for simple reasons: a notary who doesn't confirm, a missed initial, a package that ships late, a client left calling for updates.</p>
             <p>So we built a desk that fixes each of those. Every order is confirmed and assigned to a verified notary. Clients see status at each step. Every package is checked before it ships, and the tracking number goes straight to the people waiting on it.</p>
             <p>We serve title companies, lenders, attorneys, hospitals and families across New Jersey, in person and remotely. Beyond notarizations, the same desk handles process serving, document recording, apostilles and the other paperwork that comes with a closing, a lawsuit or an estate.</p>
+            <h2 style="margin-top:12px">My background</h2>
+            <p>I'm based in Cranford, in Union County, and I still take signings myself. I'm a commissioned New Jersey notary and an NNA Certified Loan Signing Agent with $100,000 in E&amp;O coverage. I've handled the time-sensitive work too, including a bedside will and trust signing in a hospital, where getting every detail right matters most.</p>
+            <p>My background is in accounting and finance. I earned a B.S.B.A. in Accounting &amp; Finance from Kutztown University of Pennsylvania, where faculty selected me to lead group tutoring sessions for Intermediate Accounting I and II and Corporate Finance. I'm also a QuickBooks ProAdvisor, which is why the paperwork side of a business is where MCC is headed next.</p>
           </div>
+        </div></section>
+        <section class="band"><div class="wrap">
+          <div class="sec-head"><p class="eyebrow">Credentials</p><h2>Licensed, certified and insured</h2></div>
+          <ul class="cred-list">${CREDENTIALS.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join("")}</ul>
         </div></section>
         <section class="band alt"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">How we work</p><h2>What every client gets</h2></div>
@@ -45,7 +60,11 @@ function register(app) {
       },
       schema: [
         { "@type": "AboutPage", name: "About MCC Solutions", url: url + "/about" },
-        { "@type": "Person", name: FOUNDER.name, jobTitle: FOUNDER.role, image: url + FOUNDER.photo, worksFor: { "@id": url + "/#business" } },
+        { "@type": "Person", name: FOUNDER.name, jobTitle: FOUNDER.role, image: url + FOUNDER.photo, worksFor: { "@id": url + "/#business" },
+          alumniOf: { "@type": "CollegeOrUniversity", name: "Kutztown University of Pennsylvania" },
+          homeLocation: { "@type": "Place", name: "Cranford, New Jersey" },
+          hasCredential: CREDENTIALS.slice(0, 4).map(([t]) => ({ "@type": "EducationalOccupationalCredential", name: t })),
+          sameAs: ["https://www.linkedin.com/in/matthew--coleman"] },
         { "@type": "Organization", "@id": url + "/#org", name: "MCC Solutions", url: url + "/", founder: { "@type": "Person", name: FOUNDER.name } },
       ],
     }));
@@ -57,8 +76,9 @@ function register(app) {
     const url = base(req);
     const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Vendor packet", "/notary/vendors"]];
     const rows = [
-      ["Company", "MCC Solutions"],
-      ["Services", "Loan signings (purchase, refinance, HELOC, reverse, seller), general mobile notary, hospital and facility visits, Remote Online Notarization, Remote Ink-Signed Notarization"],
+      ["Company", "MCC Solutions LLC · Cranford, NJ (Union County)"],
+      ["Principal", "Matthew Coleman · NJ Notary Public · NNA Certified Loan Signing Agent · $100,000 E&amp;O"],
+      ["Services", "Loan signings (purchase, refinance, HELOC, reverse, seller), general mobile notary, hospital and facility visits, Remote Online Notarization, Remote Ink-Signed Notarization, process serving, document recording, apostilles, witnesses"],
       ["Coverage", "New Jersey, all 21 counties"],
       ["Desk hours", "Mon–Fri 7 AM–9 PM ET · Sat 9 AM–5 PM ET"],
       ["Ordering", "Client portal, email or phone"],

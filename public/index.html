@@ -207,6 +207,8 @@ footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)
 .who div{padding:16px 0;border-top:1px solid var(--line)}
 .who p{color:var(--ink-2);font-size:.94rem;margin-top:4px}
 .contact-lines a{text-decoration:none}
+.creds{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.88rem;font-weight:600;color:var(--ink-2)}
+.creds li::before{content:"✓";color:var(--brass);margin-right:7px;font-weight:800}
 
 /* gold on dark green (dark bands, footer, desk strip) uses the lighter gold so it stays readable */
 .band.dark,footer,.strip{--brass:#d8a24a;--on-brass:#10261e;--brass-ink:#f0cf8f}
@@ -237,6 +239,11 @@ footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)
         <a class="btn btn-primary" href="/notary/#order">Book a Notary</a>
         <a class="btn btn-ghost" href="#services">Request a service</a>
       </div>
+      <ul class="creds" aria-label="Credentials">
+        <li>NNA Certified Loan Signing Agent</li>
+        <li>$100K E&amp;O insured</li>
+        <li>NJ commissioned notary</li>
+      </ul>
     </div>
 
     <article class="ledger" aria-label="Services and starting prices">
