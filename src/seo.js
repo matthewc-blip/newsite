@@ -256,6 +256,22 @@ window.mccTrack(a.href.indexOf("tel:")===0?"phone_click":"email_click",{link_url
 })();`);
   });
 
+  // Short tracked links for print and outreach (QR codes stay small and easy to scan).
+  // /go/<code> forwards to the page with UTM tags so Google Analytics shows which channel brought the visit.
+  const GO = {
+    pc1: ["/notary/vendors", "postcard", "mail", "nj_postcard_1"],
+    pcb: ["/notary/#order", "postcard", "mail", "nj_postcard_booking"],
+    li: ["/notary/vendors", "linkedin", "social", "linkedin_outreach"],
+    em: ["/notary/vendors", "email", "email", "cold_email"],
+  };
+  app.get("/go/:code", (req, res) => {
+    const g = GO[String(req.params.code).toLowerCase()];
+    if (!g) return res.redirect(302, "/notary/");
+    const [path, source, medium, campaign] = g;
+    const [p, hash] = path.split("#");
+    res.redirect(302, `${p}?utm_source=${source}&utm_medium=${medium}&utm_campaign=${campaign}${hash ? "#" + hash : ""}`);
+  });
+
   app.get("/robots.txt", (req, res) => {
     res.type("text/plain").send(`User-agent: *
 Disallow: /admin/
@@ -264,6 +280,7 @@ Disallow: /client/
 Disallow: /manage.html
 Disallow: /api/
 Disallow: /reviews/
+Disallow: /go/
 
 Sitemap: ${base(req)}/sitemap.xml
 `);
