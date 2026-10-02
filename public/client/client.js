@@ -107,7 +107,7 @@
 
   async function uploadFiles(files, orderId, m) {
     for (const f of files) {
-      if (f.size > 60 * 1024 * 1024) { msg(m, `${f.name} is over 60 MB.`, "err"); return false; }
+      if (f.size > 50 * 1024 * 1024) { msg(m, `${f.name} is over 50 MB.`, "err"); return false; }
       msg(m, `Uploading ${f.name}…`, "ok");
       try { await api(`/api/client/orders/${orderId}/documents?filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); }
       catch (e) { msg(m, `${f.name}: ${e.message}`, "err"); return false; }
@@ -236,7 +236,7 @@
   }
   async function uploadReqFiles(files, id, m) {
     for (const f of files) {
-      if (f.size > 60 * 1024 * 1024) { msg(m, `${f.name} is over 60 MB.`, "err"); return false; }
+      if (f.size > 50 * 1024 * 1024) { msg(m, `${f.name} is over 50 MB.`, "err"); return false; }
       msg(m, `Uploading ${f.name}…`, "ok");
       try { await api(`/api/client/requests/${id}/documents?filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); }
       catch (e) { msg(m, `${f.name}: ${e.message}`, "err"); return false; }

@@ -11,7 +11,7 @@ const useSupabase = !!(SB_URL && SB_KEY);
 
 const ALLOWED = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/tiff": "tif" };
 const MAX_CREDENTIAL = 10 * 1024 * 1024;
-const MAX_CLOSING = 60 * 1024 * 1024;
+const MAX_CLOSING = 50 * 1024 * 1024;
 
 const headers = (extra = {}) => ({ Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY, ...extra });
 const bad = (m) => Object.assign(new Error(m), { status: 400 });

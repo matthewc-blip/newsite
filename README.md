@@ -89,7 +89,7 @@ Use the included `Dockerfile` and set the environment variables from `.env.examp
 2. Add each person on their team with **Add & Invite**. They get an email link to the client portal at `/client/`.
 3. In the portal, clients can:
    - place orders and pick an open time
-   - upload the closing package (PDF, up to 60 MB per file)
+   - upload the closing package (PDF, up to 50 MB per file, the Supabase free plan limit)
    - track status
    - see which notary was assigned
    - download scanbacks once the desk approves them

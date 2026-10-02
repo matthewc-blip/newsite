@@ -183,7 +183,7 @@ function requestForm(s) {
       var files = Array.prototype.slice.call(document.getElementById("rq-files").files || []).slice(0, 10), failed = [];
       for (var i = 0; i < files.length; i++) {
         m.className = "form-msg"; m.textContent = "Uploading " + files[i].name + "…";
-        if (files[i].size > 60 * 1024 * 1024) { failed.push(files[i].name + " (over 60 MB)"); continue; }
+        if (files[i].size > 50 * 1024 * 1024) { failed.push(files[i].name + " (over 50 MB)"); continue; }
         var u = await fetch("/api/requests/" + encodeURIComponent(d.ref) + "/papers?token=" + encodeURIComponent(d.uploadToken) + "&filename=" + encodeURIComponent(files[i].name), { method: "POST", headers: { "Content-Type": files[i].type || "application/octet-stream" }, body: files[i] });
         if (!u.ok) failed.push(files[i].name);
       }

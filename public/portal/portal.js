@@ -225,7 +225,7 @@
   async function uploadScans(inp) {
     const id = inp.dataset.scan, m = $("#sm-" + id);
     for (const f of inp.files) {
-      if (f.size > 60 * 1024 * 1024) { msg(m, `${f.name} is over 60 MB.`, "err"); return; }
+      if (f.size > 50 * 1024 * 1024) { msg(m, `${f.name} is over 50 MB.`, "err"); return; }
       msg(m, `Uploading ${f.name}…`, "ok");
       try { await api(`/api/portal/jobs/${id}/scanbacks?filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); }
       catch (e) { msg(m, e.message, "err"); return; }
