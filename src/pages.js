@@ -205,6 +205,78 @@ function register(app) {
     }));
   });
 
+  /* ---------- Become a process server (application) ---------- */
+  app.get("/notary/become-a-process-server", async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Become a process server", "/notary/become-a-process-server"]];
+    res.send(layout({
+      req, biz, path: "/notary/become-a-process-server", crumbs,
+      title: "Become a Process Server in New Jersey | MCC Solutions",
+      description: "Serve court papers for law firms across New Jersey. Per-serve pay, flexible schedule, assignments near you. Requires a driver's license and a registered, insured vehicle.",
+      body: {
+        hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Serve papers for law firms near you</h1><p class="lede" style="margin-top:14px">MCC Solutions handles process serving for attorneys across New Jersey. We send you serves near home, you log your attempts in the portal, and you're paid for every completed serve. Property inspections and courier runs are available too.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#apply">Apply now</a></div>`,
+        main: `<section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">What you'll need</p><h2>Requirements</h2><ul class="checks">
+            <li>18 or older, and not a party to any case you serve</li>
+            <li>A valid driver's license</li>
+            <li>A registered vehicle with current auto insurance (you'll upload both)</li>
+            <li>A background check on file (we'll tell you how if you don't have one)</li>
+            <li>A smartphone for photos, GPS-stamped attempts and email</li>
+            <li>Calm, professional and safe at the door. Never force a serve.</li>
+          </ul></div>
+          <div class="stack"><p class="eyebrow">How it works</p><h2>From assignment to payment</h2><ol class="steps" style="grid-template-columns:1fr">
+            <li><h3>Apply</h3><p>Takes two minutes. We review applications within 3 business days.</p></li>
+            <li><h3>Onboard online</h3><p>Upload your driver's license, vehicle registration, auto insurance, background check and W-9, then sign the process server agreement.</p></li>
+            <li><h3>Accept serves</h3><p>We email you serves near you with the pay shown up front. Accept the ones that fit your route.</p></li>
+            <li><h3>Log and complete</h3><p>Record each attempt in the portal, then upload the signed affidavit of service.</p></li>
+            <li><h3>Get paid</h3><p>You're paid for every completed serve, as an independent contractor.</p></li>
+          </ol></div>
+        </div></section>
+        <section class="band alt" id="apply"><div class="wrap form-layout">
+          <form class="form-card" id="psForm" novalidate>
+            <fieldset><legend>Process server application</legend>
+              <div class="field"><label for="p-name">Full name</label><input id="p-name" required autocomplete="name"></div>
+              <div class="field"><label for="p-email">Email</label><input id="p-email" type="email" required autocomplete="email"></div>
+              <div class="field"><label for="p-phone">Mobile phone</label><input id="p-phone" type="tel" required autocomplete="tel"></div>
+              <div class="field"><label for="p-zip">Home ZIP</label><input id="p-zip" inputmode="numeric" maxlength="5" required></div>
+              <div class="field"><label for="p-vehicle">Do you have a registered, insured vehicle?</label><select id="p-vehicle"><option value="">Choose…</option><option>Yes, registered and insured</option><option>No</option></select></div>
+              <div class="field"><label for="p-exp">Process serving experience</label><select id="p-exp"><option>None yet</option><option>Under 1 year</option><option>1 to 3 years</option><option>3+ years</option></select></div>
+              <div class="field"><label for="p-radius">How far will you drive?</label><select id="p-radius"><option>10 miles</option><option selected>20 miles</option><option>30 miles</option><option>50 miles</option></select></div>
+              <div class="field"><label for="p-avail">When are you available?</label><select id="p-avail"><option>Weekdays</option><option>Evenings</option><option>Weekends</option><option selected>Evenings and weekends</option><option>Anytime</option></select></div>
+              <div class="field"><label for="p-bg">Background check date <span class="opt">(if you have one)</span></label><input id="p-bg" type="date"></div>
+              <div class="field"><label for="p-lang">Languages besides English <span class="opt">(optional)</span></label><input id="p-lang" placeholder="Spanish…"></div>
+              <input type="text" id="p-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+            </fieldset>
+            <div class="form-foot"><small>By applying you agree to our <a href="/privacy">privacy policy</a>.</small><button class="btn btn-primary" type="submit">Submit application</button></div>
+            <p class="form-msg" id="psMsg" role="status"></p>
+          </form>
+          <aside class="stack"><h3>Are you a notary?</h3><p>Commissioned notaries and signing agents can <a href="/notary/#notaries">apply to the notary network</a>. Want lighter work? <a href="/notary/become-a-witness">Become a signing witness</a>.</p></aside>
+        </div></section>
+        <script>
+        document.getElementById("psForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var g = function (id) { return document.getElementById(id).value.trim(); };
+          var m = document.getElementById("psMsg"), b = this.querySelector("button");
+          if (!g("p-name") || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(g("p-email")) || g("p-phone").replace(/\\D/g, "").length < 10 || !/^\\d{5}$/.test(g("p-zip"))) { m.className = "form-msg"; m.textContent = "Enter your name, email, mobile phone and 5-digit ZIP."; return; }
+          if (!/^Yes/.test(g("p-vehicle"))) { m.className = "form-msg"; m.textContent = "Process servers need a registered, insured vehicle."; return; }
+          b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+          try {
+            var r = await fetch("/api/applications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: "process_server", name: g("p-name"), email: g("p-email"), phone: g("p-phone"), zip: g("p-zip"), radius: g("p-radius"), availability: g("p-avail"), vehicle: g("p-vehicle"), experience: g("p-exp"), backgroundDate: g("p-bg"), languages: g("p-lang"), website: g("p-website") }) });
+            var d = await r.json().catch(function () { return {}; });
+            if (!r.ok) throw new Error(d.error || "Couldn't send. Try again.");
+            if (window.mccTrack) window.mccTrack("process_server_application", { form: "process_server" });
+            this.reset(); m.className = "form-msg ok"; m.textContent = "Application received. We review applications within 3 business days and will email you next steps.";
+          } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
+          b.disabled = false;
+        });
+        </script>`,
+        ctaTitle: "Questions about serving for us? Call the desk.",
+      },
+      schema: [{ "@type": "JobPosting", title: "Process Server (independent contractor)", description: "Serve court papers for law firms across New Jersey for MCC Solutions. Per-serve pay, flexible schedule. Driver's license and registered, insured vehicle required.", employmentType: "CONTRACTOR", datePosted: new Date().toISOString().slice(0, 10), hiringOrganization: { "@type": "Organization", name: "MCC Solutions", sameAs: url + "/" }, jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressRegion: "NJ", addressCountry: "US" } } }],
+    }));
+  });
+
   /* ---------- Notary training (interest list) ---------- */
   app.get("/notary/training", async (req, res) => {
     const biz = await business();

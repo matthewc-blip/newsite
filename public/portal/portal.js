@@ -59,16 +59,18 @@
     $("#signin").hidden = true;
     $("#tabs").hidden = false;
     $("#who").textContent = me.notary.name;
-    if (me.role === "witness") { const bn = document.querySelector(".brand-name"); if (bn) bn.textContent = "Witness Portal"; document.title = "Witness Portal · MCC Solutions"; }
+    const portalName = { witness: "Witness Portal", process_server: "Process Server Portal" }[me.role];
+    if (portalName) { const bn = document.querySelector(".brand-name"); if (bn) bn.textContent = portalName; document.title = portalName + " · MCC Solutions"; }
     $("#bOnb").hidden = me.compliance.ready && me.compliance.items.every((i) => i.state === "ok");
     $("#notReady").hidden = me.compliance.ready;
     renderOnboarding();
     await loadJobs();
+    await loadRequests();
     showTab(tab);
-    const m = location.hash.match(/^#job-(\d+)$/);
+    const m = location.hash.match(/^#(?:job|req)-(\d+)$/);
     if (m) {
       showTab("jobs");
-      const el = document.getElementById("job-" + m[1]);
+      const el = document.getElementById(location.hash.slice(1));
       if (el) { el.classList.add("hl"); el.scrollIntoView({ block: "start" }); }
     }
   }
@@ -141,6 +143,64 @@
     $("#pastRows").innerHTML = past.length ? past.map((j) => `<tr><td>${esc(when(j.start).replace(/, \d{1,2}:\d{2}.*/, ""))}</td><td>${esc(j.ref)} · ${esc(j.category)}${j.status === "no_show" ? " (no-show)" : ""}</td><td>${j.notary_fee != null ? money(j.notary_fee) : "—"}</td>
       <td>${j.notary_paid_at ? `<span class="pill p-ok">Paid ${esc(j.notary_paid_at.slice(0, 10))}</span>` : j.status === "completed" ? '<span class="pill p-warn">Pending</span>' : "—"}</td><td class="mono">${esc(j.return_tracking || "")}</td></tr>`).join("")
       : `<tr><td colspan="5" style="font-weight:400;color:var(--ink-2)">Completed jobs will show here.</td></tr>`;
+  }
+
+  /* ---------- service requests ---------- */
+  async function loadRequests() {
+    let data;
+    try { data = await api("/api/portal/requests"); } catch { return; }
+    const { offers, active, past, results } = data;
+    $("#reqWrap").hidden = !(offers.length || active.length || past.length || me.role === "process_server");
+    // Process servers only take service requests, so the notary booking sections are hidden for them.
+    if (me.role === "process_server") $("#bookingJobs").hidden = true;
+    const fmtDate = (d) => (d ? new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
+    const top = (j) => `<div class="job-top"><div><p class="meta">${esc(j.ref)} · ${esc(j.type_label)}${j.due_date ? ` · due ${esc(fmtDate(j.due_date))}` : ""}</p><h3>${esc(j.type_label)} · ${esc(j.area)}</h3></div>
+      <div class="fee">${j.fee != null ? money(j.fee) : "—"}<small>Your pay</small></div></div>`;
+    const resultOpts = Object.entries(results).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+    const html = [];
+    offers.forEach((j) => html.push(`<article class="job" id="req-${j.id}">${top(j)}<p style="font-size:.86rem;color:var(--muted)">Full details and documents appear after you accept.</p>
+      <div class="row"><button class="btn btn-primary" data-raccept="${j.id}" ${me.compliance.ready ? "" : "disabled title='Finish onboarding first'"}>Accept</button>
+      <input id="rreason-${j.id}" placeholder="Reason for declining (optional)" aria-label="Reason for declining"><button class="btn btn-ghost" data-rdecline="${j.id}">Decline</button></div>
+      <p class="msg" id="rm-${j.id}"></p></article>`));
+    active.forEach((j) => html.push(`<article class="job" id="req-${j.id}">${top(j)}
+      <dl class="kvs req">${j.details.map((d) => `<dt>${esc(d.label)}</dt><dd>${esc(d.value)}</dd>`).join("")}${j.notes ? `<dt>Notes</dt><dd>${esc(j.notes)}</dd>` : ""}<dt>Client</dt><dd>${esc(j.contact_name)}${j.company ? " · " + esc(j.company) : ""}${j.contact_phone ? " · " + esc(j.contact_phone) : ""}</dd></dl>
+      <p class="sub" style="margin-top:12px">Documents</p>
+      ${j.documents.length ? `<ul class="log">${j.documents.map((d) => `<li style="grid-template-columns:1fr auto"><a href="/api/portal/request-documents/${d.id}" target="_blank" rel="noopener">${esc(d.filename)}</a><span class="pill p-info">${esc(d.kind === "papers" ? "To serve" : d.kind === "proof" ? "Proof" : "Other")}</span></li>`).join("")}</ul>` : `<p style="font-size:.88rem;color:var(--muted)">No documents yet. The desk will upload them.</p>`}
+      <p class="sub" style="margin-top:12px">Attempts</p>
+      ${j.attempts.length ? `<ul class="log">${j.attempts.map((a) => `<li style="grid-template-columns:auto 1fr"><time>${esc(when(a.at))}</time><span><b>${esc(results[a.result] || a.result)}</b>${a.served_to ? " · " + esc(a.served_to) : ""}${a.description ? " · " + esc(a.description) : ""}</span></li>`).join("")}</ul>` : `<p style="font-size:.88rem;color:var(--muted)">No attempts logged yet.</p>`}
+      <div class="row" style="flex-wrap:wrap;margin-top:8px">
+        <select id="ra-res-${j.id}" aria-label="Result">${resultOpts}</select>
+        <input id="ra-at-${j.id}" type="datetime-local" aria-label="When">
+        <input id="ra-to-${j.id}" placeholder="Served to (name or description)" aria-label="Served to">
+        <input id="ra-desc-${j.id}" placeholder="Notes (door color, who answered…)" aria-label="Notes">
+        <button class="btn btn-ghost btn-sm" data-rattempt="${j.id}">Log attempt</button>
+      </div>
+      <div class="row" style="flex-wrap:wrap;margin-top:8px">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">Upload ${j.type === "process_serve" ? "signed affidavit" : "proof"}<input type="file" accept="application/pdf,image/*" data-rproof="${j.id}" hidden></label>
+        <input id="rc-note-${j.id}" placeholder="Note for the desk (optional)" aria-label="Note for the desk">
+        <button class="btn btn-primary btn-sm" data-rcomplete="${j.id}">Mark complete</button>
+      </div>
+      <p class="msg" id="rm-${j.id}"></p></article>`));
+    if (past.length) html.push(`<p class="sub" style="margin-top:12px">Completed requests</p><ul class="log">${past.map((j) => `<li style="grid-template-columns:1fr auto"><span>${esc(j.ref)} · ${esc(j.type_label)}${j.fee != null ? " · " + money(j.fee) : ""}</span>${j.paid_at ? `<span class="pill p-ok">Paid</span>` : `<span class="pill p-warn">Pending</span>`}</li>`).join("")}</ul>`);
+    $("#reqs").innerHTML = html.join("") || `<div class="empty">No service requests right now. We'll email you when one comes in.</div>`;
+    const ract = async (btn, path, body, id, okText) => {
+      btn.disabled = true;
+      try { await api(path, { method: "POST", body }); await loadRequests(); alertTop(okText); }
+      catch (e) { msg($("#rm-" + id), e.message, "err"); btn.disabled = false; }
+    };
+    $$("[data-raccept]").forEach((b) => b.addEventListener("click", () => ract(b, `/api/portal/requests/${b.dataset.raccept}/accept`, {}, b.dataset.raccept, "Accepted. The details are below.")));
+    $$("[data-rdecline]").forEach((b) => b.addEventListener("click", () => ract(b, `/api/portal/requests/${b.dataset.rdecline}/decline`, { reason: $("#rreason-" + b.dataset.rdecline).value }, b.dataset.rdecline, "Declined. Thanks for letting us know.")));
+    $$("[data-rattempt]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.rattempt, at = $("#ra-at-" + id).value;
+      ract(b, `/api/portal/requests/${id}/attempts`, { result: $("#ra-res-" + id).value, at: at ? new Date(at).toISOString() : "", servedTo: $("#ra-to-" + id).value, description: $("#ra-desc-" + id).value }, id, "Attempt logged.");
+    }));
+    $$("[data-rcomplete]").forEach((b) => b.addEventListener("click", () => ract(b, `/api/portal/requests/${b.dataset.rcomplete}/complete`, { note: $("#rc-note-" + b.dataset.rcomplete).value }, b.dataset.rcomplete, "Marked complete. Thank you.")));
+    $$("[data-rproof]").forEach((inp) => inp.addEventListener("change", async () => {
+      const f = inp.files[0], id = inp.dataset.rproof; if (!f) return;
+      msg($("#rm-" + id), "Uploading…", "ok");
+      try { await api(`/api/portal/requests/${id}/documents?filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); await loadRequests(); alertTop("Uploaded."); }
+      catch (e) { msg($("#rm-" + id), e.message, "err"); }
+    }));
   }
 
   function jobDocs(j) {
@@ -219,9 +279,11 @@
     $("#c-bg").value = n.background_date || ""; $("#c-phone").value = n.phone || ""; $("#c-sms").checked = !!n.sms_ok;
     $("#c-zip").value = n.home_zip || ""; $("#c-miles").value = n.travel_miles || 30;
 
-    const witness = me.role === "witness";
-    ["#c-num", "#c-exp", "#c-eoamt", "#c-eoexp"].forEach((sel) => { const f = $(sel) && $(sel).closest(".field"); if (f) f.hidden = witness; });
-    const kinds = witness ? ["id", "background", "w9"] : ["commission", "eo", "background", "w9", "certification"];
+    const witness = me.role === "witness", server = me.role === "process_server";
+    ["#c-num", "#c-exp", "#c-eoamt", "#c-eoexp"].forEach((sel) => { const f = $(sel) && $(sel).closest(".field"); if (f) f.hidden = witness || server; });
+    $$("[data-ps]").forEach((f) => (f.hidden = !server));
+    $("#c-lic").value = n.license_expires || ""; $("#c-reg").value = n.vehicle_reg_expires || ""; $("#c-ins").value = n.auto_insurance_expires || "";
+    const kinds = server ? ["license", "registration", "auto_insurance", "background", "w9"] : witness ? ["id", "background", "w9"] : ["commission", "eo", "background", "w9", "certification"];
     $("#docs").innerHTML = kinds.map((k) => {
       const files = me.documents.filter((d) => d.kind === k);
       return `<div class="doc-row"><span><b>${esc(me.docKinds[k])}</b>${k === "certification" ? ' <span style="color:var(--muted);font-size:.85rem">(optional, e.g. NNA)</span>' : ""}</span>
@@ -288,6 +350,7 @@
         commission_number: $("#c-num").value, commission_expires: $("#c-exp").value, eo_amount: $("#c-eoamt").value,
         eo_expires: $("#c-eoexp").value, background_date: $("#c-bg").value, phone: $("#c-phone").value, sms_ok: $("#c-sms").checked,
         home_zip: $("#c-zip").value.trim(), travel_miles: $("#c-miles").value,
+        license_expires: $("#c-lic").value, vehicle_reg_expires: $("#c-reg").value, auto_insurance_expires: $("#c-ins").value,
       } });
       await load(); showTab("onboarding");
       msg($("#credMsg"), "Saved.", "ok");

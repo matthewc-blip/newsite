@@ -181,6 +181,16 @@ When Stripe is connected, people who book online without a client account are as
 ## Witnesses
 People apply at /notary/become-a-witness. Approve them in Applications and they get an onboarding email for the same portal notaries use, with a shorter checklist: photo ID, background check, service area, W-9 and a witness agreement. On a booking (shown automatically when the customer added witnesses at checkout), choose a witness and fee and click Ask witness; they accept or decline in the portal and see the address only after accepting. Witnesses never get notary offers. Witness pay shows in Payouts next to notary pay, and margin protection counts notary plus witness pay.
 
+## Process servers
+People apply at /notary/become-a-process-server (a registered, insured vehicle is required to apply). Approve them in Applications and they onboard in the same portal with their own checklist: driver's license, vehicle registration and auto insurance (each uploaded with its expiration date), background check, service area, W-9 and the process server agreement. They can't accept work until every item is current; expiring license, registration and insurance trigger the same reminder emails as notary commissions. Process servers only see service requests in the portal, never notary bookings.
+
+## Service requests (process serving, recording, legalization and more)
+Each service page for process serving, document recording, embassy legalization, certified translation, shredding, estate document scanning, lien waivers and property inspections has a request form. Requests land in the dashboard's Requests tab, and the desk and the customer both get an email. From a request you can:
+- Set the client fee, partner cost (for work done through a partner, like translation or recording) and due date. The 20% minimum margin applies to team pay plus partner cost.
+- Assign it to a ready team member (process servers for serves; notaries or process servers for inspections and estate scanning; notaries for lien waivers). They get an email offer with the pay and the area; the address and documents appear only after they accept.
+- Upload the papers to serve. The process server logs each attempt (time, result, who was served) and uploads the signed affidavit. A process serve can't be completed without a successful serve and an affidavit.
+- Send the invoice in one click. Team pay shows up in Team payouts like any other job.
+
 ## Checkout add-ons
 Settings → Checkout add-ons: printing, scanbacks, witnesses, courier and apostille handling are offered when customers book online and when clients order in the portal. Turn each on or off and set its price. Chosen add-ons show on the booking, in the notary's job details ("Also needed"), in confirmation emails, and as separate lines on invoices and card charges. Margin protection counts add-ons as part of the client total.
 

@@ -94,7 +94,18 @@ async function deleteBookingFile(row) { await remove(row); await db.run("DELETE 
 // Keep the record, drop the bytes (retention policy).
 async function purgeBookingFile(row) { await remove(row); await db.run("UPDATE booking_documents SET data = NULL, path = NULL, purged_at = now() WHERE id = $1", [row.id]); }
 
+async function saveRequestFile({ requestId, kind, filename, contentType, buffer, by, byName }) {
+  check(contentType, buffer, MAX_CLOSING);
+  const s = await put(`request-${requestId}/${kind}`, contentType, buffer);
+  return db.one(`INSERT INTO request_documents(request_id, kind, filename, content_type, size_bytes, storage, path, data, uploaded_by, uploaded_by_name)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, request_id, kind, filename, content_type, size_bytes, uploaded_by, uploaded_by_name, created_at`,
+    [requestId, kind, cleanName(filename), contentType, buffer.length, s.storage, s.path, s.data, by, byName || null]);
+}
+const readRequestFile = (row) => get("request_documents", row);
+async function deleteRequestFile(row) { await remove(row); await db.run("DELETE FROM request_documents WHERE id = $1", [row.id]); }
+
 module.exports = {
+  saveRequestFile, readRequestFile, deleteRequestFile,
   saveDocument, readDocument, deleteDocument,
   saveBookingFile, readBookingFile, deleteBookingFile, purgeBookingFile,
   ALLOWED, MAX_BYTES: MAX_CREDENTIAL, MAX_CLOSING, storageMode: useSupabase ? "supabase" : "db",

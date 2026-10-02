@@ -283,7 +283,8 @@ alter table bookings add column if not exists addons_total double precision defa
 alter table notaries add column if not exists role text default 'notary';   -- notary | witness
 alter table notary_documents drop constraint if exists notary_documents_kind_check;
 alter table notary_documents add constraint notary_documents_kind_check
-  check (kind in ('commission','eo','background','w9','certification','other','id'));
+  -- one list for every version: the schema re-runs on each start, so this must allow every kind ever stored
+  check (kind in ('commission','eo','background','w9','certification','other','id','license','registration','auto_insurance'));
 create table if not exists booking_witnesses (
   id integer generated always as identity primary key,
   booking_id integer not null references bookings(id) on delete cascade,
@@ -297,3 +298,80 @@ create table if not exists booking_witnesses (
 create unique index if not exists idx_booking_witnesses_pair on booking_witnesses(booking_id, witness_id);
 create index if not exists idx_booking_witnesses_witness on booking_witnesses(witness_id);
 alter table booking_witnesses enable row level security;
+
+-- ===== Service requests + process servers (added in v10; safe to re-run) =====
+alter table notaries add column if not exists license_expires date;
+alter table notaries add column if not exists vehicle_reg_expires date;
+alter table notaries add column if not exists auto_insurance_expires date;
+-- (document kinds for process servers are in the v9 constraint above, so re-running never trips on them)
+
+create table if not exists service_requests (
+  id integer generated always as identity primary key,
+  ref text unique not null,
+  type text not null,
+  status text not null default 'new' check (status in ('new','quoted','in_progress','completed','canceled')),
+  contact_name text not null,
+  contact_email text not null,
+  contact_phone text,
+  company text,
+  client_account_id integer references client_accounts(id) on delete set null,
+  details jsonb default '{}'::jsonb,
+  notes text,
+  due_date date,
+  fee double precision,              -- what the client pays
+  vendor_cost double precision,      -- partner/third-party cost (recording fees, translator, shredder…)
+  assignee_id integer references notaries(id) on delete set null,
+  assignee_status text,              -- offered | accepted | declined
+  assignee_fee double precision,
+  assignee_paid_at timestamptz,
+  internal_notes text default '',
+  invoice_id integer references invoices(id) on delete set null,
+  completed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_service_requests_status on service_requests(status);
+create index if not exists idx_service_requests_assignee on service_requests(assignee_id);
+
+create table if not exists request_events (
+  id integer generated always as identity primary key,
+  request_id integer not null references service_requests(id) on delete cascade,
+  at timestamptz default now(),
+  actor text,
+  text text
+);
+create index if not exists idx_request_events on request_events(request_id);
+
+create table if not exists request_attempts (
+  id integer generated always as identity primary key,
+  request_id integer not null references service_requests(id) on delete cascade,
+  at timestamptz not null,
+  result text not null check (result in ('served','not_home','refused','bad_address','other')),
+  served_to text,
+  description text,
+  by_name text,
+  created_at timestamptz default now()
+);
+create index if not exists idx_request_attempts on request_attempts(request_id);
+
+create table if not exists request_documents (
+  id integer generated always as identity primary key,
+  request_id integer not null references service_requests(id) on delete cascade,
+  kind text not null check (kind in ('papers','proof','other')),
+  filename text not null,
+  content_type text not null,
+  size_bytes integer not null,
+  storage text not null default 'db',
+  path text,
+  data bytea,
+  uploaded_by text not null,
+  uploaded_by_name text,
+  created_at timestamptz default now()
+);
+create index if not exists idx_request_documents on request_documents(request_id);
+alter table invoice_items add column if not exists request_id integer references service_requests(id) on delete set null;
+
+alter table service_requests enable row level security;
+alter table request_events enable row level security;
+alter table request_attempts enable row level security;
+alter table request_documents enable row level security;

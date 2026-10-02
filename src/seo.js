@@ -102,11 +102,11 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <footer><div class="wrap">
   <div class="cols">
     <div class="stack"><a class="brand" href="/notary/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary and loan signing dispatch. In-person, RON and RIN signings coordinated from one desk.</p></div>
-    <div><h4>Services</h4><ul>${SERVICES.map((s) => `<li><a href="${servicePath(s)}">${esc(s.short)}</a></li>`).join("")}</ul></div>
+    <div><h4>Services</h4><ul>${SERVICES.slice(0, 7).map((s) => `<li><a href="${servicePath(s)}">${esc(s.short)}</a></li>`).join("")}<li><a href="${NJ_HUB}#services" style="color:var(--brass)">All services →</a></li></ul></div>
     <div><h4>New Jersey</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
     <div><h4>Desk</h4><ul><li class="mono"><a href="${telHref(biz.phone)}">${phone}</a></li><li class="mono">${email}</li><li>Mon–Fri 7AM–9PM ET</li><li>Sat 9AM–5PM ET</li><li><a href="/notary/#order" style="color:var(--brass)">Order a signing →</a></li></ul></div>
   </div>
-  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
   <div class="legal">
     <p>MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
     <p>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</p>
@@ -118,7 +118,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 }
 
 const faqHtml = (faqs) => `<div class="faq-group">${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</div>`;
-const serviceCards = (lead) => `<div class="grid g3">${SERVICES.map((s) => `<a class="svc" href="${servicePath(s)}"><span class="code">${esc(s.code)}</span><h3>${esc(lead ? `${s.name} in ${lead}` : s.name)}</h3><p>${esc(s.description)}</p><span class="more">${esc(s.short)} →</span></a>`).join("")}</div>`;
+const serviceCards = (lead, list = SERVICES) => `<div class="grid g3">${list.map((s) => `<a class="svc" href="${servicePath(s)}"><span class="code">${esc(s.code)}</span><h3>${esc(lead ? `${s.name} in ${lead}` : s.name)}</h3><p>${esc(s.description)}</p><span class="more">${esc(s.short)} →</span></a>`).join("")}</div>`;
 const countyLinks = (list) => `<ul class="county-links">${list.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)} County</a></li>`).join("")}</ul>`;
 
 function countyFaqs(c) {
@@ -128,6 +128,55 @@ function countyFaqs(c) {
     [`Can you notarize at a hospital or nursing home in ${c.name} County?`, `Yes. We visit hospitals, rehab centers, assisted living and hospice care in ${c.name} County for powers of attorney, healthcare proxies and other documents, including evenings and weekends.`],
     [`How much does a mobile notary cost in ${c.name} County?`, `New Jersey sets the notarial fee at $2.50 per act. Travel and service fees depend on distance and timing, and you get a firm quote before the appointment is confirmed.`],
   ];
+}
+
+// Request form for services that aren't timed appointments (process serving, recording…).
+function requestForm(s) {
+  const t = require("./request-types").TYPES[s.requestType];
+  if (!t) return "";
+  const field = (f) => {
+    const id = "rq-" + f.key;
+    const label = `<label for="${id}">${esc(f.label)}${f.required ? "" : ' <span class="opt">(optional)</span>'}</label>`;
+    const ctl = f.options ? `<select id="${id}" data-rk="${f.key}">${f.options.map((o) => `<option>${esc(o)}</option>`).join("")}</select>`
+      : f.textarea ? `<textarea id="${id}" data-rk="${f.key}" rows="2"></textarea>` : `<input id="${id}" data-rk="${f.key}">`;
+    return `<div class="field${f.wide || f.textarea ? " full" : ""}">${label}${ctl}<span class="err" data-err="${f.key}"></span></div>`;
+  };
+  return `<section class="band alt" id="request"><div class="wrap form-layout">
+    <form class="form-card" id="reqForm" novalidate>
+      <fieldset><legend>${esc(t.label)} request</legend>${t.fields.map(field).join("")}
+        <div class="field"><label for="rq-due">Needed by <span class="opt">(optional)</span></label><input id="rq-due" type="date"></div>
+        <div class="field full"><label for="rq-notes">Anything else? <span class="opt">(optional)</span></label><textarea id="rq-notes" rows="2"></textarea></div>
+      </fieldset>
+      <fieldset><legend>Your details</legend>
+        <div class="field"><label for="rq-name">Name</label><input id="rq-name" autocomplete="name"><span class="err" data-err="contactName"></span></div>
+        <div class="field"><label for="rq-co">Company <span class="opt">(optional)</span></label><input id="rq-co" autocomplete="organization"></div>
+        <div class="field"><label for="rq-email">Email</label><input id="rq-email" type="email" autocomplete="email"><span class="err" data-err="contactEmail"></span></div>
+        <div class="field"><label for="rq-phone">Phone</label><input id="rq-phone" type="tel" autocomplete="tel"><span class="err" data-err="contactPhone"></span></div>
+        <input type="text" id="rq-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+      </fieldset>
+      <div class="form-foot"><small>The desk confirms details and price before any work starts, usually within one business day. See our <a href="/privacy">privacy policy</a>.</small><button class="btn btn-primary" type="submit">Send request</button></div>
+      <p class="form-msg" id="reqMsg" role="status"></p>
+    </form>
+    <aside class="stack"><h3>Prefer to talk?</h3><p>Call the desk and we'll take the request by phone.</p></aside>
+  </div></section>
+  <script>
+  document.getElementById("reqForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var f = this, m = document.getElementById("reqMsg"), b = f.querySelector("button[type=submit]");
+    var g = function (id) { return document.getElementById(id).value.trim(); };
+    var details = {}; f.querySelectorAll("[data-rk]").forEach(function (el) { details[el.dataset.rk] = el.value.trim(); });
+    f.querySelectorAll("[data-err]").forEach(function (el) { el.textContent = ""; });
+    b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+    try {
+      var r = await fetch("/api/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: ${JSON.stringify(s.requestType)}, details: details, dueDate: g("rq-due"), notes: g("rq-notes"), contactName: g("rq-name"), company: g("rq-co"), contactEmail: g("rq-email"), contactPhone: g("rq-phone"), website: g("rq-website") }) });
+      var d = await r.json().catch(function () { return {}; });
+      if (!r.ok) { Object.keys(d.fields || {}).forEach(function (k) { var el = f.querySelector('[data-err="' + k + '"]'); if (el) el.textContent = d.fields[k]; }); throw new Error(d.error || "Couldn't send. Try again or call the desk."); }
+      if (window.mccTrack) window.mccTrack("generate_lead", { form: "request_" + ${JSON.stringify(s.requestType)} });
+      f.reset(); m.className = "form-msg ok"; m.textContent = "Request " + d.ref + " received. We emailed you a copy and the desk will follow up within one business day.";
+    } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
+    b.disabled = false;
+  });
+  </script>`;
 }
 
 function register(app) {
@@ -147,7 +196,7 @@ function register(app) {
           <div class="grid g3">${regions.map((r) => `<div><h3 style="margin-bottom:10px">${r}</h3>${countyLinks(COUNTIES.filter((c) => c.region === r))}</div>`).join("")}</div>
         </div></section>
         <section class="band alt"><div class="wrap">
-          <div class="sec-head"><p class="eyebrow">Services</p><h2>What we handle across New Jersey</h2></div>
+          <div class="sec-head" id="services"><p class="eyebrow">Services</p><h2>What we handle across New Jersey</h2></div>
           ${serviceCards("")}
         </div></section>`,
         ctaTitle: "Book a New Jersey notary in minutes.",
@@ -178,7 +227,8 @@ function register(app) {
         </div></section>
         <section class="band alt"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">Services</p><h2>Notary services in ${esc(c.name)} County</h2></div>
-          ${serviceCards(`${c.name} County`)}
+          ${serviceCards(`${c.name} County`, SERVICES.slice(0, 9))}
+          <p style="margin-top:22px;color:var(--ink-2)"><b>Also in ${esc(c.name)} County:</b> ${SERVICES.slice(9).map((x) => `<a href="${servicePath(x)}">${esc(x.short)}</a>`).join(" · ")}</p>
         </div></section>
         <section class="band"><div class="wrap" style="max-width:860px">
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(c.name)} County notary questions</h2></div>
@@ -204,8 +254,8 @@ function register(app) {
       res.send(layout({
         req, biz, path, crumbs, title: s.title, description: s.description,
         body: {
-          hero: `<p class="eyebrow">${esc(s.code)}</p><h1 style="margin-top:10px">${esc(s.h1)}</h1><p class="lede" style="margin-top:14px">${esc(s.lede)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book now</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
-          main: `<section class="band"><div class="wrap split">
+          hero: `<p class="eyebrow">${esc(s.code)}</p><h1 style="margin-top:10px">${esc(s.h1)}</h1><p class="lede" style="margin-top:14px">${esc(s.lede)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="${s.requestType ? "#request" : "/notary/#order"}">${s.requestType ? "Request service" : "Book now"}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
+          main: `${s.requestType ? requestForm(s) : ""}<section class="band"><div class="wrap split">
             <div class="stack"><p class="eyebrow">What's included</p><h2>Every ${esc(s.short.toLowerCase())} order</h2><ul class="checks">${s.included.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
             <div class="stack"><p class="eyebrow">Who uses it</p><h2>Built for</h2><ul class="checks">${s.who.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
           </div></section>
@@ -230,7 +280,7 @@ function register(app) {
 
   app.get("/sitemap.xml", (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], ["/privacy", "0.3"], ["/terms", "0.3"]];
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}

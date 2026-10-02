@@ -258,7 +258,7 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   if (req.body.website) return res.status(400).json({ error: "Rejected" });
   const d = req.body || {};
   const data = {
-    role: d.role === "witness" ? "witness" : "notary",
+    role: ["witness", "process_server"].includes(d.role) ? d.role : "notary",
     name: str(d.name, 120), email: str(d.email, 160), phone: str(d.phone, 40), zip: str(d.zip, 10), radius: str(d.radius, 20),
     commissionState: str(d.commissionState, 40), commissionExpires: str(d.commissionExpires, 10), eo: str(d.eo, 20),
     backgroundDate: str(d.backgroundDate, 10), signings: str(d.signings, 30), languages: str(d.languages, 120), availability: str(d.availability, 80),
@@ -269,7 +269,8 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   if (!emailOk(data.email)) fields.email = "Enter a valid email.";
   if (!phoneOk(data.phone)) fields.phone = "Enter a phone number.";
   if (data.role === "notary" && !data.commissionState) fields.commissionState = "Choose your commission state.";
-  if (data.role === "witness" && !/^\d{5}$/.test(data.zip)) fields.zip = "Enter your 5-digit home ZIP code.";
+  if (data.role !== "notary" && !/^\d{5}$/.test(data.zip)) fields.zip = "Enter your 5-digit home ZIP code.";
+  if (data.role === "process_server") { data.vehicle = str(d.vehicle, 40); data.experience = str(d.experience, 40); if (!/^Yes/.test(data.vehicle)) fields.vehicle = "Process servers need a registered, insured vehicle."; }
   if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });
   await db.run("INSERT INTO applications(data) VALUES($1)", [JSON.stringify(data)]);
   mail.deskNotice(`New notary application: ${data.name}`, JSON.stringify(data, null, 2));
@@ -373,7 +374,9 @@ app.get("/api/admin/stats", requireAdmin, async (req, res) => {
     (SELECT COUNT(*) FROM messages WHERE handled = 0)::int AS "openMessages",
     (SELECT COUNT(*) FROM bookings WHERE notary_status = 'offered' AND status IN ('requested','confirmed','assigned') AND start_utc >= $4)::int AS "openOffers",
     ((SELECT coalesce(sum(notary_fee),0) FROM bookings WHERE status = 'completed' AND notary_paid_at IS NULL)
-      + (SELECT coalesce(sum(w.fee),0) FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id WHERE w.status = 'accepted' AND b.status = 'completed' AND w.paid_at IS NULL))::float AS "unpaidPayouts",
+      + (SELECT coalesce(sum(w.fee),0) FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id WHERE w.status = 'accepted' AND b.status = 'completed' AND w.paid_at IS NULL)
+      + (SELECT coalesce(sum(assignee_fee),0) FROM service_requests WHERE status = 'completed' AND assignee_status = 'accepted' AND assignee_paid_at IS NULL))::float AS "unpaidPayouts",
+    (SELECT COUNT(*)::int FROM service_requests WHERE status = 'new') AS "newRequests",
     (SELECT COUNT(*) FROM bookings WHERE scanback_status = 'pending')::int AS "scanbacksToReview",
     (SELECT COUNT(*) FROM bookings WHERE notary_status = 'unfilled' AND status IN ('requested','confirmed','assigned') AND start_utc >= $4)::int AS unfilled`, [t0, t1, t7, now]);
   const ns = await notary.notariesForStats();
@@ -551,10 +554,10 @@ app.patch("/api/admin/applications/:id", requireAdmin, async (req, res) => {
     const nid = existing ? existing.id : (await db.one(
       `INSERT INTO notaries(name,email,phone,states,ron,rin,notes,commission_expires,eo_amount,background_date,home_zip,travel_miles,role)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
-      [d.name, (d.email || "").toLowerCase() || null, d.phone, d.role === "witness" ? "" : STATE_CODES[d.commissionState] || (d.commissionState || "").slice(0, 2).toUpperCase(), d.ron ? 1 : 0, d.rin ? 1 : 0,
-       d.role === "witness" ? `Witness, from application #${a.id}. ZIP ${d.zip}, radius ${d.radius}` : `From application #${a.id}. ZIP ${d.zip}, radius ${d.radius}, ${d.signings} signings`, /^\d{4}-\d{2}-\d{2}$/.test(d.commissionExpires || "") ? d.commissionExpires : null,
+      [d.name, (d.email || "").toLowerCase() || null, d.phone, d.role === "witness" || d.role === "process_server" ? "" : STATE_CODES[d.commissionState] || (d.commissionState || "").slice(0, 2).toUpperCase(), d.ron ? 1 : 0, d.rin ? 1 : 0,
+       d.role === "witness" || d.role === "process_server" ? `${d.role === "witness" ? "Witness" : "Process server"}, from application #${a.id}. ZIP ${d.zip}, radius ${d.radius}${d.experience ? `, ${d.experience} experience` : ""}` : `From application #${a.id}. ZIP ${d.zip}, radius ${d.radius}, ${d.signings} signings`, /^\d{4}-\d{2}-\d{2}$/.test(d.commissionExpires || "") ? d.commissionExpires : null,
        d.eo && d.eo !== "None yet" ? d.eo : null, /^\d{4}-\d{2}-\d{2}$/.test(d.backgroundDate || "") ? d.backgroundDate : null,
-       /^\d{5}$/.test(d.zip || "") ? d.zip : null, parseInt(d.radius, 10) || 30, d.role === "witness" ? "witness" : "notary"])).id;
+       /^\d{5}$/.test(d.zip || "") ? d.zip : null, parseInt(d.radius, 10) || 30, ["witness", "process_server"].includes(d.role) ? d.role : "notary"])).id;
     const n = await db.one("SELECT * FROM notaries WHERE id = $1", [nid]);
     if (n.email) mail.notaryWelcome(n, await notary.createLoginLink(n.id, 7 * 24 * 60), await getSettings());
   }
@@ -612,6 +615,7 @@ documents.register(app, { requireAdmin, requireNotary: notary.requireNotary, loa
 clients.register(app, { requireAdmin, insertBooking, readBookingInput });
 billing.register(app, { requireAdmin, requireClient: clients.requireClient, loadClient: clients.loadClient });
 require("./src/reviews").register(app, { requireAdmin });
+require("./src/requests").register(app, { requireAdmin, requireNotary: notary.requireNotary, loadMe: notary.loadMe });
 
 app.get("/api/admin/bookings/:id/candidates", requireAdmin, async (req, res) => {
   const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);

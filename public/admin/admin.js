@@ -93,6 +93,7 @@
     if (t === "payouts") loadPayouts();
     if (t === "clients") loadClients();
     if (t === "billing") loadBilling();
+    if (t === "requests") loadRequests();
   }
 
   /* ---------- board ---------- */
@@ -122,6 +123,7 @@
     const ba = $("#badgeApps"), bm = $("#badgeMsgs");
     ba.hidden = !s.newApplications; ba.textContent = s.newApplications;
     bm.hidden = !s.openMessages; bm.textContent = s.openMessages;
+    const br = $("#badgeReq"); br.hidden = !s.newRequests; br.textContent = s.newRequests;
   }
 
   function setView(v) {
@@ -193,7 +195,7 @@
     ]);
     $("#dSvc").textContent = `${SVC[b.service]} · ${b.ref}`;
     $("#dTitle").textContent = b.category;
-    const eligible = notaries.filter((n) => n.active && n.role !== "witness" && (b.service === "ron" ? n.ron : b.service === "rin" ? n.rin : true));
+    const eligible = notaries.filter((n) => n.active && (n.role || "notary") === "notary" && (b.service === "ron" ? n.ron : b.service === "rin" ? n.rin : true));
     const stateMatch = (n) => b.service !== "mobile" || !n.states || n.states.split(",").includes(b.state);
     const rank = (n) => (n.compliance.ready ? 2 : 0) + (stateMatch(n) ? 1 : 0);
     const opts = eligible.sort((a, c) => rank(c) - rank(a)).map((n) => `<option value="${n.id}" ${n.id === b.notary_id ? "selected" : ""}>${n.compliance.ready ? "✓" : "⚠"} ${esc(n.name)}${stateMatch(n) ? "" : " (other state)"}${n.compliance.ready ? "" : " · onboarding incomplete"}</option>`).join("");
@@ -413,7 +415,7 @@
       <td><button class="linkbtn" style="color:var(--ink);font-size:.95rem;padding:0" data-open="${n.id}">${esc(n.name)}</button></td>
       <td>${esc(n.phone)}<br><small style="color:var(--muted)">${esc(n.email)}</small></td>
       <td class="mono">${esc(n.states)}</td>
-      <td>${n.role === "witness" ? '<span class="pill p-warn">Witness</span>' : ""}${n.ron ? '<span class="pill p-info">RON</span> ' : ""}${n.rin ? '<span class="pill p-info">RIN</span>' : ""}</td>
+      <td>${n.role === "witness" ? '<span class="pill p-warn">Witness</span>' : n.role === "process_server" ? '<span class="pill p-warn">Process server</span>' : ""}${n.ron ? '<span class="pill p-info">RON</span> ' : ""}${n.rin ? '<span class="pill p-info">RIN</span>' : ""}</td>
       <td>${onboardingCell(n)}</td>
       <td>${n.completed}${n.open_offers ? ` <small style="color:var(--muted)">+${n.open_offers} offer${n.open_offers > 1 ? "s" : ""}</small>` : ""}</td>
       <td>${n.unpaid ? "$" + Number(n.unpaid).toFixed(0) : "—"}</td>
@@ -489,6 +491,88 @@
       await loadNotaries(); renderNotaries(); loadStats();
     } catch (err) { alertInline($("#notaryForm"), err.message); }
   });
+
+  /* ---------- service requests ---------- */
+  let reqView = "open";
+  const REQ_ST = { new: ["p-warn", "New"], quoted: ["p-info", "Quoted"], in_progress: ["p-info", "In progress"], completed: ["p-ok", "Completed"], canceled: ["p-warn", "Canceled"] };
+  const ASG_ST = { offered: "asked", accepted: "accepted", declined: "declined" };
+  $$("#reqViews [data-rv]").forEach((b) => b.addEventListener("click", () => { reqView = b.dataset.rv; $$("#reqViews [data-rv]").forEach((x) => x.setAttribute("aria-pressed", x === b)); loadRequests(); }));
+  async function loadRequests() {
+    const { requests } = await api("/api/admin/requests?status=" + encodeURIComponent(reqView));
+    $("#reqRows").innerHTML = requests.length ? requests.map((r) => `<tr data-req="${r.id}" style="cursor:pointer">
+      <td><b>${esc(r.ref)}</b><br><small style="color:var(--muted)">${esc(full(r.created_at).replace(/, \d{4}.*/, ""))}</small></td>
+      <td>${esc(r.type_label)}</td><td>${esc(r.company || r.contact_name)}<br><small style="color:var(--muted)">${esc(r.contact_email)}</small></td>
+      <td>${esc(r.due_date || "—")}</td><td><span class="pill ${(REQ_ST[r.status] || [])[0]}">${(REQ_ST[r.status] || [])[1] || esc(r.status)}</span></td>
+      <td>${r.assignee_name ? `${esc(r.assignee_name)} <small style="color:var(--muted)">${ASG_ST[r.assignee_status] || ""}</small>` : r.roles.length ? '<span style="color:var(--muted)">—</span>' : '<small style="color:var(--muted)">Desk / partner</small>'}</td>
+      <td>${r.fee != null ? "$" + Number(r.fee).toFixed(2) : "—"}</td></tr>`).join("")
+      : `<tr><td colspan="7" style="font-weight:400;color:var(--ink-2)">No requests here. Customers request process serving, recording and other services from your service pages.</td></tr>`;
+    $$("[data-req]").forEach((tr) => tr.addEventListener("click", () => openRequest(Number(tr.dataset.req))));
+  }
+
+  async function openRequest(id) {
+    const d = await api("/api/admin/requests/" + id);
+    const r = d.request, mg = d.margin, open = ["new", "quoted", "in_progress"].includes(r.status);
+    const kv = (pairs) => `<dl class="kvs">${pairs.filter(([, v]) => v !== "" && v != null).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+    $("#dSvc").textContent = `${r.type_label} · ${r.ref}`;
+    $("#dTitle").textContent = r.company || r.contact_name;
+    const det = d.fields.filter((f) => (r.details || {})[f.key]).map((f) => [f.label, r.details[f.key]]);
+    $("#dBody").innerHTML = `
+      <div class="dsec"><h4>Status</h4><div class="status-btns">${Object.entries(REQ_ST).map(([k, [, l]]) => `<button type="button" aria-pressed="${r.status === k}" data-rst="${k}">${l}</button>`).join("")}</div>
+        <label class="agree" style="margin-top:8px"><input type="checkbox" id="rNotify" checked> Email the client about quoted, completed or canceled</label></div>
+      <div class="dsec"><h4>Request</h4>${kv([...det, ["Needed by", r.due_date], ["Notes", r.notes]])}</div>
+      <div class="dsec"><h4>Client</h4>${kv([["Name", r.contact_name], ["Company", r.company], ["Phone", r.contact_phone], ["Email", r.contact_email]])}</div>
+      <div class="dsec"><h4>Price &amp; costs</h4>
+        <div class="inline"><input id="rFee" type="number" min="0" step="0.01" placeholder="Client fee $" value="${r.fee ?? ""}" ${r.invoice_id ? "disabled" : ""}>
+          <input id="rVendor" type="number" min="0" step="0.01" placeholder="Partner cost $" value="${r.vendor_cost ?? ""}" title="Recording fees, translator, shredding company…">
+          <input id="rDue" type="date" value="${r.due_date || ""}" aria-label="Due date"><button class="btn btn-ghost btn-sm" id="rSave" type="button">Save</button></div>
+        ${mg && !mg.unknown ? `<p style="margin-top:8px"><span class="pill ${mg.ok ? "p-ok" : "p-warn"}">Margin $${mg.kept.toFixed(2)} · ${mg.pct}%</span> <span style="font-size:.84rem;color:var(--muted)">${mg.ok ? `minimum ${mg.min}%` : `below your ${mg.min}% minimum (override on file)`}</span></p>` : `<p style="font-size:.84rem;color:var(--muted);margin-top:6px">Set the client fee and the pay or partner cost to see the margin.</p>`}
+        ${d.invoice ? `<p style="margin-top:8px"><span class="pill ${d.invoice.status === "paid" ? "p-ok" : "p-info"}">Invoice ${esc(d.invoice.number)} · ${esc(d.invoice.status)}</span> <a href="/api/admin/billing/invoices/${d.invoice.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></p>`
+          : r.fee != null && r.status !== "canceled" ? `<button class="btn btn-ghost btn-sm" id="rInvoice" type="button" style="margin-top:8px">Send invoice</button>` : ""}</div>
+      ${r.roles.length ? `<div class="dsec"><h4>Assigned to</h4>
+        ${d.assignee ? `<p><b>${esc(d.assignee.name)}</b> <span class="pill ${r.assignee_status === "accepted" ? "p-ok" : r.assignee_status === "declined" ? "p-warn" : "p-info"}">${esc(ASG_ST[r.assignee_status] || r.assignee_status || "")}</span>${r.assignee_fee != null ? ` · pay $${Number(r.assignee_fee).toFixed(2)}` : ""}${d.assignee.phone ? ` · ${esc(d.assignee.phone)}` : ""} ${open && !r.assignee_paid_at ? '<button class="linkbtn" id="rUnassign">Remove</button>' : ""}</p>` : ""}
+        ${open ? (d.pool.length ? `<div class="inline" style="margin-top:8px"><select id="rWho">${d.pool.map((p) => `<option value="${p.id}">${p.ready ? "✓" : "⚠"} ${esc(p.name)} · ${esc(p.role_label)}${p.home_zip ? " · " + esc(p.home_zip) : ""}${p.ready ? "" : " · onboarding incomplete"}</option>`).join("")}</select>
+          <input id="rPay" type="number" min="0" step="0.01" placeholder="Their pay $" style="max-width:120px"><button class="btn btn-ghost btn-sm" id="rAssign" type="button">${d.assignee ? "Reassign" : "Send request"}</button></div>`
+          : `<p style="font-size:.86rem;color:var(--muted)">No one on the team can take this yet. Approve ${r.type === "process_serve" ? "process server" : "team"} applications to add them.</p>`) : ""}</div>`
+        : `<div class="dsec"><h4>Handled by</h4><p style="font-size:.9rem;color:var(--ink-2)">The desk or a partner. Track the partner's charge as the partner cost so the margin stays accurate.</p></div>`}
+      <div class="dsec"><h4>Documents</h4>
+        ${d.documents.length ? `<ul class="log" style="margin-bottom:8px">${d.documents.map((x) => `<li style="grid-template-columns:1fr auto auto"><a href="/api/admin/request-documents/${x.id}" target="_blank" rel="noopener">${esc(x.filename)}</a><span class="pill p-info">${x.kind === "papers" ? "To serve" : x.kind === "proof" ? "Proof" : "Other"}</span><button class="linkbtn" data-rdel="${x.id}">Delete</button></li>`).join("")}</ul>` : ""}
+        <div class="inline"><select id="rDocKind"><option value="papers">${r.type === "process_serve" ? "Papers to serve" : "Documents"}</option><option value="proof">Proof / affidavit</option><option value="other">Other</option></select>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer">Upload<input type="file" id="rDocFile" accept="application/pdf,image/*" multiple hidden></label></div></div>
+      ${r.type === "process_serve" || d.attempts.length ? `<div class="dsec"><h4>Attempts</h4>
+        ${d.attempts.length ? `<ul class="log" style="margin-bottom:8px">${d.attempts.map((a) => `<li><time>${esc(full(a.at).replace(/, \d{4}/, ""))}</time><span><b>${esc(d.results[a.result] || a.result)}</b>${a.served_to ? " · " + esc(a.served_to) : ""}${a.description ? " · " + esc(a.description) : ""} · ${esc(a.by_name || "")}</span></li>`).join("")}</ul>` : `<p style="font-size:.86rem;color:var(--muted)">No attempts yet.</p>`}
+        ${open ? `<div class="inline" style="flex-wrap:wrap"><select id="raRes">${Object.entries(d.results).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select><input id="raAt" type="datetime-local" aria-label="When"><input id="raTo" placeholder="Served to"><input id="raDesc" placeholder="Notes"><button class="btn btn-ghost btn-sm" id="raAdd" type="button">Log attempt</button></div>` : ""}</div>` : ""}
+      <div class="dsec"><h4>Internal notes</h4><textarea id="rNotes" rows="3" placeholder="Only the desk sees this">${esc(r.internal_notes || "")}</textarea><button class="btn btn-ghost btn-sm" id="rNotesSave" type="button" style="margin-top:8px">Save Notes</button></div>
+      <div class="dsec"><h4>History</h4><ul class="log">${d.events.map((e) => `<li><time>${esc(full(e.at).replace(/, \d{4}/, ""))}</time><span>${esc(e.text)}${e.actor ? ` · ${esc(e.actor)}` : ""}</span></li>`).join("")}</ul></div>
+      <p class="form-msg" id="dMsg" role="status"></p>`;
+    openDrawer($("#drawer"));
+    const say = (t, ok) => { $("#dMsg").className = ok ? "form-msg ok" : "form-msg"; $("#dMsg").textContent = t; };
+    const run = async (fn, okText, retry) => {
+      try { await fn(false); await openRequest(id); say(okText, true); loadRequests(); loadStats(); }
+      catch (e) {
+        if (e.code === "margin" && retry && confirm(e.message + "\n\nSave anyway? The override is recorded in the history.")) { try { await fn(true); await openRequest(id); say(okText + " (margin override)", true); loadRequests(); } catch (e2) { say(e2.message); } return; }
+        if (e.code === "no_serve" && confirm(e.message + "\n\nComplete it anyway?")) { try { await api("/api/admin/requests/" + id, { method: "PATCH", body: { status: "completed", force: true, notify: $("#rNotify").checked } }); await openRequest(id); say("Completed.", true); loadRequests(); } catch (e3) { say(e3.message); } return; }
+        say(e.message);
+      }
+    };
+    $$("[data-rst]", $("#dBody")).forEach((b) => b.addEventListener("click", () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { status: b.dataset.rst, notify: $("#rNotify").checked } }), "Status updated.")));
+    $("#rSave").onclick = () => run((ov) => api("/api/admin/requests/" + id, { method: "PATCH", body: { fee: $("#rFee").value, vendor_cost: $("#rVendor").value, due_date: $("#rDue").value, override_margin: ov } }), "Saved.", true);
+    if ($("#rAssign")) $("#rAssign").onclick = () => run((ov) => api(`/api/admin/requests/${id}/assign`, { method: "POST", body: { assignee_id: $("#rWho").value, assignee_fee: $("#rPay").value, override_margin: ov } }), "Request sent. They'll get an email to accept or decline.", true);
+    if ($("#rUnassign")) $("#rUnassign").onclick = () => run(() => api(`/api/admin/requests/${id}/assign`, { method: "DELETE" }), "Removed.");
+    if ($("#rInvoice")) $("#rInvoice").onclick = () => run(() => api(`/api/admin/requests/${id}/invoice`, { method: "POST", body: {} }), "Invoice created and sent.");
+    $("#rNotesSave").onclick = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { internal_notes: $("#rNotes").value } }), "Notes saved.");
+    if ($("#raAdd")) $("#raAdd").onclick = () => run(() => api(`/api/admin/requests/${id}/attempts`, { method: "POST", body: { result: $("#raRes").value, at: $("#raAt").value ? new Date($("#raAt").value).toISOString() : "", servedTo: $("#raTo").value, description: $("#raDesc").value } }), "Attempt logged.");
+    $("#rDocFile").onchange = async () => {
+      for (const f of $("#rDocFile").files) {
+        try { await api(`/api/admin/requests/${id}/documents?kind=${$("#rDocKind").value}&filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); }
+        catch (e) { say(e.message); return; }
+      }
+      await openRequest(id); say("Uploaded.", true);
+    };
+    $$("[data-rdel]", $("#dBody")).forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Click again"; return; }
+      await api("/api/admin/request-documents/" + b.dataset.rdel, { method: "DELETE" }); openRequest(id);
+    }));
+  }
 
   /* ---------- payouts ---------- */
   async function loadPayouts() {
@@ -624,9 +708,9 @@
     box.innerHTML = applications.map((a) => {
       const d = a.data;
       const caps = [d.nsa && "NSA certified", d.ron && "RON", d.rin && "RIN", d.laser && "Dual-tray laser", d.reverse && "Reverse mortgage"].filter(Boolean).join(" · ");
-      if (d.role === "witness") return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)} <span class="pill p-warn">Witness</span></h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
+      if (d.role === "witness" || d.role === "process_server") return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)} <span class="pill p-warn">${d.role === "witness" ? "Witness" : "Process server"}</span></h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
         <p class="meta">${esc(full(a.created_at))}</p>
-        <dl class="kvs"><dt>Phone</dt><dd>${esc(d.phone)}</dd><dt>Email</dt><dd>${esc(d.email)}</dd><dt>Area</dt><dd>${esc(d.zip)} · ${esc(d.radius)}</dd><dt>Background</dt><dd>${esc(d.backgroundDate || "—")}</dd><dt>Available</dt><dd>${esc(d.availability || "—")}</dd>${d.languages ? `<dt>Languages</dt><dd>${esc(d.languages)}</dd>` : ""}</dl>
+        <dl class="kvs"><dt>Phone</dt><dd>${esc(d.phone)}</dd><dt>Email</dt><dd>${esc(d.email)}</dd><dt>Area</dt><dd>${esc(d.zip)} · ${esc(d.radius)}</dd><dt>Background</dt><dd>${esc(d.backgroundDate || "—")}</dd><dt>Available</dt><dd>${esc(d.availability || "—")}</dd>${d.vehicle ? `<dt>Vehicle</dt><dd>${esc(d.vehicle)}</dd>` : ""}${d.experience ? `<dt>Experience</dt><dd>${esc(d.experience)}</dd>` : ""}${d.languages ? `<dt>Languages</dt><dd>${esc(d.languages)}</dd>` : ""}</dl>
         ${a.status === "new" ? `<div class="actions"><button class="btn btn-primary btn-sm" data-app="${a.id}" data-s="approved">Approve &amp; send onboarding email</button><button class="btn btn-ghost btn-sm" data-app="${a.id}" data-s="declined">Decline</button></div>` : ""}</div>`;
       return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)}</h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
         <p class="meta">${esc(full(a.created_at))}</p>

@@ -49,8 +49,34 @@ This agreement is between MCC Solutions ("MCC") and the person signing below ("W
 
 By typing their name and checking the box, Witness agrees to these terms.`;
 
+// Agreement for process servers.
+const SERVER_VERSION = "2026-10-p1";
+const SERVER_TEXT = `INDEPENDENT CONTRACTOR & CONFIDENTIALITY AGREEMENT (PROCESS SERVER)
+
+This agreement is between MCC Solutions ("MCC") and the person signing below ("Server").
+
+1. Relationship. Server is an independent contractor, not an employee, partner or agent of MCC. Server decides whether to accept each assignment, controls the manner of service within the law, and provides and maintains their own vehicle, phone and supplies. Server is responsible for their own taxes. MCC will issue an IRS Form 1099 when required.
+
+2. Qualifications. Server is at least 18, is not a party to or interested in any case they serve, and keeps current with MCC: a valid driver's license, vehicle registration, auto insurance as required by law, and a background screening completed within the last 12 months. Server will tell MCC immediately if any of these lapse.
+
+3. Service. Server will serve papers only as the law and court rules allow, will never misrepresent who they are or use force, threats or trespass, and will stop and contact the desk if a situation feels unsafe. Server will log every attempt truthfully (date, time, place and result) and will sign an affidavit of service only for service they personally made.
+
+4. Confidentiality. Case papers and personal information are confidential. Server will use them only to complete the assignment, will not share or keep copies, will securely destroy any extra copies, and will report lost or misdelivered papers to MCC within 24 hours.
+
+5. Driving. Server is responsible for safe, legal driving and for any tickets, accidents or vehicle costs. Server's own auto insurance is primary while performing assignments.
+
+6. Payment. MCC pays the fee shown on each accepted assignment after it is completed and the proof of service is received.
+
+7. Non-solicitation. For 12 months after their last assignment, Server will not solicit MCC clients met through MCC assignments.
+
+8. Term. Either party may end this agreement at any time with notice. Sections 4 and 7 survive.
+
+By typing their name and checking the box, Server agrees to these terms.`;
+
 function forRole(role) {
-  return role === "witness" ? { version: WITNESS_VERSION, text: WITNESS_TEXT } : { version: VERSION, text: TEXT };
+  if (role === "witness") return { version: WITNESS_VERSION, text: WITNESS_TEXT };
+  if (role === "process_server") return { version: SERVER_VERSION, text: SERVER_TEXT };
+  return { version: VERSION, text: TEXT };
 }
 
 module.exports = { forRole, WITNESS_VERSION, WITNESS_TEXT, VERSION, TEXT };

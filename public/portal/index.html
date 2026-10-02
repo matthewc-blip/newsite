@@ -65,6 +65,17 @@
   .jdoc a{color:var(--brass-ink);font-weight:600}
   .instr{background:var(--brass-soft);border-radius:6px;padding:10px 12px;font-size:.9rem}
   .timer{font-family:var(--f-mono);font-size:.78rem;color:var(--warn)}
+  ul.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  ul.log li{display:grid;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font-size:.9rem}
+  ul.log li time{font-family:var(--f-mono);font-size:.76rem;color:var(--muted);white-space:nowrap}
+  ul.log li a{color:var(--brass-ink);font-weight:600;overflow-wrap:anywhere}
+  .kvs.req{grid-template-columns:minmax(0,11em) minmax(0,1fr)}
+  @media (max-width:520px){
+    ul.log li{grid-template-columns:1fr !important}
+    .kvs.req{grid-template-columns:1fr;gap:2px}
+    .kvs.req dd{margin-bottom:8px}
+    .row > input, .row > select{flex:1 1 100%;min-width:0}
+  }
 </style>
 </head>
 <body>
@@ -95,10 +106,16 @@
   <!-- jobs -->
   <section class="p-sec" data-tab="jobs" hidden>
     <div class="banner" id="notReady" hidden><span><b>Finish onboarding to accept jobs.</b> Upload your documents, add your expiration dates and sign the agreement.</span><button class="btn btn-ghost btn-sm" data-go="onboarding">Go to onboarding</button></div>
-    <p class="sub">Offers waiting for you</p>
-    <div id="offers" class="p-sec"></div>
-    <p class="sub">Upcoming jobs</p>
-    <div id="upcoming" class="p-sec"></div>
+    <div id="bookingJobs">
+      <p class="sub">Offers waiting for you</p>
+      <div id="offers" class="p-sec"></div>
+      <p class="sub">Upcoming jobs</p>
+      <div id="upcoming" class="p-sec"></div>
+    </div>
+    <div id="reqWrap" hidden>
+      <p class="sub">Service requests</p>
+      <div id="reqs" class="p-sec"></div>
+    </div>
   </section>
 
   <!-- onboarding -->
@@ -113,6 +130,9 @@
         <div class="field"><label for="c-exp">Commission expires</label><input id="c-exp" type="date"></div>
         <div class="field"><label for="c-eoamt">E&amp;O coverage amount</label><input id="c-eoamt" placeholder="$100,000"></div>
         <div class="field"><label for="c-eoexp">E&amp;O policy expires</label><input id="c-eoexp" type="date"></div>
+        <div class="field" data-ps hidden><label for="c-lic">Driver's license expires</label><input id="c-lic" type="date"></div>
+        <div class="field" data-ps hidden><label for="c-reg">Vehicle registration expires</label><input id="c-reg" type="date"></div>
+        <div class="field" data-ps hidden><label for="c-ins">Auto insurance expires</label><input id="c-ins" type="date"></div>
         <div class="field"><label for="c-bg">Background check completed</label><input id="c-bg" type="date"></div>
         <div class="field"><label for="c-phone">Mobile phone</label><input id="c-phone" type="tel"></div>
         <div class="field"><label for="c-zip">Home ZIP (where you travel from)</label><input id="c-zip" inputmode="numeric" maxlength="5"></div>

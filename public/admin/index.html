@@ -28,7 +28,8 @@
     <a class="brand" href="/admin/"><span class="seal">MCC</span><span><span class="brand-name">Dispatch Desk</span><span class="brand-sub" id="tzLabel">MCC Solutions</span></span></a>
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-tab="board" aria-current="page">Bookings</button>
-      <button data-tab="notaries">Notaries <span class="badge" id="badgeCred" hidden></span></button>
+      <button data-tab="requests">Requests <span class="badge" id="badgeReq" hidden></span></button>
+      <button data-tab="notaries">Team <span class="badge" id="badgeCred" hidden></span></button>
       <button data-tab="payouts">Payouts</button>
       <button data-tab="clients">Clients</button>
       <button data-tab="billing">Billing</button>
@@ -56,8 +57,14 @@
   </section>
 
   <!-- NOTARIES -->
+  <section class="tab" data-tab="requests" hidden>
+    <div class="toolbar"><h2 class="tab-title">Service requests</h2>
+      <div class="seg" id="reqViews" role="group" aria-label="Filter requests"><button data-rv="open" aria-pressed="true">Open</button><button data-rv="new">New</button><button data-rv="completed">Completed</button><button data-rv="">All</button></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Request</th><th>Service</th><th>Client</th><th>Due</th><th>Status</th><th>Assigned</th><th>Fee</th></tr></thead><tbody id="reqRows"></tbody></table></div>
+  </section>
+
   <section class="tab" data-tab="notaries" hidden>
-    <div class="toolbar"><h2 class="tab-title">Notary roster</h2><button class="btn btn-primary btn-sm" id="addNotary">Add Notary</button></div>
+    <div class="toolbar"><h2 class="tab-title">Team roster</h2><button class="btn btn-primary btn-sm" id="addNotary">Add Notary</button></div>
     <form class="form-card notary-form" id="notaryForm" hidden>
       <input type="hidden" id="n-id">
       <fieldset><legend id="nFormTitle">Add notary</legend>
@@ -82,7 +89,7 @@
 
   <!-- PAYOUTS -->
   <section class="tab" data-tab="payouts" hidden>
-    <div class="toolbar"><h2 class="tab-title">Notary payouts</h2><a class="btn btn-ghost btn-sm" href="/api/admin/payouts.csv">Export CSV</a></div>
+    <div class="toolbar"><h2 class="tab-title">Team payouts</h2><a class="btn btn-ghost btn-sm" href="/api/admin/payouts.csv">Export CSV</a></div>
     <p style="color:var(--ink-2);margin-bottom:16px;font-size:.92rem">Completed jobs with a notary fee. Pay the notary however you normally do, then mark the jobs paid here so they see it in their portal.</p>
     <div id="payoutGroups"></div>
     <h3 style="margin:30px 0 10px">Recently paid</h3>
@@ -123,7 +130,7 @@
 
   <!-- APPLICATIONS -->
   <section class="tab" data-tab="applications" hidden>
-    <div class="toolbar"><h2 class="tab-title">Notary applications</h2></div>
+    <div class="toolbar"><h2 class="tab-title">Applications</h2></div>
     <div class="cards" id="appCards"></div>
   </section>
 

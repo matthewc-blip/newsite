@@ -145,8 +145,8 @@ async function notarySignIn(n, link, settings) {
 }
 
 async function notaryWelcome(n, link, settings) {
-  const w = n.role === "witness";
-  const steps = w ? "1. Upload your photo ID, background check and W-9\n2. Set your service area\n3. Sign the witness agreement" : "1. Upload your commission certificate, E&O policy, background check and W-9\n2. Enter your expiration dates\n3. Sign the contractor agreement";
+  const w = n.role === "witness" || n.role === "process_server";
+  const steps = n.role === "process_server" ? "1. Upload your driver's license, vehicle registration, auto insurance card, background check and W-9\n2. Enter the expiration dates\n3. Sign the process server agreement" : n.role === "witness" ? "1. Upload your photo ID, background check and W-9\n2. Set your service area\n3. Sign the witness agreement" : "1. Upload your commission certificate, E&O policy, background check and W-9\n2. Enter your expiration dates\n3. Sign the contractor agreement";
   await send({
     to: n.email,
     subject: `Welcome to ${settings.business.name}: finish your onboarding`,
