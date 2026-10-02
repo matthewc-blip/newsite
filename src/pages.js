@@ -9,6 +9,7 @@ const CREDENTIALS = [
   ["New Jersey Notary Public", "Commissioned by the State of New Jersey"],
   ["NNA Certified Loan Signing Agent", "National Notary Association certification"],
   ["E&O insured", "$100,000 errors and omissions coverage"],
+  ["Background screened", "Current background check on file"],
   ["QuickBooks ProAdvisor, Gold", "Intuit's certification for bookkeeping professionals"],
   ["B.S.B.A., Accounting & Finance", "Kutztown University of Pennsylvania, 2025"],
 ];
@@ -39,7 +40,7 @@ function register(app) {
             <p>So we built a desk that fixes each of those. Every order is confirmed and assigned to a verified notary. Clients see status at each step. Every package is checked before it ships, and the tracking number goes straight to the people waiting on it.</p>
             <p>We serve title companies, lenders, attorneys, hospitals and families across New Jersey, in person and remotely. Beyond notarizations, the same desk handles process serving, document recording, apostilles and the other paperwork that comes with a closing, a lawsuit or an estate.</p>
             <h2 style="margin-top:12px">My background</h2>
-            <p>I'm based in Cranford, in Union County, and I still take signings myself. I'm a commissioned New Jersey notary and an NNA Certified Loan Signing Agent with $100,000 in E&amp;O coverage. I've handled the time-sensitive work too, including a bedside will and trust signing in a hospital, where getting every detail right matters most.</p>
+            <p>I'm based in Cranford, in Union County, and I still take signings myself. I'm a commissioned New Jersey notary and an NNA Certified Loan Signing Agent, background screened, with $100,000 in E&amp;O coverage. I've handled the time-sensitive work too, including a bedside will and trust signing in a hospital, where getting every detail right matters most.</p>
             <p>My background is in accounting and finance. I earned a B.S.B.A. in Accounting &amp; Finance from Kutztown University of Pennsylvania, where faculty selected me to lead group tutoring sessions for Intermediate Accounting I and II and Corporate Finance. I'm also a QuickBooks ProAdvisor, which is why the paperwork side of a business is where MCC is headed next.</p>
           </div>
         </div></section>
@@ -180,7 +181,7 @@ function register(app) {
     const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Vendor packet", "/notary/vendors"]];
     const rows = [
       ["Company", "MCC Solutions LLC · Cranford, NJ (Union County)"],
-      ["Principal", "Matthew Coleman · NJ Notary Public · NNA Certified Loan Signing Agent · $100,000 E&amp;O"],
+      ["Principal", "Matthew Coleman · NJ Notary Public · NNA Certified Loan Signing Agent · $100,000 E&amp;O · Background screened"],
       ["Services", "Loan signings (purchase, refinance, HELOC, reverse, seller), general mobile notary, hospital and facility visits, Remote Online Notarization, Remote Ink-Signed Notarization, process serving, document recording, apostilles, witnesses"],
       ["Coverage", "New Jersey, all 21 counties"],
       ["Desk hours", "Mon–Fri 7 AM–9 PM ET · Sat 9 AM–5 PM ET"],
