@@ -78,6 +78,14 @@ const DEFAULT_SETTINGS = {
     autoChargeCards: true,      // charge the saved card automatically when the job is marked completed
     minMarginPct: 20,           // block notary fees that leave MCC less than this % of the client fee (0 = off)
   },
+  // Checkout add-ons offered when booking. Prices are what the client pays; edit them in Settings.
+  addons: [
+    { id: "print", label: "Document printing", price: 25, max: 1, services: ["mobile"], note: "The notary prints your documents (up to 150 pages)" },
+    { id: "scanback", label: "Scanbacks", price: 25, max: 1, services: ["mobile"], note: "Signed pages scanned and sent to you the same day" },
+    { id: "witness", label: "Witness", price: 40, max: 2, services: ["mobile", "ron"], note: "Per witness, for wills and other documents that need them" },
+    { id: "courier", label: "Courier the originals", price: 60, max: 1, services: ["mobile"], note: "Pickup or drop-off within 20 miles" },
+    { id: "apostille", label: "Apostille handling", price: 150, max: 5, services: ["mobile", "ron"], note: "Per document; the state fee is billed at cost" },
+  ],
   // Google review requests emailed after a completed job.
   reviews: {
     enabled: false,             // turn on once googleUrl is set

@@ -54,6 +54,7 @@
     if (r) r.checked = true;
     st.date = null; st.slot = null; st.from = null;
     fillCategories();
+    if (config) renderAddons();
     $$("[data-for=mobile]").forEach((e) => (e.hidden = s !== "mobile"));
     $$("[data-for=remote]").forEach((e) => (e.hidden = s === "mobile"));
     $$("[data-for=rin]").forEach((e) => (e.hidden = s !== "rin"));
@@ -227,6 +228,44 @@
   tzSel.addEventListener("change", () => { loadSlots(); summary(); });
 
   /* ---------- summary / review ---------- */
+  /* ---------- checkout add-ons ---------- */
+  function renderAddons() {
+    const box = $("#addonsBox"), list = $("#addonList");
+    const items = ((config && config.addons) || []).filter((a) => a.services.includes(st.service));
+    const keep = selectedAddons();
+    box.hidden = !items.length;
+    list.innerHTML = "";
+    items.forEach((a) => {
+      const row = document.createElement("div");
+      row.className = "addon-row";
+      const id = "ad-" + a.id;
+      const qty = keep[a.id] || 0;
+      if (a.max > 1) {
+        row.innerHTML = `<label for="${id}"><b></b><span class="addon-note"></span></label><select id="${id}" data-addon="${a.id}"></select>`;
+        const sel = row.querySelector("select");
+        for (let i = 0; i <= a.max; i++) { const o = document.createElement("option"); o.value = i; o.textContent = i === 0 ? "None" : `${i} × $${a.price.toFixed(2)}`; sel.appendChild(o); }
+        sel.value = String(Math.min(qty, a.max));
+      } else {
+        row.innerHTML = `<label class="addon-check" for="${id}"><input type="checkbox" id="${id}" data-addon="${a.id}"><span><b></b><span class="addon-note"></span></span></label><span class="addon-price"></span>`;
+        row.querySelector("input").checked = qty > 0;
+        row.querySelector(".addon-price").textContent = "+$" + a.price.toFixed(2);
+      }
+      row.querySelector("b").textContent = a.label;
+      row.querySelector(".addon-note").textContent = a.note || "";
+      list.appendChild(row);
+    });
+  }
+  function selectedAddons() {
+    const out = {};
+    $$("[data-addon]").forEach((el) => { const q = el.type === "checkbox" ? (el.checked ? 1 : 0) : Number(el.value) || 0; if (q) out[el.dataset.addon] = q; });
+    return out;
+  }
+  function addonRows() {
+    const sel = selectedAddons();
+    return ((config && config.addons) || []).filter((a) => sel[a.id] && a.services.includes(st.service)).map((a) => ({ ...a, qty: sel[a.id] }));
+  }
+  const addonsTotal = () => addonRows().reduce((s, a) => s + a.qty * a.price, 0);
+
   function fee() {
     if (!config) return null;
     const p = config.pricing[st.service] || {};
@@ -251,6 +290,8 @@
     const loc = locationText();
     if (loc) r.push([st.service === "mobile" ? "Where" : "Signer at", loc]);
     if (st.service === "rin" && $("#b-mail").value.trim()) r.push(["Docs mailed to", $("#b-mail").value.trim()]);
+    const ad = addonRows();
+    if (ad.length) r.push(["Add-ons", ad.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""}`).join(", ")]);
     return r;
   }
 
@@ -265,8 +306,9 @@
 
   function summary() {
     fillDl($("#sumList"), rows());
-    const f = fee();
-    $("#sumFee").textContent = f != null ? `Estimated fee: ${money(f)}` : "Fee confirmed by the desk before your appointment.";
+    const f = fee(), extra = addonsTotal();
+    $("#sumFee").textContent = f != null ? `Estimated fee: ${money(f + extra)}${extra ? ` (includes ${money(extra)} in add-ons)` : ""}`
+      : extra ? `Add-ons: ${money(extra)}. The signing fee is confirmed by the desk before your appointment.` : "Fee confirmed by the desk before your appointment.";
   }
 
   function review() {
@@ -295,6 +337,7 @@
       contactName: val("#b-cname"), contactEmail: val("#b-cemail"), contactPhone: val("#b-cphone"),
       signerNames: val("#b-snames"), company: val("#b-co"), fileNumber: val("#b-file"), notes: val("#b-notes"),
       website: $("#b-website").value,
+      addons: selectedAddons(),
     };
     try {
       const res = await api("/api/bookings", { method: "POST", body });
@@ -386,6 +429,7 @@
       if (input && !s.enabled) { input.disabled = true; input.closest(".svc-opt").style.opacity = .5; }
     });
     remoteNote();
+    renderAddons();
     summary();
   });
 

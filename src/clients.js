@@ -56,6 +56,7 @@ function orderView(b, notaryName) {
     signer_names: b.signer_names, file_number: b.file_number, contact_name: b.contact_name, contact_phone: b.contact_phone,
     scanback_status: b.scanback_status, return_tracking: b.return_tracking, mailing_address: b.mailing_address, notes: b.notes,
     quoted_fee: b.quoted_fee ?? b.est_fee, created_at: b.created_at,
+    addons: (Array.isArray(b.addons) ? b.addons : []).map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", "),
     can_cancel: ["requested", "confirmed", "assigned"].includes(b.status) && Date.parse(b.start_utc) > Date.now(),
   };
 }

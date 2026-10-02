@@ -32,6 +32,9 @@ function lineItemsFor(b, settings) {
   const items = [];
   if (price - notarial > 0) items.push({ booking_id: b.id, name: `Signing service · ${desc}`.slice(0, 195), quantity: 1, unit_price: round2(price - notarial) });
   if (notarial > 0) items.push({ booking_id: b.id, name: `Notarial fee (${b.state} limit) · ${b.ref}`.slice(0, 195), quantity: 1, unit_price: round2(notarial) });
+  for (const a of require("./addons").list(b)) {
+    if (a.qty > 0 && a.price > 0) items.push({ booking_id: b.id, name: `${a.label} · ${b.ref}`.slice(0, 195), quantity: a.qty, unit_price: round2(a.price) });
+  }
   return items;
 }
 

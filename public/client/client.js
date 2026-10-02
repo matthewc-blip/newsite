@@ -82,7 +82,7 @@
     $("#dStatus").innerHTML = pill(STATUS[o.status]) + " " + (o.scanback_status ? pill(SCAN[o.scanback_status]) : "");
     const rows = [["Order", o.ref], ["File #", o.file_number], ["When", when(o.start, o.tz)], ["Service", `${SVC[o.service]} · ${o.signers} signer${o.signers > 1 ? "s" : ""}`],
       [o.service === "mobile" ? "Location" : "Signer at", o.location], ["Signer phone", o.contact_phone], ["Notary", o.notary || (["requested", "confirmed", "assigned"].includes(o.status) ? "Being assigned" : "—")],
-      ["Docs mailed to", o.mailing_address], ["Return tracking", o.return_tracking], ["Instructions", o.notes], ["Fee", o.quoted_fee != null ? "$" + Number(o.quoted_fee).toFixed(2) : ""]];
+      ["Docs mailed to", o.mailing_address], ["Return tracking", o.return_tracking], ["Instructions", o.notes], ["Add-ons", o.addons], ["Fee", o.quoted_fee != null ? "$" + Number(o.quoted_fee).toFixed(2) : ""]];
     $("#dKv").innerHTML = rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
     const pk = documents.filter((d) => d.kind !== "scanback"), sc = documents.filter((d) => d.kind === "scanback");
     const fileRow = (d, label) => `<div class="file"><span>${d.purged_at ? esc(d.filename) + ' <small style="color:var(--muted)">(deleted per retention policy)</small>' : `<a href="/api/client/booking-documents/${d.id}" target="_blank" rel="noopener">${esc(d.filename)}</a>`} <small style="color:var(--muted)">${label}</small></span>
@@ -126,6 +126,18 @@
 
   /* ---------- new order ---------- */
   const svc = () => $('input[name="nsvc"]:checked').value;
+  let addonCatalog = null;
+  async function renderClientAddons(s) {
+    if (!addonCatalog) { try { addonCatalog = (await fetch("/api/config").then((r) => r.json())).addons || []; } catch { addonCatalog = []; } }
+    const keep = {};
+    $$("[data-naddon]").forEach((el) => { const q = el.type === "checkbox" ? (el.checked ? 1 : 0) : Number(el.value) || 0; if (q) keep[el.dataset.naddon] = q; });
+    const items = addonCatalog.filter((a) => a.services.includes(s));
+    $("#n-addons-wrap").hidden = !items.length;
+    $("#n-addons").innerHTML = items.map((a) => a.max > 1
+      ? `<div class="addon-row"><label for="na-${a.id}"><b>${esc(a.label)}</b><span class="addon-note">${esc(a.note || "")}</span></label><select id="na-${a.id}" data-naddon="${a.id}">${Array.from({ length: a.max + 1 }, (_, i) => `<option value="${i}" ${i === (keep[a.id] || 0) ? "selected" : ""}>${i === 0 ? "None" : `${i} × $${a.price.toFixed(2)}`}</option>`).join("")}</select></div>`
+      : `<div class="addon-row"><label class="addon-check" for="na-${a.id}"><input type="checkbox" id="na-${a.id}" data-naddon="${a.id}" ${keep[a.id] ? "checked" : ""}><span><b>${esc(a.label)}</b><span class="addon-note">${esc(a.note || "")}</span></span></label><span class="addon-price">+$${a.price.toFixed(2)}</span></div>`).join("");
+  }
+  const clientAddons = () => { const o = {}; $$("[data-naddon]").forEach((el) => { const q = el.type === "checkbox" ? (el.checked ? 1 : 0) : Number(el.value) || 0; if (q) o[el.dataset.naddon] = q; }); return o; };
   function prepNew() {
     const s = svc();
     const sel = $("#n-cat"), prev = sel.value;
@@ -134,6 +146,7 @@
     $$(".nm").forEach((e) => (e.hidden = s !== "mobile"));
     $$(".nr").forEach((e) => (e.hidden = s === "mobile"));
     $$(".nrin").forEach((e) => (e.hidden = s !== "rin"));
+    renderClientAddons(s);
     if (!$("#n-date").value) {
       const d = new Date(Date.now() + 864e5);
       $("#n-date").value = new Intl.DateTimeFormat("en-CA", { timeZone: me?.timezone || browserTz }).format(d);
@@ -165,7 +178,7 @@
         signerNames: v("#n-snames"), contactPhone: v("#n-phone"), signerEmail: v("#n-email"), fileNumber: v("#n-file"),
         address: v("#n-addr"), city: v("#n-city"), state: v("#n-state").toUpperCase(), zip: v("#n-zip"),
         docsDelivery: s === "mobile" ? v("#n-docs") : "", signerLocation: s === "mobile" ? "" : v("#n-sloc"), mailingAddress: s === "rin" ? v("#n-mail") : "",
-        notes: v("#n-notes"), inUS: true,
+        notes: v("#n-notes"), inUS: true, addons: clientAddons(),
       } });
       const files = $("#n-pkg").files;
       if (files.length) await uploadFiles(files, order.id, m);

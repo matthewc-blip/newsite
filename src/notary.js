@@ -289,6 +289,7 @@ function register(app, { requireAdmin }) {
       completed_at: b.completed_at, return_tracking: b.return_tracking,
       area: b.service === "mobile" ? [b.city, b.state, b.zip].filter(Boolean).join(", ") : b.signer_location,
       docs_delivery: b.docs_delivery, is_loan: b.is_loan, offer_expires_at: b.offer_expires_at, scanback_status: b.scanback_status,
+      addons: (Array.isArray(b.addons) ? b.addons : []).map((a) => (a.qty > 1 ? `${a.label} ×${a.qty}` : a.label)),
     };
     if (!full) return base;
     return {

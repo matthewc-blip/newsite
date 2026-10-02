@@ -44,6 +44,8 @@ function summaryLines(b, settings) {
   if (b.service === "mobile") lines.push(["Location", [b.address, b.city, b.state, b.zip].filter(Boolean).join(", ")]);
   else lines.push(["Signer location", b.signer_location]);
   if (b.service === "rin" && b.mailing_address) lines.push(["Paper docs mailed to", b.mailing_address]);
+  const extras = require("./addons").list(b);
+  if (extras.length) lines.push(["Add-ons", require("./addons").describe(extras)]);
   return lines;
 }
 

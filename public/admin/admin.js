@@ -227,6 +227,7 @@
         [b.service === "mobile" ? "Location" : "Signer at", loc],
         ["In U.S.", b.service === "mobile" ? "" : b.in_us === 0 ? "No" : "Yes"],
         ["Mail docs to", b.mailing_address], ["Loan docs", b.docs_delivery],
+        ["Add-ons", (b.addons || []).map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")],
         ["Notes", b.notes], ["Source", b.source === "desk" ? "Entered by desk" : b.source === "client" ? "Client portal" : "Online booking"],
       ])}</div>
       <div class="dsec"><h4>Contact</h4>${kv([["Name", b.contact_name], ["Phone", b.contact_phone], ["Email", b.contact_email], ["Company", b.company], ["File #", b.file_number]])}${clientSel}</div>
@@ -687,6 +688,12 @@
           <label class="switch"><input type="checkbox" id="biCards" ${(s.billing.cardAtBooking || "ask") !== "off" ? "checked" : ""}> Ask individuals to save a card when they book (needs Stripe)</label>
           <label class="switch"><input type="checkbox" id="biAutoCharge" ${s.billing.autoChargeCards !== false ? "checked" : ""}> Charge the saved card automatically when a job is marked completed</label>
         </div>
+        <div class="set-card"><h3>Checkout add-ons</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">Offered when customers and clients book. Prices are what the client pays and show as separate lines on invoices.</p>
+          ${(s.addons || []).map((a, i) => `<div class="inline" style="margin-top:8px;align-items:center">
+            <label class="switch" style="margin:0;min-width:0;flex:1"><input type="checkbox" data-ad-on="${i}" ${a.enabled !== false ? "checked" : ""}> ${esc(a.label)}</label>
+            <input type="number" min="0" step="0.01" data-ad-price="${i}" value="${a.price}" style="max-width:110px" aria-label="${esc(a.label)} price"></div>`).join("")}
+        </div>
         <div class="set-card"><h3>Google reviews</h3>
           <p style="font-size:.86rem;color:var(--ink-2)">After a job is completed, the customer gets one email asking for a Google review. Each email address is asked at most once per ${Number(s.reviews?.repeatDays) || 180} days and can opt out.</p>
           <label class="switch"><input type="checkbox" id="rvOn" ${s.reviews?.enabled ? "checked" : ""}> Send review requests</label>
@@ -726,6 +733,7 @@
     s.billing = { ...s.billing, termsDays: num("#biTerms") ?? 30, individualTermsDays: num("#biInd") ?? 0,
       stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean),
       cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20 };
+    s.addons = (s.addons || []).map((a, i) => ({ ...a, enabled: $(`[data-ad-on="${i}"]`) ? $(`[data-ad-on="${i}"]`).checked : a.enabled !== false, price: $(`[data-ad-price="${i}"]`) ? Math.max(0, Number($(`[data-ad-price="${i}"]`).value) || 0) : a.price }));
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);

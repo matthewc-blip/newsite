@@ -80,6 +80,7 @@
       [j.service === "mobile" ? (full ? "Address" : "Area") : "Signer at", full && j.service === "mobile" ? `${j.address}, ${j.area}` : j.area],
     ];
     if (j.docs_delivery) rows.push(["Documents", j.docs_delivery]);
+    if (j.addons && j.addons.length) rows.push(["Also needed", j.addons.join(" · ")]);
     if (full) {
       rows.push(["Contact", `${j.contact_name} · ${j.contact_phone}`]);
       if (j.signer_names) rows.push(["Signers", j.signer_names]);

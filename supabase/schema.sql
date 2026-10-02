@@ -274,3 +274,7 @@ create table if not exists review_optouts (
 alter table bookings add column if not exists review_requested_at timestamptz;
 alter table review_requests enable row level security;
 alter table review_optouts enable row level security;
+
+-- ===== Checkout add-ons (added in v8; safe to re-run) =====
+alter table bookings add column if not exists addons jsonb default '[]'::jsonb;
+alter table bookings add column if not exists addons_total double precision default 0;

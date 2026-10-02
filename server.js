@@ -8,6 +8,7 @@ const { dateInTz, zonedToUtc, addDays } = require("./src/time");
 const mail = require("./src/email");
 const payments = require("./src/payments");
 const margin = require("./src/margin");
+const addons = require("./src/addons");
 const { buildIcs } = require("./src/ics");
 const notary = require("./src/notary");
 const dispatch = require("./src/dispatch");
@@ -65,6 +66,7 @@ async function publicBooking(b, settings) {
     notary: ["assigned", "completed"].includes(b.status) && notary ? notary : null,
     canCancel: ["requested", "confirmed", "assigned"].includes(b.status) && new Date(b.start_utc).getTime() > Date.now(),
     card: payments.cardView(b),
+    addons: addons.list(b).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
     cardRequested: payments.wantsCard(b, settings),
   };
 }
@@ -77,7 +79,7 @@ app.get("/api/config", async (req, res) => {
     const c = s.services[k];
     services[k] = { label: c.label, enabled: c.enabled, durationMin: c.durationMin, maxDaysAhead: c.maxDaysAhead };
   }
-  res.json({ business: s.business, services, pricing: s.pricing, rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
+  res.json({ business: s.business, services, pricing: s.pricing, addons: addons.catalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
 });
 
 app.get("/api/health", async (req, res) => {
@@ -117,6 +119,7 @@ function readBookingInput(body, { admin = false } = {}) {
     docs_delivery: str(body.docsDelivery, 60),
     contact_name: str(body.contactName, 120), contact_email: str(body.contactEmail, 160).toLowerCase(), contact_phone: str(body.contactPhone, 40),
     signer_names: str(body.signerNames, 300), company: str(body.company, 160), file_number: str(body.fileNumber, 60), notes: str(body.notes, 2000),
+    addons_in: body.addons,
   };
   if (!SERVICES.includes(b.service)) errors.service = "Choose mobile, RON or RIN.";
   if (!b.category) errors.category = "Choose what you need notarized.";
@@ -140,7 +143,7 @@ function readBookingInput(body, { admin = false } = {}) {
 
 const BOOKING_COLS = ["ref", "token", "service", "category", "is_loan", "signers", "start_utc", "end_utc", "customer_tz", "address", "city", "state", "zip",
   "signer_location", "signer_state", "in_us", "mailing_address", "docs_delivery", "contact_name", "contact_email", "contact_phone",
-  "signer_names", "company", "file_number", "notes", "est_fee", "source"];
+  "signer_names", "company", "file_number", "notes", "est_fee", "source", "addons", "addons_total"];
 
 async function insertBooking(b, settings, { admin, force, source }) {
   const cfg = settings.services[b.service];
@@ -167,6 +170,8 @@ async function insertBooking(b, settings, { admin, force, source }) {
       ...b, ref, token: crypto.randomBytes(18).toString("base64url"), start_utc: startIso, end_utc: endIso,
       est_fee: estimateFee(settings, b.service, b.is_loan, b.signers), source: source || (admin ? "desk" : "web"),
     };
+    const extras = addons.pick(b.addons_in, b.service, settings);
+    row.addons = JSON.stringify(extras); row.addons_total = addons.total(extras);
     const inserted = await t.one(
       `INSERT INTO bookings (${BOOKING_COLS.join(",")}) VALUES (${BOOKING_COLS.map((_, i) => "$" + (i + 1)).join(",")}) RETURNING *`,
       BOOKING_COLS.map((c) => (row[c] === undefined ? null : row[c]))
@@ -233,7 +238,10 @@ app.post("/api/bookings/:ref/card", rateLimit(10, 10 * 60000), async (req, res) 
   const row = await findByToken(req);
   if (!row) return res.status(404).json({ error: "Booking not found." });
   try { res.json({ url: await payments.startCardSetup(row) }); }
-  catch (e) { res.status(e.status || 502).json({ error: e.status ? e.message : "We couldn't open the payment page. Try again or call the desk." }); }
+  catch (e) {
+    if (!e.status) console.error(`Card setup failed for ${row.ref}:`, e.message);
+    res.status(e.status || 502).json({ error: e.status ? e.message : "We couldn't open the payment page. Try again or call the desk." });
+  }
 });
 app.post("/api/bookings/:ref/card/confirm", rateLimit(20, 10 * 60000), async (req, res) => {
   const row = await findByToken(req);
@@ -376,7 +384,7 @@ app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const { token, ...rest } = row;
   const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url, provider, error FROM invoices WHERE id = $1", [row.invoice_id]) : null;
   const settings = await getSettings();
-  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee, settings), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
+  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee, settings, Number(row.addons_total) || 0), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
 });
 
 app.post("/api/admin/bookings", requireAdmin, async (req, res) => {
@@ -539,6 +547,15 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     const p = Number(s.billing.minMarginPct);
     if (!(p >= 0 && p <= 90)) return res.status(400).json({ error: "Minimum margin must be between 0 and 90%." });
     s.billing.minMarginPct = p;
+  }
+  if (s.addons !== undefined) {
+    if (!Array.isArray(s.addons) || s.addons.length > 20) return res.status(400).json({ error: "Add-ons must be a list of up to 20 items." });
+    for (const a of s.addons) {
+      if (!a || !/^[a-z0-9_-]{1,30}$/.test(String(a.id || "")) || !String(a.label || "").trim()) return res.status(400).json({ error: "Each add-on needs an id and a label." });
+      const price = Number(a.price);
+      if (!(price >= 0 && price <= 5000)) return res.status(400).json({ error: `Price for ${a.label} must be between $0 and $5,000.` });
+      a.price = Math.round(price * 100) / 100;
+    }
   }
   if (s.reviews) {
     const u = String(s.reviews.googleUrl || "").trim();

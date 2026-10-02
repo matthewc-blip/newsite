@@ -70,7 +70,8 @@
     const rows = [["Service", SVC[b.service]], ["For", b.category], ["When", when], ["Signers", String(b.signers)], [b.service === "mobile" ? "Where" : "Signer at", b.location]];
     if (b.mailingAddress) rows.push(["Docs mailed to", b.mailingAddress]);
     if (b.notary) rows.push(["Your notary", b.notary.name + (b.notary.phone ? " · " + b.notary.phone : "")]);
-    if (b.estFee != null) rows.push(["Fee", "$" + Number(b.estFee).toFixed(2) + (b.feeIsQuote ? "" : " estimated")]);
+    if (b.addons && b.addons.length) rows.push(["Add-ons", b.addons.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
+    if (b.estFee != null) rows.push(["Fee", "$" + (Number(b.estFee) + Number(b.addonsTotal || 0)).toFixed(2) + (b.feeIsQuote ? "" : " estimated") + (b.addonsTotal ? " incl. add-ons" : "")]);
     const dl = $("#details"); dl.innerHTML = "";
     rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
     $("#actions").hidden = b.status === "canceled";

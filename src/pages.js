@@ -138,6 +138,69 @@ function register(app) {
     }));
   });
 
+  /* ---------- Notary training (interest list) ---------- */
+  app.get("/notary/training", async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Notary training", "/notary/training"]];
+    res.send(layout({
+      req, biz, path: "/notary/training", crumbs,
+      title: "Notary & Loan Signing Agent Training in New Jersey",
+      description: "Hands-on notary and loan signing agent classes from a working NJ signing desk. Join the list for upcoming classes and a path to paid assignments.",
+      body: {
+        hero: `<p class="eyebrow">Coming soon</p><h1 style="margin-top:10px">Notary and loan signing training from a working signing desk</h1><p class="lede" style="margin-top:14px">Learn the work from the people who dispatch it. MCC Solutions is putting together small, practical classes for new New Jersey notaries and signing agents, and graduates who meet our standards can apply to take assignments from the desk.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#join">Join the list</a></div>`,
+        main: `<section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">What we'll cover</p><h2>Practical, not theory</h2><ul class="checks">
+            <li>New Jersey notary duties, journals and fee limits</li>
+            <li>Walking through a loan package page by page</li>
+            <li>ID checks, signer awareness, and when to refuse</li>
+            <li>Scanbacks, return shipping and avoiding funding delays</li>
+            <li>Remote online notarization basics</li>
+            <li>Running your schedule, invoicing and insurance</li>
+          </ul></div>
+          <div class="stack"><p class="eyebrow">Who it's for</p><h2>Built for</h2><ul class="checks">
+            <li>New notaries who want to start doing loan signings</li>
+            <li>Notaries adding RON or hospital and estate work</li>
+            <li>Office staff at title companies and law firms</li>
+            <li>Anyone who wants to join the MCC Solutions network</li>
+          </ul></div>
+        </div></section>
+        <section class="band alt" id="join"><div class="wrap form-layout">
+          <form class="form-card" id="trainForm" novalidate>
+            <fieldset><legend>Get notified about classes</legend>
+              <div class="field"><label for="t-name">Name</label><input id="t-name" required></div>
+              <div class="field"><label for="t-email">Email</label><input id="t-email" type="email" required></div>
+              <div class="field full"><label for="t-level">Where are you now?</label><select id="t-level"><option>Not a notary yet</option><option>Commissioned NJ notary, new to loan signings</option><option>Experienced signing agent</option><option>Title or law office staff</option></select></div>
+              <input type="text" id="t-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+            </fieldset>
+            <div class="form-foot"><small>We'll email you when dates are set. See our <a href="/privacy">privacy policy</a>.</small><button class="btn btn-primary" type="submit">Join the list</button></div>
+            <p class="form-msg" id="trainMsg" role="status"></p>
+          </form>
+          <aside class="stack"><h3>Already a signing agent?</h3><p>You can apply to the network now on our <a href="/notary/#notaries">For Notaries page</a>.</p></aside>
+        </div></section>
+        <script>
+        document.getElementById("trainForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var g = function (id) { return document.getElementById(id).value.trim(); };
+          var m = document.getElementById("trainMsg"), b = this.querySelector("button");
+          if (!g("t-name") || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(g("t-email"))) { m.className = "form-msg"; m.textContent = "Enter your name and a valid email."; return; }
+          b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+          try {
+            var r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: g("t-name"), email: g("t-email"), topic: "Notary training interest", website: g("t-website"), message: "Training interest: " + g("t-level") }) });
+            var d = await r.json().catch(function () { return {}; });
+            if (!r.ok) throw new Error(d.error || "Couldn't send. Try again.");
+            if (window.mccTrack) window.mccTrack("generate_lead", { form: "training_interest" });
+            this.reset(); m.className = "form-msg ok"; m.textContent = "You're on the list. We'll email you when dates are set.";
+          } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
+          b.disabled = false;
+        });
+        </script>`,
+        ctaTitle: "Questions about training? Call the desk.",
+      },
+      schema: [{ "@type": "WebPage", name: "Notary training", url: url + "/notary/training" }],
+    }));
+  });
+
   /* ---------- Privacy policy ---------- */
   app.get("/privacy", async (req, res) => {
     const biz = await business();

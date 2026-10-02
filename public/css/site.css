@@ -329,3 +329,12 @@ footer .foot-links a:hover{text-decoration:underline}
 @media print{header.site,.strip,footer,.cta-band,.no-print{display:none!important}section.band,.page-hero{padding-block:16px!important;background:none!important;border:0!important}}
 .notice.card-step{background:var(--brass-soft);border-color:var(--brass)}
 .notice.card-step b{color:var(--brass-ink)}
+.addon-list{display:flex;flex-direction:column;gap:10px}
+.addon-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.addon-row label{display:flex;flex-direction:column;gap:2px;font-weight:400;cursor:pointer;min-width:0}
+.addon-row label.addon-check{flex-direction:row;align-items:flex-start;gap:10px}
+.addon-row label.addon-check > span{display:flex;flex-direction:column;gap:2px}
+.addon-row input[type=checkbox]{margin-top:3px;width:18px;height:18px;flex:none}
+.addon-note{font-size:.85rem;color:var(--muted)}
+.addon-price{font-family:var(--f-mono);font-size:.9rem;color:var(--brass-ink);white-space:nowrap}
+.addon-row select{width:auto;min-width:130px}
