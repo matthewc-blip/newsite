@@ -221,6 +221,11 @@ Settings → Google reviews: paste your Google Business Profile review link and 
 7. Check **Starting prices on the website**. These "starting at" prices show on the homepage and service pages. They ship with typical New Jersey market prices (mobile visit $75, loan signing $150, hospital visit $125, process serving $85, apostille $125, recording $50); change them to yours, or clear one to hide it.
 8. In Render, set `PUBLIC_URL` to the exact address you want Google to use (for example `https://www.mcc-solutionsnj.com`). Visits to the other version (with or without `www`) are redirected to it, and every page's canonical link uses it.
 
+## Guides and service page content
+- **Guides** live at /notary/guides (content in `src/guides.js`). Each guide links to its services, and each service page links back. Guides are general information, not legal advice; review fees and procedures in them once a year.
+- **Service page details** (how it works, what to have ready, turnaround and extra FAQs) live in `src/seo-extra.js`, keyed by service.
+- **Fonts** are served from the site itself (`public/fonts`, SIL Open Font License), not Google Fonts.
+
 ## Things to know
 - **RON video sessions** have to happen on a state-approved RON platform (your RON notaries will already use one). This system books and tracks the appointment. The desk sends the signer the platform link when it confirms.
 - **No payments yet.** Fees are estimates or quotes. Online card payment (e.g. Stripe) can be added later.

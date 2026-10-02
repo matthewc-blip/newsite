@@ -3,6 +3,8 @@
 const { getSettings } = require("./db");
 const { COUNTIES, SERVICES } = require("./seo-data");
 const prices = require("./prices");
+const { EXTRA } = require("./seo-extra");
+const { GUIDES, guidePath, guidesFor } = require("./guides");
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const bySlug = Object.fromEntries(COUNTIES.map((c) => [c.slug, c]));
@@ -66,9 +68,9 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
 <link rel="stylesheet" href="/css/site.css">
 <script type="application/ld+json">${json}</script>
 <script src="/js/ga.js" async></script>
@@ -110,7 +112,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
     <div><h4>New Jersey</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
     <div><h4>Desk</h4><ul><li class="mono"><a href="${telHref(biz.phone)}">${phone}</a></li><li class="mono">${email}</li><li>Mon–Fri 7AM–9PM ET</li><li>Sat 9AM–5PM ET</li><li><a href="/notary/#order" style="color:var(--brass)">Order a signing →</a></li></ul></div>
   </div>
-  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/guides">Guides</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
   <div class="legal">
     <p>MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
     <p>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</p>
@@ -256,6 +258,9 @@ function register(app) {
       const url = base(req);
       const path = servicePath(s);
       const from = settings ? prices.forSlug(settings, s.slug) : null;
+      const x = EXTRA[s.slug] || {};
+      const allFaqs = s.faqs.concat(x.faqs || []);
+      const guides = guidesFor(s.slug);
       const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], [s.name, path]];
       res.send(layout({
         req, biz, path, crumbs, title: s.title, description: s.description,
@@ -265,9 +270,17 @@ function register(app) {
             <div class="stack"><p class="eyebrow">What's included</p><h2>Every ${esc(s.short.toLowerCase())} order</h2><ul class="checks">${s.included.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
             <div class="stack"><p class="eyebrow">Who uses it</p><h2>Built for</h2><ul class="checks">${s.who.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
           </div></section>
+          ${x.steps ? `<section class="band alt"><div class="wrap">
+            <div class="sec-head"><p class="eyebrow">How it works</p><h2>${esc(s.name)}, step by step</h2></div>
+            <ol class="steps steps-4">${x.steps.map(([t, d]) => `<li><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join("")}</ol>
+          </div></section>` : ""}
+          ${x.ready ? `<section class="band"><div class="wrap split">
+            <div class="stack"><p class="eyebrow">Before we arrive</p><h2>Have this ready</h2><ul class="checks">${x.ready.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
+            <div class="stack"><p class="eyebrow">Timing</p><h2>Turnaround</h2><p class="lede">${esc(x.turnaround || "")}</p>${guides.length ? `<div class="guide-links"><p class="eyebrow">Helpful guides</p><ul>${guides.map((g) => `<li><a href="${guidePath(g)}">${esc(g.title)}</a></li>`).join("")}</ul></div>` : ""}</div>
+          </div></section>` : ""}
           <section class="band alt"><div class="wrap" style="max-width:860px">
             <div class="sec-head"><p class="eyebrow">FAQ</p><h2>Common questions</h2></div>
-            ${faqHtml(s.faqs)}
+            ${faqHtml(allFaqs)}
           </div></section>
           <section class="band"><div class="wrap">
             <div class="sec-head"><p class="eyebrow">Where we work</p><h2>${esc(s.name)} in every New Jersey county</h2></div>
@@ -277,7 +290,55 @@ function register(app) {
         schema: [
           orgSchema(url, biz, { "@type": "State", name: "New Jersey" }),
           { "@type": "Service", name: s.name, serviceType: s.short, description: s.description, provider: { "@id": url + "/#business" }, areaServed: { "@type": "State", name: "New Jersey" }, url: url + path },
-          faqSchema(s.faqs),
+          faqSchema(allFaqs),
+          crumbSchema(url, crumbs),
+        ],
+      }));
+    });
+  }
+
+  /* ---------- how-to guides ---------- */
+  const GUIDES_HUB = "/notary/guides";
+  app.get(GUIDES_HUB, async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Guides", GUIDES_HUB]];
+    res.send(layout({
+      req, biz, path: GUIDES_HUB, crumbs,
+      title: "Notary, Apostille & Process Serving Guides for New Jersey | MCC",
+      description: "Plain-language New Jersey guides: getting an apostille, preparing for a loan signing, how process serving works, hospital notarizations and recording a deed.",
+      body: {
+        hero: `<p class="eyebrow">Guides</p><h1 style="margin-top:10px">Plain answers to New Jersey paperwork questions</h1><p class="lede" style="margin-top:14px">Short guides from the MCC Solutions desk. General information, not legal advice.</p>`,
+        main: `<section class="band"><div class="wrap"><div class="grid g3">${GUIDES.map((g) => `<a class="svc" href="${guidePath(g)}"><span class="code">GUIDE</span><h3>${esc(g.title)}</h3><p>${esc(g.description)}</p><span class="more">Read the guide →</span></a>`).join("")}</div></div></section>`,
+        ctaTitle: "Rather have us handle it? Call the desk.",
+      },
+      schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Guides", url: url + GUIDES_HUB, hasPart: GUIDES.map((g) => ({ "@type": "Article", headline: g.title, url: url + guidePath(g) })) }],
+    }));
+  });
+  for (const g of GUIDES) {
+    app.get(guidePath(g), async (req, res) => {
+      const biz = await business();
+      const url = base(req);
+      const path = guidePath(g);
+      const crumbs = [["MCC Solutions", "/"], ["Guides", GUIDES_HUB], [g.title, path]];
+      const svcs = g.services.map((sl) => SERVICES.find((x) => x.slug === sl)).filter(Boolean);
+      const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+      res.send(layout({
+        req, biz, path, crumbs, title: `${g.title} | MCC Solutions`.slice(0, 70), description: g.description,
+        body: {
+          hero: `<p class="eyebrow">Guide · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(g.title)}</h1><p class="lede" style="margin-top:14px">${esc(g.intro)}</p><p class="byline">By <a href="/about">Matthew Coleman</a>, MCC Solutions</p>`,
+          main: `<section class="band"><div class="wrap guide-layout">
+            <article class="legal-doc guide">${g.sections.map(([h, paras]) => `<h2>${esc(h)}</h2>${paras.map((t) => `<p>${esc(t)}</p>`).join("")}`).join("")}
+              <h2>Common questions</h2>${faqHtml(g.faqs)}
+              <p class="guide-note">This guide is general information, not legal advice. Fees and procedures change; check with the office involved or an attorney for your situation.</p>
+            </article>
+            <aside class="guide-aside"><div class="stack"><p class="eyebrow">Let us handle it</p>${svcs.map((x) => `<a class="svc" href="${servicePath(x)}"><h3>${esc(x.name)}</h3><p>${esc(x.description)}</p><span class="more">${esc(x.short)} →</span></a>`).join("")}<a class="btn btn-ghost" href="${GUIDES_HUB}">All guides</a></div></aside>
+          </div></section>`,
+          ctaTitle: "Rather have us handle it? Call the desk.",
+        },
+        schema: [
+          { "@type": "Article", headline: g.title, description: g.description, dateModified: g.updated, datePublished: g.updated, author: { "@type": "Person", name: "Matthew Coleman", url: url + "/about" }, publisher: { "@type": "Organization", name: "MCC Solutions", url: url + "/" }, mainEntityOfPage: url + path, image: url + "/img/og.png" },
+          faqSchema(g.faqs),
           crumbSchema(url, crumbs),
         ],
       }));
@@ -286,7 +347,7 @@ function register(app) {
 
   app.get("/sitemap.xml", (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}

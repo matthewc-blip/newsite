@@ -17,15 +17,15 @@
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "@id": "https://www.mcc-solutionsnj.com/#org", "name": "MCC Solutions", "url": "https://www.mcc-solutionsnj.com/", "telephone": "(908) 444-6373", "email": "booking@mcc-solutionsnj.com", "logo": "https://www.mcc-solutionsnj.com/favicon.svg"}</script>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
 <style>
 /* Layout: the hero is a ruled service ledger (one line per core service with its starting price); notary ways in ink; legal & document services grid; who we serve; proof; contact */
 :root{
-  --paper:#f4f6f3; --surface:#ffffff; --ink:#14231d; --ink-2:#3d4f47; --muted:#6a7a72; --line:#d6ded9; --rule:#c9d8cf;
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#14231d; --ink-2:#3d4f47; --muted:#5b6a63; --line:#d6ded9; --rule:#c9d8cf;
   --deep:#10261e; --deep-fg:#e9f0eb; --deep-muted:#9fb5aa;
-  --brass:#a8751f; --brass-soft:#f3e7cf; --brass-ink:#6e4b10;
+  --brass:#8c6017; --on-brass:#ffffff; --brass-soft:#f3e7cf; --brass-ink:#6e4b10;
   --ok:#2f7d4f; --ok-soft:#dcefe3; --warn:#9a6a00; --warn-soft:#f6ecd0;
   --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -35,12 +35,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
   --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
-  --brass:#d8a24a; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
   --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
   --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
-  --brass:#d8a24a; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
   --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}
 
 *{box-sizing:border-box}
@@ -50,7 +50,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 a{color:inherit}
 :focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
 .wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:20px}
-h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.01em;word-spacing:.06em}
 h1{font-size:clamp(2.4rem,5.6vw,4.3rem);font-weight:800}
 h2{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:750}
 h3{font-size:1.25rem;font-weight:700;font-stretch:95%}
@@ -58,7 +58,7 @@ p{margin:0}
 .eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
 .lede{font-size:1.15rem;color:var(--ink-2);max-width:60ch}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 .95rem/1 var(--f-body);padding:13px 20px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
-.btn-primary{background:var(--brass);color:#fff}
+.btn-primary{background:var(--brass);color:var(--on-brass)}
 .btn-primary:hover{filter:brightness(1.08)}
 .btn-ghost{border-color:var(--line);background:var(--surface);color:var(--ink)}
 .btn-ghost:hover{border-color:var(--ink-2)}
@@ -68,7 +68,7 @@ p{margin:0}
 header.site{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 header.site .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-.seal{width:40px;height:40px;border-radius:50%;background:var(--brass);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-stretch:70%;font-size:.95rem;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--brass)}
+.seal{width:40px;height:40px;border-radius:50%;background:var(--brass);color:var(--on-brass);display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-stretch:70%;font-size:.95rem;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--brass)}
 .brand-name{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.35rem;line-height:1}
 nav.main{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
 nav.main a{text-decoration:none;font-size:.92rem;font-weight:500;padding:8px 11px;border-radius:4px;color:var(--ink-2)}
@@ -207,6 +207,9 @@ footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)
 .who div{padding:16px 0;border-top:1px solid var(--line)}
 .who p{color:var(--ink-2);font-size:.94rem;margin-top:4px}
 .contact-lines a{text-decoration:none}
+
+/* gold on dark green (dark bands, footer, desk strip) uses the lighter gold so it stays readable */
+.band.dark,footer,.strip{--brass:#d8a24a;--on-brass:#10261e;--brass-ink:#f0cf8f}
 </style>
 <script src="/js/ga.js" async></script>
 </head>
@@ -337,7 +340,7 @@ footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)
   <div class="cols">
     <div style="display:flex;flex-direction:column;gap:12px"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary, loan signing and legal support services across New Jersey, dispatched from one desk.</p></div>
     <div><h4>Notary</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/loan-signing-agent">Loan signings</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/hospital-notary">Hospital visits</a></li><li><a href="/notary/remote-online-notarization">Remote Online Notarization</a></li><li><a href="/notary/new-jersey">New Jersey counties</a></li></ul></div>
-    <div><h4>Services</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="/notary/new-jersey#services">All services</a></li></ul></div>
+    <div><h4>Services</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="/notary/new-jersey#services">All services</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
   </div>
   <div class="legal">
     <p>Notaries and signing agents cannot give legal advice or explain the legal effect of documents. MCC Solutions is not a law firm.</p>

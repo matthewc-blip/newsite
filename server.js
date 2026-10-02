@@ -671,6 +671,7 @@ require("./src/seo").register(app);
 require("./src/pages").register(app);
 
 /* ---------------- static ---------------- */
+app.use("/fonts", express.static(path.join(__dirname, "public", "fonts"), { maxAge: "365d", immutable: true }));
 app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 app.use((err, req, res, next) => {

@@ -1,0 +1,144 @@
+// Extra content for each service page: how it works, what to have ready, turnaround and more FAQs.
+// Kept separate from seo-data.js so the core page data stays short. Keys are service slugs.
+const EXTRA = {
+  "loan-signing-agent": {
+    steps: [["Send the order", "Email the order, use the online form, or call the desk with the signer, property and doc ETA."], ["Agent confirmed", "We assign a certified agent, confirm the time with the borrowers and send you the agent's details."], ["Signing at the table", "The agent prints the package, walks the borrowers through where to sign and checks every page before leaving."], ["Scanbacks and return", "Scanbacks go to you, the desk reviews them, and the originals ship with tracking sent to your team."]],
+    ready: ["Borrower names, phone numbers and email", "Property address and signing location", "Documents or the time they'll be released", "Return shipping label or carrier instructions", "Any special instructions from the lender"],
+    turnaround: "Same-day signings are often possible in central and North Jersey. Orders sent 24 hours ahead get the best match anywhere in the state.",
+    faqs: [["What happens if a borrower finds an error at the table?", "The agent stops, calls you or the lender with the exact page and issue, and waits for instructions. We never change documents ourselves."], ["Do you handle seller packages and witness-only signings?", "Yes. Seller packages, buyer-only signings, and signings that need a second witness are all dispatched the same way."], ["How do you protect borrower information?", "Documents are sent only to the assigned agent, scanbacks are stored securely, and agents follow our data handling rules in the vendor packet."]],
+  },
+  "mobile-notary": {
+    steps: [["Book or call", "Pick a time online or call the desk. Tell us the document type and how many people are signing."], ["Get your quote", "You get a firm price before the appointment is confirmed, with the notarial fee and travel shown separately."], ["Notary arrives", "A commissioned New Jersey notary meets you, checks each signer's ID and watches each signature."], ["Signed and stamped", "Your documents are notarized on the spot and the act is recorded in the notary's journal."]],
+    ready: ["The unsigned documents, with blanks filled in except signatures", "A current government photo ID for each signer", "Every signer present and able to communicate", "Any witnesses your document requires (or ask us to bring them)"],
+    turnaround: "Same-day visits are often available, including evenings. Weekend appointments go fastest when booked a day or two ahead.",
+    faqs: [["Can you notarize documents for use in another state?", "Usually, yes. A New Jersey notary can notarize documents that will be used in other states, as long as the signing happens in New Jersey. The receiving office decides what it accepts, so check with them if you're unsure."], ["What if my ID is expired?", "New Jersey notaries need satisfactory evidence of identity. An expired ID may not be accepted, so call the desk first and we'll tell you the options."], ["Do you come to offices and job sites?", "Yes. We go to homes, offices, job sites, coffee shops and care facilities anywhere in New Jersey."]],
+  },
+  "hospital-notary": {
+    steps: [["Call the desk", "Tell us the facility, room number, document type and the signer's condition."], ["We coordinate", "We check visiting rules with the facility and arrange witnesses if the document needs them."], ["Bedside visit", "The notary confirms the signer is alert, understands what they're signing and is signing willingly."], ["Notarized on site", "Documents are signed and notarized at the bedside and handed back to the family."]],
+    ready: ["The completed documents, ready to sign", "The signer's photo ID (hospital wristbands aren't ID)", "Witnesses if required, who aren't named in the document", "The room number and a family contact on site"],
+    turnaround: "Same-day visits are often possible, including evenings and weekends. Call the desk for urgent situations.",
+    faqs: [["What if the signer can't physically sign?", "Some signers can make a mark instead of a full signature, which usually needs witnesses. Call the desk and we'll explain what's possible before the visit."], ["What if the signer is sedated or confused?", "The notary must be satisfied that the signer is aware and willing. If not, the notary will reschedule rather than notarize. It protects your family and the document."], ["Do you visit nursing homes and hospice care?", "Yes. We visit hospitals, rehab centers, nursing homes, assisted living and hospice care across New Jersey."]],
+  },
+  "estate-planning-notary": {
+    steps: [["Send the signing", "Your firm or family sends the documents, signer details and how many witnesses are needed."], ["Witnesses arranged", "We bring independent witnesses who aren't related to the signer or named in the documents."], ["Signing ceremony", "The notary follows your execution instructions page by page, with witnesses present throughout."], ["Back to the attorney", "Originals go back to the attorney or family the way you choose, by hand, courier or tracked mail."]],
+    ready: ["Final, attorney-approved documents", "Execution instructions from the drafting attorney", "Photo ID for every signer and witness", "Where the originals should go afterward"],
+    turnaround: "Most estate signings are scheduled within 1 to 3 business days. Urgent signings at home or in a hospital can often be done the same day.",
+    faqs: [["Can the attorney join by phone?", "Yes. Many attorneys call in to supervise. We're happy to set the time around their schedule."], ["How many witnesses does a will need?", "That depends on the document and the attorney's instructions. Tell us what the attorney requires and we'll bring that many."]],
+  },
+  "remote-online-notarization": {
+    steps: [["Book a session", "Choose a time and send the documents. Most sessions can start within hours."], ["Verify identity", "The signer confirms their identity online with an ID scan and identity questions."], ["Sign on video", "The notary and signer meet on secure video, the signer e-signs, and the notary applies the electronic seal."], ["Download the file", "The completed, tamper-evident document is ready right after the session."]],
+    ready: ["A computer or phone with camera, microphone and good internet", "A current government photo ID", "The documents in PDF form", "Confirmation that the receiving party accepts remote notarization"],
+    turnaround: "Sessions are often available the same day. The finished file is ready when the session ends.",
+    faqs: [["Is the session recorded?", "Yes. RON sessions are recorded and kept as the law requires, which helps protect the signer and the document."], ["Can more than one signer join?", "Yes. Several signers can join the same session from different locations, each verifying their own identity."]],
+  },
+  "remote-ink-signed-notarization": {
+    steps: [["Confirm RIN works for you", "We check that RIN is allowed for your signer's location and accepted by the receiving party."], ["Video signing", "The signer signs the paper documents on live video while the notary watches."], ["Ship the originals", "The signer ships the signed originals to the notary within the required time."], ["Certificate completed", "The notary completes the notarial certificate on the originals and sends them where they need to go."]],
+    ready: ["The paper documents, printed and ready to sign", "A current government photo ID", "A device with video", "A shipping method to send originals to the notary"],
+    turnaround: "Usually 1 to 2 business days from the video session, depending on how fast the originals arrive.",
+    faqs: [["What's the difference between RIN and RON?", "RON uses electronic documents and an electronic seal. RIN uses paper documents signed in ink on video, then mailed to the notary to finish the certificate."], ["Do I need special software?", "No. RIN uses ordinary video calling. The desk sends you the link and instructions."]],
+  },
+  "apostille-services": {
+    steps: [["Tell us the country", "Send the document type and destination country. We confirm whether it needs an apostille or embassy legalization."], ["Notarize or certify", "We notarize the document or obtain the certified copy the state requires."], ["Submit to the state", "We submit the document for the apostille and track it through the state office."], ["Delivered to you", "The apostilled document comes back to you or goes straight to the recipient."]],
+    ready: ["The original document or the certified copy", "The destination country", "Your deadline", "Where to send the finished document"],
+    turnaround: "Timing depends on the state office's current processing times. Tell us your deadline and we'll tell you honestly whether it's realistic.",
+    faqs: [["Does a birth certificate need an apostille from New Jersey?", "A New Jersey birth or marriage certificate is apostilled by New Jersey, usually as a certified copy. Documents issued by another state are apostilled by that state."], ["Can you apostille FBI background checks?", "Federal documents like FBI background checks are authenticated by the U.S. Department of State, not New Jersey. We can coordinate that too."]],
+  },
+  "private-lender-signings": {
+    steps: [["Send the package", "Email the order with borrower details, entity documents and the funding deadline."], ["Agent on the way", "A certified agent experienced with investor loans is confirmed, often the same day."], ["Signing", "The agent checks entity signing authority as instructed and completes every notarization."], ["Fast return", "Scanbacks within hours, originals overnight with tracking."]],
+    ready: ["Borrower and guarantor names and contact info", "The entity name and who signs for it", "Documents or doc release time", "Return instructions and your funding deadline"],
+    turnaround: "Same-day signings are often available for tight funding deadlines.",
+    faqs: [["Do your agents handle LLC and entity signings?", "Yes. Agents follow your instructions on how each entity signs and who signs as guarantor. They don't advise on entity structure."], ["Can you do multiple properties in one signing?", "Yes. Portfolio and multi-property loans are scheduled as one appointment with more time allowed."]],
+  },
+  "usps-form-1583": {
+    steps: [["Fill out the form", "Complete Form 1583 from your mailbox provider, leaving the signature blank."], ["Book a visit or video", "Meet a notary in person, or ask about remote options if your provider accepts them."], ["IDs checked", "The notary checks your two forms of ID and notarizes your signature."], ["Upload to your provider", "Send the notarized form and ID copies to your mailbox provider."]],
+    ready: ["Form 1583, filled in but not signed", "Two forms of ID, one with a photo", "Business details if you're signing for a company"],
+    turnaround: "Same-day appointments are usually available.",
+    faqs: [["Can you notarize forms for several people at once?", "Yes. Each person on the mailbox signs their own form with their own IDs, and we can do them all in one visit."], ["Is the notarized form sent to USPS?", "Usually your mailbox provider keeps the form. Follow their upload instructions after the notarization."]],
+  },
+  "child-travel-consent": {
+    steps: [["Prepare the letter", "Write or download a consent letter with the trip dates, destination and who the child travels with."], ["Book the notary", "The non-traveling parent books a mobile visit or video session."], ["Sign and notarize", "The parent signs in front of the notary, who checks their ID and notarizes the signature."], ["Travel with copies", "Carry the original and copies with the child's passport."]],
+    ready: ["The consent letter, filled in but not signed", "The non-traveling parent's photo ID", "Copies of the child's passport details if your letter includes them"],
+    turnaround: "Same-day visits are usually available. Plan ahead before summer and holiday travel.",
+    faqs: [["Do both parents need to sign?", "Usually the parent who isn't traveling signs. If neither parent is traveling, both may need to sign. Check the airline and destination country's rules."], ["How far in advance should I do this?", "As soon as travel plans are set, so there's time to fix anything the airline or country asks for."]],
+  },
+  "document-courier": {
+    steps: [["Request a pickup", "Tell us the pickup, drop-off and deadline."], ["Driver assigned", "A vetted driver from our team is assigned and confirmed."], ["Picked up", "The documents are collected and kept sealed."], ["Delivered", "Delivery is confirmed with time and recipient name."]],
+    ready: ["Pickup address and contact", "Delivery address and recipient", "The deadline", "Any instructions for handling originals"],
+    turnaround: "Same-day courier runs are often available within New Jersey.",
+    faqs: [["Do you deliver to county clerk offices?", "Yes. We deliver documents to county clerks, courts and government offices as part of recording and filing runs."], ["Is the delivery confirmed?", "Yes. You get a confirmation with the delivery time and who received it."]],
+  },
+  "print-and-scan": {
+    steps: [["Send the documents", "Email the package or share the link with your order."], ["We print", "The agent prints the package on letter and legal paper, with copies if needed."], ["Signing", "The signing happens as usual, with every page checked."], ["Scanbacks sent", "Signed pages are scanned and sent to you, usually within 2 hours of the signing."]],
+    ready: ["The documents or the time they'll be released", "How many copies you need", "Where scanbacks should be sent"],
+    turnaround: "Printing is included with the appointment. Scanbacks usually go out within 2 hours of the signing.",
+    faqs: [["Do you print on legal-size paper?", "Yes. Agents print letter and legal as the package requires."], ["Can you scan only certain pages?", "Yes. Tell us which pages you need and we'll send just those, or the full package."]],
+  },
+  "witness-services": {
+    steps: [["Request witnesses", "Add witnesses when you book, or call the desk."], ["Witnesses matched", "We send independent witnesses who aren't related to the signer or named in the documents."], ["Present for signing", "Witnesses watch the signing and sign where the document requires."], ["Done", "Witness names and ID details are noted with the order if needed."]],
+    ready: ["How many witnesses the document needs", "Any requirements from the attorney or receiving party", "The signing time and location"],
+    turnaround: "Best with 24 hours' notice. Same-day witnesses are sometimes available.",
+    faqs: [["Can family members be witnesses?", "Many documents require witnesses who aren't related to the signer or named in the document. Independent witnesses avoid the question entirely."], ["Do witnesses add to the price?", "Yes. Each witness is a separate line on your quote, so you see exactly what you pay for."]],
+  },
+  "passport-consent-form": {
+    steps: [["Get the form", "Download Form DS-3053 and fill it in, leaving the signature blank."], ["Book a notary", "Book a mobile visit at a time that works for you."], ["Sign in front of the notary", "The notary checks your ID and notarizes your signature."], ["Send it with the application", "Give the form and a copy of your ID to the parent attending the passport appointment."]],
+    ready: ["Form DS-3053, filled in but not signed", "Your photo ID", "A photocopy of the front and back of your ID for the application"],
+    turnaround: "Same-day appointments are usually available.",
+    faqs: [["Can the notary make the ID copy?", "Ask when you book. Many of our notaries can make the copy during the visit."]],
+  },
+  "process-serving": {
+    steps: [["Send the request", "Use the form above with the person to serve, the address and the court details."], ["Papers to the server", "Upload the papers or we'll pick them up. A server near the address is assigned."], ["Attempts logged", "The server makes attempts at different times of day, each logged with date, time and result."], ["Affidavit delivered", "After service, you get a signed affidavit of service. If service isn't possible, you get the attempt log."]],
+    ready: ["The papers to serve, ready for service", "The full name of the person or business", "The best address, and any other addresses", "A description or photo of the person, if you have one", "The court and docket number"],
+    turnaround: "Standard first attempt within 3 business days. Rush and same-day service are available for an extra fee.",
+    faqs: [["Do you serve businesses?", "Yes. We serve businesses through their registered agent or an authorized person, as the court rules allow."], ["Can you serve papers outside New Jersey?", "We serve across New Jersey. For other states, ask the desk and we'll arrange service through a trusted partner."], ["Will I know when each attempt happens?", "Yes. The attempt log updates as the server works, and the desk tells you as soon as service is complete."]],
+  },
+  "document-recording": {
+    steps: [["Send the request", "Tell us the document type, county and number of pages."], ["We review for completeness", "We check that the county cover sheet, notarizations and required forms are in place. We don't give legal advice."], ["Submitted to the county", "We record electronically where the county accepts it, or deliver by hand."], ["Recorded copy back", "You get the recorded copy with its book and page or instrument number."]],
+    ready: ["The signed, notarized original", "The county where the property is", "Payment for county recording fees, and any realty transfer fee for deeds", "Where to send the recorded copy"],
+    turnaround: "Electronic recording is often complete within a day or two. Paper recording depends on the county's processing time.",
+    faqs: [["What if the county rejects the document?", "We tell you why, help you get it corrected and resubmit. Most rejections are fee or cover sheet issues."], ["Do you record in every New Jersey county?", "Yes. We record in all 21 counties."]],
+  },
+  "embassy-legalization": {
+    steps: [["Check requirements", "We confirm the destination country's requirements and the steps involved."], ["Notarize and certify", "The document is notarized and certified at the state level."], ["Federal and consulate steps", "We handle U.S. Department of State authentication and the consulate submission when required."], ["Returned to you", "The legalized document comes back to you or goes to the recipient."]],
+    ready: ["The original document", "The destination country", "Any instructions from the person who asked for the document", "Your deadline"],
+    turnaround: "Legalization usually takes several weeks because of federal and consulate processing. Start as early as you can.",
+    faqs: [["Which countries need legalization instead of an apostille?", "Countries that aren't part of the Hague Apostille Convention. Tell us the country and we'll confirm."]],
+  },
+  "certified-translation": {
+    steps: [["Send the document", "Upload a clear copy and tell us the languages and what it's for."], ["Quote", "You get a quote and turnaround from the desk before work starts."], ["Translated and certified", "A professional translator from our partner network translates and certifies the document."], ["Notarized if needed", "If the receiving office requires it, the certification is notarized."]],
+    ready: ["A clear copy of the document", "The language it's in and the language you need", "Who it's for (court, agency or foreign government)", "Whether notarization is required"],
+    turnaround: "Short documents often take a few business days. Longer documents are quoted individually.",
+    faqs: [["Is a certified translation the same as a notarized translation?", "Not quite. A certified translation includes the translator's statement that it's accurate. Notarizing that statement is an extra step some offices require."]],
+  },
+  "document-shredding": {
+    steps: [["Request a pickup", "Tell us the volume and pickup address."], ["Pickup scheduled", "We confirm the date and time."], ["Secure collection", "Documents are collected and kept secure until destruction."], ["Certificate", "You get a certificate of destruction when you request one."]],
+    ready: ["Approximate number of boxes or bags", "Pickup address and access details", "Whether you need a certificate of destruction"],
+    turnaround: "Pickups are usually scheduled within a week.",
+    faqs: [["Do I need to remove staples and clips?", "No. Leave documents as they are."]],
+  },
+  "estate-document-scanning": {
+    steps: [["Request a pickup", "Tell us how many boxes or folders and where they are."], ["Pickup", "We collect the paperwork from the home or attorney's office."], ["Scan and organize", "Documents are scanned and organized into clear folders, such as bank statements, insurance and real estate."], ["Delivered", "Scans go to the executor or attorney. Originals are returned, or shredded if you ask."]],
+    ready: ["Approximate volume", "Pickup address and access", "Who should receive the scans", "What to do with the originals afterward"],
+    turnaround: "Most estates are scanned within 1 to 2 weeks, depending on volume.",
+    faqs: [["How do I receive the files?", "We deliver them securely to the executor or attorney you name."], ["Can you also shred what isn't needed?", "Yes. Once the executor approves, we can arrange certified shredding."]],
+  },
+  "lien-waiver-collection": {
+    steps: [["Send the list", "Send the subcontractors and suppliers, contact details and draw date."], ["Visits scheduled", "We schedule a notary at the job site or each company's office."], ["Signed and notarized", "Each waiver you provide is signed and notarized."], ["Delivered for the draw", "The completed waivers are delivered or scanned to you before the deadline."]],
+    ready: ["The waiver forms for each party", "Each company's contact person and phone", "The project address", "Your draw date"],
+    turnaround: "Plan at least a few business days before your draw. Job site visits can cover many signers at once.",
+    faqs: [["Can you do this every month?", "Yes. Many builders set up a standing monthly schedule tied to their draw dates."], ["What if a subcontractor isn't available?", "We reschedule quickly and keep you updated so the draw isn't held up without warning."]],
+  },
+  "property-inspections": {
+    steps: [["Send the request", "Tell us the address and what you need checked."], ["Visit scheduled", "A field representative is assigned and the visit is scheduled."], ["On site", "Occupancy and exterior condition are checked with time-stamped photos."], ["Report delivered", "Photos and notes are uploaded for you."]],
+    ready: ["The property address", "What to check (occupancy, exterior, specific concerns)", "Access contact if interior photos are needed"],
+    turnaround: "Most inspections are completed within a few business days.",
+    faqs: [["Do you go inside the property?", "Only when access has been arranged with the owner or occupant. Otherwise the inspection is exterior only."], ["Who uses these inspections?", "Lenders, loan servicers, investors and property managers."]],
+  },
+  "business-notary": {
+    steps: [["Open an account", "Tell us your business, how often you need a notary and where."], ["Request visits", "Book visits online, by email or by calling the desk."], ["Notary on site", "A notary comes to your office, dealership or customer."], ["Monthly invoice", "Visits roll up into one invoice for your account."]],
+    ready: ["Your business name and billing contact", "Typical document types", "Locations where you need a notary"],
+    turnaround: "Same-day visits are often available. Standing weekly or monthly visits can be scheduled.",
+    faqs: [["Do you handle vehicle titles for dealerships?", "Yes. Our notaries handle title documents, odometer statements and other dealer paperwork that needs notarizing."], ["Can you do I-9 verifications for remote hires?", "Yes. A notary can act as your authorized representative to review a new hire's documents in person."]],
+  },
+};
+
+module.exports = { EXTRA };
