@@ -160,6 +160,9 @@ async function handleStripeWebhook(req, res) {
   catch (e) { return res.status(400).send(`Webhook error: ${e.message}`); }
   try {
     const obj = event.data && event.data.object;
+    if (obj && obj.object === "checkout.session" && event.type === "checkout.session.completed" && obj.mode === "setup") {
+      await require("./payments").recordFromSession(obj.id);
+    }
     if (obj && obj.object === "invoice") {
       const inv = await db.one("SELECT * FROM invoices WHERE stripe_invoice_id = $1 OR id = $2", [obj.id, Number(obj.metadata?.mcc_invoice_id) || 0]);
       if (inv && inv.provider === "stripe") {
@@ -185,7 +188,7 @@ function startSyncJob() {
 async function voidInvoice(id) {
   const inv = await db.one("SELECT * FROM invoices WHERE id = $1", [id]);
   if (!inv) throw Object.assign(new Error("Invoice not found."), { status: 404 });
-  if (inv.status === "paid") throw Object.assign(new Error(`Paid invoices can't be voided here. Refund in ${inv.provider === "stripe" ? "Stripe" : "your bank"}.`), { status: 400 });
+  if (inv.status === "paid") throw Object.assign(new Error(`Paid invoices can't be voided here. Refund in ${["stripe", "card"].includes(inv.provider) ? "Stripe" : "your bank"}.`), { status: 400 });
   if (inv.provider === "stripe" && inv.stripe_invoice_id && inv.status !== "void") {
     try { await stripeB.voidInvoice(inv.stripe_invoice_id); } catch (e) { throw Object.assign(new Error(`Stripe: ${e.message}`), { status: 502 }); }
   }

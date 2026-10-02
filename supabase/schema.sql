@@ -250,3 +250,27 @@ alter table invoice_items enable row level security;
 -- ===== Stripe billing ids (added in v6; safe to re-run) =====
 alter table client_accounts add column if not exists stripe_customer_id text;
 alter table invoices add column if not exists stripe_invoice_id text;
+
+-- ===== Card on file for individuals + review requests (added in v7; safe to re-run) =====
+alter table bookings add column if not exists stripe_customer_id text;
+alter table bookings add column if not exists stripe_payment_method_id text;
+alter table bookings add column if not exists card_brand text;
+alter table bookings add column if not exists card_last4 text;
+alter table bookings add column if not exists card_saved_at timestamptz;
+alter table bookings add column if not exists checkout_session_id text;
+alter table invoices add column if not exists stripe_payment_intent_id text;
+
+create table if not exists review_requests (
+  id integer generated always as identity primary key,
+  booking_id integer references bookings(id) on delete set null,
+  email text not null,
+  sent_at timestamptz default now()
+);
+create index if not exists idx_review_requests_email on review_requests (lower(email), sent_at);
+create table if not exists review_optouts (
+  email text primary key,
+  at timestamptz default now()
+);
+alter table bookings add column if not exists review_requested_at timestamptz;
+alter table review_requests enable row level security;
+alter table review_optouts enable row level security;

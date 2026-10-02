@@ -263,6 +263,7 @@ Disallow: /portal/
 Disallow: /client/
 Disallow: /manage.html
 Disallow: /api/
+Disallow: /reviews/
 
 Sitemap: ${base(req)}/sitemap.xml
 `);

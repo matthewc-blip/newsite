@@ -6,6 +6,7 @@ const { db, init, getSettings, saveSettings, logEvent } = require("./src/db");
 const { slotsForDate, openDays, validateSlot, overlapping } = require("./src/availability");
 const { dateInTz, zonedToUtc, addDays } = require("./src/time");
 const mail = require("./src/email");
+const payments = require("./src/payments");
 const { buildIcs } = require("./src/ics");
 const notary = require("./src/notary");
 const dispatch = require("./src/dispatch");
@@ -62,6 +63,8 @@ async function publicBooking(b, settings) {
     feeIsQuote: b.quoted_fee != null, contactName: b.contact_name,
     notary: ["assigned", "completed"].includes(b.status) && notary ? notary : null,
     canCancel: ["requested", "confirmed", "assigned"].includes(b.status) && new Date(b.start_utc).getTime() > Date.now(),
+    card: payments.cardView(b),
+    cardRequested: payments.wantsCard(b, settings),
   };
 }
 
@@ -224,6 +227,24 @@ app.post("/api/bookings/:ref/cancel", rateLimit(10, 10 * 60000), async (req, res
   res.json({ booking: await publicBooking(updated, settings) });
 });
 
+// Card on file: start Stripe Checkout (setup mode) for an individual booking, then record the result.
+app.post("/api/bookings/:ref/card", rateLimit(10, 10 * 60000), async (req, res) => {
+  const row = await findByToken(req);
+  if (!row) return res.status(404).json({ error: "Booking not found." });
+  try { res.json({ url: await payments.startCardSetup(row) }); }
+  catch (e) { res.status(e.status || 502).json({ error: e.status ? e.message : "We couldn't open the payment page. Try again or call the desk." }); }
+});
+app.post("/api/bookings/:ref/card/confirm", rateLimit(20, 10 * 60000), async (req, res) => {
+  const row = await findByToken(req);
+  if (!row) return res.status(404).json({ error: "Booking not found." });
+  const sid = str(req.body.sessionId, 200);
+  if (sid && sid === row.checkout_session_id) {
+    try { await payments.recordFromSession(sid, row.id); } catch (e) { console.error("Card confirm failed:", e.message); }
+  }
+  const fresh = await db.one("SELECT * FROM bookings WHERE id = $1", [row.id]);
+  res.json({ booking: await publicBooking(fresh, await getSettings()) });
+});
+
 app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   if (req.body.website) return res.status(400).json({ error: "Rejected" });
   const d = req.body || {};
@@ -352,9 +373,9 @@ app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   if (!row) return res.status(404).json({ error: "Not found" });
   const events = await db.all("SELECT at, actor, text FROM booking_events WHERE booking_id = $1 ORDER BY id", [row.id]);
   const { token, ...rest } = row;
-  const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url FROM invoices WHERE id = $1", [row.invoice_id]) : null;
+  const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url, provider, error FROM invoices WHERE id = $1", [row.invoice_id]) : null;
   const settings = await getSettings();
-  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
+  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
 });
 
 app.post("/api/admin/bookings", requireAdmin, async (req, res) => {
@@ -428,10 +449,27 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
     [...keys.map((k) => sets[k]), row.id]
   );
   for (const t of notes) await logEvent(row.id, "desk", t);
+  if (sets.status === "completed" && row.status !== "completed") payments.onCompleted(row.id).catch((e) => console.error("Auto-charge:", e.message));
   if (sets.status && req.body.notify !== false) {
     const notary = updated.notary_id ? await db.one("SELECT * FROM notaries WHERE id = $1", [updated.notary_id]) : null;
     mail.bookingStatusChanged(updated, settings, notary);
   }
+  res.json({ ok: true });
+});
+
+app.post("/api/admin/bookings/:id/charge", requireAdmin, async (req, res) => {
+  try { res.json(await payments.charge(Number(req.params.id), { kind: req.body.kind === "fee" ? "fee" : "service", amount: Number(req.body.amount), note: str(req.body.note, 120) })); }
+  catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+app.post("/api/admin/bookings/:id/card-link", requireAdmin, async (req, res) => {
+  const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id)]);
+  if (!b) return res.status(404).json({ error: "Not found" });
+  const settings = await getSettings();
+  if (!payments.cardsOn(settings)) return res.status(400).json({ error: "Connect Stripe and turn on card payments in Settings first." });
+  const url = `${mail.BASE}/manage.html?ref=${encodeURIComponent(b.ref)}&token=${encodeURIComponent(b.token)}`;
+  await mail.send({ to: b.contact_email, subject: `Add a card for booking ${b.ref}`,
+    text: `Hi ${b.contact_name},\n\nPlease add a payment card for your ${settings.business.name} appointment (${b.ref}). Your card is saved securely with Stripe and charged only after the appointment.\n\nAdd your card: ${url}\n\nQuestions? ${settings.business.phone} · ${settings.business.email}` });
+  await logEvent(b.id, "desk", "Emailed the customer a link to add a card");
   res.json({ ok: true });
 });
 
@@ -492,6 +530,13 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
       c[f] = Number(c[f]);
     }
   }
+  if (s.reviews) {
+    const u = String(s.reviews.googleUrl || "").trim();
+    if (u && !/^https:\/\/[^\s]+$/.test(u)) return res.status(400).json({ error: "The Google review link must start with https://" });
+    if (s.reviews.enabled && !u) return res.status(400).json({ error: "Add your Google review link before turning on review requests." });
+    s.reviews.delayHours = Math.min(168, Math.max(0, Number(s.reviews.delayHours) || 0));
+    s.reviews.repeatDays = Math.max(30, Number(s.reviews.repeatDays) || 180);
+  }
   res.json({ settings: await saveSettings(s) });
 });
 
@@ -499,6 +544,7 @@ notary.register(app, { requireAdmin });
 documents.register(app, { requireAdmin, requireNotary: notary.requireNotary, loadNotary: notary.loadMe });
 clients.register(app, { requireAdmin, insertBooking, readBookingInput });
 billing.register(app, { requireAdmin, requireClient: clients.requireClient, loadClient: clients.loadClient });
+require("./src/reviews").register(app, { requireAdmin });
 
 app.get("/api/admin/bookings/:id/candidates", requireAdmin, async (req, res) => {
   const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);
@@ -529,7 +575,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   init()
-    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); })
+    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/reviews").startJob(); })
     .catch((e) => { console.error("Could not connect to the database:", e.message); process.exit(1); });
 }
 module.exports = app;

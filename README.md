@@ -175,6 +175,12 @@ Stripe sends your invoices, collects card or ACH bank payments, and pays out to 
 
 **Testing.** This integration was tested against Stripe's official API mock (stripe-mock), plus a signed test webhook. Before switching to live keys, send yourself one invoice in test mode and pay it with card `4242 4242 4242 4242`.
 
+### Card on file for individual customers
+When Stripe is connected, people who book online without a client account are asked to save a card through Stripe Checkout. Nothing is charged at booking. When the job is marked completed, the saved card is charged the client fee automatically (turn this off in Settings → Billing), and Stripe emails the receipt. From a booking in the dashboard you can also charge a no-show or cancellation fee, or email the customer a link to add a card. A declined card leaves a draft invoice you can send from Billing for a pay link. Add `checkout.session.completed` to your Stripe webhook events.
+
+## Google review requests
+Settings → Google reviews: paste your Google Business Profile review link and turn it on. A few hours after a job is completed (you choose the delay), the customer gets one email asking for a review. The same email address is asked at most once every 180 days, every email has a one-click opt-out, and only jobs completed in the last 14 days are included, so turning it on never emails old customers.
+
 ## State rules and coverage
 
 - **Live states.** Set these in **Settings → States where you dispatch mobile notaries now** (default: NJ). The Coverage page shows those states as Live and every other state as Soon. Customers booking a mobile signing elsewhere see a note that the desk will confirm coverage.

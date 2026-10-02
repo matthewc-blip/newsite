@@ -74,6 +74,15 @@ const DEFAULT_SETTINGS = {
     stripeAch: true,            // Stripe: let clients pay by ACH bank debit (0.8%, max $5) as well as card
     ccEmails: [],               // copy these addresses on every invoice
     defaultNotarialFees: { NJ: { financing: 25, transfer: 15 } }, // per-state caps used as the notarial line
+    cardAtBooking: "ask",       // "ask": individuals are asked to save a card when they book (Stripe); "off": never
+    autoChargeCards: true,      // charge the saved card automatically when the job is marked completed
+  },
+  // Google review requests emailed after a completed job.
+  reviews: {
+    enabled: false,             // turn on once googleUrl is set
+    googleUrl: "",              // your Google Business Profile review link
+    delayHours: 3,              // wait this long after completion
+    repeatDays: 180,            // don't ask the same email again within this many days
   },
 };
 

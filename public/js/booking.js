@@ -332,6 +332,16 @@
     fillDl($("#doneReview"), [["Booking", b.ref], ...rows()]);
     $("#doneIcs").href = `/api/bookings/${encodeURIComponent(b.ref)}/ics?token=${encodeURIComponent(token)}`;
     $("#doneManage").href = res.manageUrl;
+    const cardBox = $("#doneCard");
+    cardBox.hidden = !b.cardRequested;
+    $("#doneCardBtn").onclick = async () => {
+      const btn = $("#doneCardBtn"), m = $("#doneCardMsg");
+      btn.disabled = true; m.textContent = "";
+      try {
+        const r = await api(`/api/bookings/${encodeURIComponent(b.ref)}/card`, { method: "POST", body: { token } });
+        location.href = r.url;
+      } catch (e) { m.textContent = e.message; btn.disabled = false; }
+    };
     $("#bDone").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 

@@ -369,6 +369,7 @@ function register(app, { requireAdmin }) {
       return res.status(400).json({ error: "Upload the scanbacks before marking this loan signing complete." });
     const updated = await db.one("UPDATE bookings SET status = 'completed', completed_at = now(), return_tracking = $1, updated_at = now() WHERE id = $2 RETURNING *", [tracking || null, b.id]);
     await logEvent(b.id, "notary", `Marked complete by ${req.notary.name}${tracking ? ` · tracking ${tracking}` : ""}${note ? ` · ${note}` : ""}`);
+    require("./payments").onCompleted(b.id).catch((e) => console.error("Auto-charge:", e.message));
     mail.bookingStatusChanged(updated, await getSettings(), req.notary);
     mail.deskNotice(`${b.ref} completed by ${req.notary.name}`, `${b.ref} (${b.category}) marked complete.${tracking ? "\nTracking: " + tracking : ""}${note ? "\nNote: " + note : ""}`);
     res.json({ job: jobView(updated, true) });

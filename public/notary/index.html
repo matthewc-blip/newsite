@@ -574,6 +574,13 @@
         <p class="eyebrow">Request received</p>
         <h2 id="doneTitle">You're booked in</h2>
         <p class="lede" id="doneText"></p>
+        <div class="notice card-step" id="doneCard" hidden>
+          <b>One more step: add a payment card.</b>
+          <p style="margin:6px 0 12px">Your card is saved securely with Stripe and is charged only after your appointment, once the final fee is confirmed. You'll get a receipt by email.</p>
+          <button class="btn btn-primary" type="button" id="doneCardBtn">Add payment card</button>
+          <p style="margin-top:10px;font-size:.88rem;color:var(--muted)">Business client paid by invoice? Skip this step and we'll set up invoicing.</p>
+          <p class="form-msg" id="doneCardMsg" role="alert"></p>
+        </div>
         <dl class="review" id="doneReview"></dl>
         <div class="hero-ctas"><a class="btn btn-primary" id="doneIcs" href="#">Add to calendar</a><a class="btn btn-ghost" id="doneManage" href="#">View or cancel booking</a><a class="btn btn-ghost" href="#order" id="doneAgain">Book another</a></div>
       </div>

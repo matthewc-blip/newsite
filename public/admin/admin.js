@@ -188,7 +188,7 @@
   async function openBooking(id) {
     openId = id;
     await loadNotaries();
-    const [{ booking: b, events, manageUrl, invoice: binv }, { documents: bdocs }, cand, cl] = await Promise.all([
+    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn }, { documents: bdocs }, cand, cl] = await Promise.all([
       api("/api/admin/bookings/" + id), api(`/api/admin/bookings/${id}/documents`), api(`/api/admin/bookings/${id}/candidates`), api("/api/admin/clients"),
     ]);
     $("#dSvc").textContent = `${SVC[b.service]} · ${b.ref}`;
@@ -246,6 +246,19 @@
         <p style="font-size:.84rem;color:var(--muted);margin-top:6px">Invoices list the notarial portion separately from the signing-service fee. Leave the notarial box empty to use the state default.</p>
         ${binv ? `<p style="margin-top:8px"><span class="pill ${binv.status === "paid" ? "p-ok" : binv.status === "void" ? "p-warn" : "p-info"}">Invoice ${esc(binv.number)} · ${esc(binv.status)}</span> <a href="/api/admin/billing/invoices/${binv.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></p>`
           : b.status === "completed" ? `<button class="btn btn-ghost btn-sm" id="dInvoice" type="button" style="margin-top:8px">${b.client_account_id ? "Invoice this job now" : "Send invoice to customer"}</button>` : ""}</div>
+      ${cardsOn && !b.client_account_id ? `<div class="dsec"><h4>Card payment</h4>${(() => {
+        const price = b.quoted_fee ?? b.est_fee;
+        if (!b.stripe_payment_method_id) return `<p style="color:var(--muted);font-size:.9rem">No card on file. Individual customers are asked to save one when they book.</p>
+          <button class="btn btn-ghost btn-sm" id="dCardLink" type="button" style="margin-top:8px">Email card link to customer</button>`;
+        const card = `<p><span class="pill p-ok">${esc((b.card_brand || "card").replace(/^./, (c) => c.toUpperCase()))} ending ${esc(b.card_last4 || "")}</span> <span style="font-size:.85rem;color:var(--muted)">saved ${esc(full(b.card_saved_at).replace(/, \d{4}/, ""))}</span></p>`;
+        if (binv) return card + (binv.provider === "card" && binv.status === "paid" ? `<p style="font-size:.9rem;margin-top:6px">Paid by card · ${esc(binv.number)}</p>` : binv.error ? `<p class="form-msg" style="margin-top:6px">${esc(binv.error)}</p>` : "");
+        return card + `<div class="inline" style="margin-top:8px">
+            ${b.status === "completed" && price != null ? `<button class="btn btn-primary btn-sm" id="dCharge" type="button">Charge $${Number(price).toFixed(2)}</button>` : ""}
+            <input id="dFeeAmt" type="number" min="0" step="0.01" placeholder="Fee $" style="max-width:110px">
+            <input id="dFeeNote" placeholder="${b.status === "no_show" ? "No-show fee" : b.status === "canceled" ? "Cancellation fee" : "Fee description"}">
+            <button class="btn btn-ghost btn-sm" id="dChargeFee" type="button">Charge fee</button></div>
+          <p style="font-size:.84rem;color:var(--muted);margin-top:6px">${b.status === "completed" ? "" : "The service fee can be charged once the job is completed (automatically, if auto-charge is on). "}Use Charge fee for no-shows, late cancellations or extra trips.</p>`;
+      })()}</div>` : ""}
       <div class="dsec"><h4>Reschedule</h4><div class="inline"><input id="dStart" type="datetime-local" value="${utcToLocalInput(b.start_utc, TZ)}"><button class="btn btn-ghost btn-sm" id="dMove" type="button">Move</button></div></div>
       <div class="dsec"><h4>Internal notes</h4><textarea id="dNotes" rows="3" placeholder="Only the desk sees this">${esc(b.internal_notes)}</textarea><button class="btn btn-ghost btn-sm" id="dNotesSave" type="button" style="margin-top:8px">Save Notes</button></div>
       <div class="dsec"><h4>Customer link</h4><div class="copyline"><input id="dLink" readonly value="${esc(location.origin + manageUrl)}"><button class="btn btn-ghost btn-sm" id="dCopy" type="button">Copy</button></div></div>
@@ -271,6 +284,21 @@
     if ($("#dInvoice")) $("#dInvoice").onclick = async () => {
       try { const { invoice } = await api("/api/admin/billing/invoices", { method: "POST", body: { bookingId: id } }); await openBooking(id);
         $("#dMsg").className = invoice.error ? "form-msg" : "form-msg ok"; $("#dMsg").textContent = invoice.error ? `Invoice ${invoice.number} saved as a draft. ${invoice.error}` : `Invoice ${invoice.number} sent${invoice.provider === "stripe" ? " through Stripe" : ""}.`; }
+      catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+    };
+    const chargeRun = async (body, okText) => {
+      try { const r = await api(`/api/admin/bookings/${id}/charge`, { method: "POST", body }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = okText(r); loadBoard(); }
+      catch (e) { await openBooking(id); $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+    };
+    if ($("#dCharge")) $("#dCharge").onclick = (ev) => { ev.target.disabled = true; chargeRun({ kind: "service" }, (r) => `Charged $${r.amount.toFixed(2)}. Receipt emailed by Stripe (${r.invoice}).`); };
+    if ($("#dChargeFee")) $("#dChargeFee").onclick = (ev) => {
+      const amt = Number($("#dFeeAmt").value);
+      if (!(amt > 0)) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = "Enter the fee amount."; return; }
+      ev.target.disabled = true;
+      chargeRun({ kind: "fee", amount: amt, note: $("#dFeeNote").value }, (r) => `Charged $${r.amount.toFixed(2)} (${r.invoice}).`);
+    };
+    if ($("#dCardLink")) $("#dCardLink").onclick = async () => {
+      try { await api(`/api/admin/bookings/${id}/card-link`, { method: "POST", body: {} }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Emailed the customer a link to add their card."; }
       catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
     };
     $("#dMove").onclick = () => $("#dStart").value && patch({ start: localToUtc($("#dStart").value, TZ) }, "Rescheduled. Let the customer know the new time.");
@@ -649,7 +677,18 @@
             <div class="field"><label>Individual terms (days)</label><input type="number" min="0" id="biInd" value="${s.billing.individualTermsDays}"></div>
           </div>
           <div class="field"><label>Copy invoices to (emails, comma-separated)</label><input id="biCc" value="${esc((s.billing.ccEmails || []).join(", "))}"></div>
-          
+          <h4 style="margin-top:14px">Card on file (individual customers)</h4>
+          <label class="switch"><input type="checkbox" id="biCards" ${(s.billing.cardAtBooking || "ask") !== "off" ? "checked" : ""}> Ask individuals to save a card when they book (needs Stripe)</label>
+          <label class="switch"><input type="checkbox" id="biAutoCharge" ${s.billing.autoChargeCards !== false ? "checked" : ""}> Charge the saved card automatically when a job is marked completed</label>
+        </div>
+        <div class="set-card"><h3>Google reviews</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">After a job is completed, the customer gets one email asking for a Google review. Each email address is asked at most once per ${Number(s.reviews?.repeatDays) || 180} days and can opt out.</p>
+          <label class="switch"><input type="checkbox" id="rvOn" ${s.reviews?.enabled ? "checked" : ""}> Send review requests</label>
+          <div class="field"><label>Google review link</label><input id="rvUrl" type="url" placeholder="https://g.page/r/…/review" value="${esc(s.reviews?.googleUrl || "")}"></div>
+          <div class="num-grid">
+            <div class="field"><label>Hours after completion</label><input type="number" min="0" max="168" id="rvDelay" value="${s.reviews?.delayHours ?? 3}"></div>
+            <div class="field"><label>Ask again after (days)</label><input type="number" min="30" id="rvRepeat" value="${s.reviews?.repeatDays ?? 180}"></div>
+          </div>
         </div>
         <div class="set-card"><h3>Closed dates</h3>
           <ul class="blackouts" id="blackouts">${(s.blackouts || []).map((b, i) => `<li><span>${esc(b.date)} · ${esc(b.service === "all" ? "All services" : SVC[b.service])}${b.note ? " · " + esc(b.note) : ""}</span><button class="linkbtn" data-rm="${i}">Remove</button></li>`).join("") || '<li style="color:var(--muted)">No closed dates.</li>'}</ul>
@@ -679,7 +718,9 @@
     s.documents = { retentionDays: num("#dsRet") || 30 };
     s.notaryFees = { mobile: { loan: num("#nfLoan"), general: num("#nfGen") }, ron: num("#nfRon"), rin: num("#nfRin") };
     s.billing = { ...s.billing, termsDays: num("#biTerms") ?? 30, individualTermsDays: num("#biInd") ?? 0,
-      stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean) };
+      stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean),
+      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked };
+    s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);
     $$("[data-f]").forEach((i) => {

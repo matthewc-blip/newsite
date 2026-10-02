@@ -79,4 +79,62 @@ function verifyEvent(rawBody, signature) {
   return stripe.webhooks.constructEvent(rawBody, signature, WEBHOOK_SECRET);
 }
 
-module.exports = { enabled, createAndSend, get, voidInvoice, verifyEvent, normalizeStatus, webhookConfigured: !!WEBHOOK_SECRET };
+
+// ---------- Card on file (individual customers) ----------
+// Reuse a Stripe customer with the same email, or create one.
+async function findOrCreateCustomer({ name, email, phone, bookingRef }) {
+  const found = await stripe.customers.list({ email, limit: 1 });
+  if (found.data && found.data[0]) return found.data[0].id;
+  const c = await stripe.customers.create({ name, email, phone: phone || undefined, metadata: { mcc_first_booking: bookingRef || "" } });
+  return c.id;
+}
+
+// Stripe Checkout in "setup" mode: the customer saves a card; nothing is charged yet.
+async function createCardSession({ customerId, bookingId, bookingRef, successUrl, cancelUrl }) {
+  const s = await stripe.checkout.sessions.create({
+    mode: "setup",
+    customer: customerId,
+    payment_method_types: ["card"],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: { mcc_booking_id: String(bookingId), mcc_booking_ref: bookingRef },
+    setup_intent_data: { metadata: { mcc_booking_id: String(bookingId), mcc_booking_ref: bookingRef } },
+  });
+  return { id: s.id, url: s.url };
+}
+
+// Read a finished setup session and return the saved card.
+async function readCardSession(sessionId) {
+  const s = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["setup_intent.payment_method"] });
+  const si = s.setup_intent && typeof s.setup_intent === "object" ? s.setup_intent : (s.setup_intent ? await stripe.setupIntents.retrieve(s.setup_intent, { expand: ["payment_method"] }) : null);
+  let pm = si && si.payment_method;
+  if (pm && typeof pm === "string") pm = await stripe.paymentMethods.retrieve(pm);
+  return {
+    complete: s.status === "complete" || (si && si.status === "succeeded"),
+    bookingId: Number(s.metadata && s.metadata.mcc_booking_id) || null,
+    customerId: typeof s.customer === "string" ? s.customer : s.customer && s.customer.id,
+    paymentMethodId: pm && pm.id,
+    brand: pm && pm.card && pm.card.brand,
+    last4: pm && pm.card && pm.card.last4,
+  };
+}
+
+// Charge the saved card without the customer present. Throws with .declined = true on a card decline.
+async function chargeSavedCard({ customerId, paymentMethodId, amount, description, receiptEmail, metadata, idempotencyKey }) {
+  try {
+    const pi = await stripe.paymentIntents.create({
+      amount: cents(amount), currency: "usd", customer: customerId, payment_method: paymentMethodId,
+      off_session: true, confirm: true, description: String(description).slice(0, 1000),
+      receipt_email: receiptEmail || undefined, metadata,
+    }, { idempotencyKey });
+    return { id: pi.id, status: pi.status };
+  } catch (e) {
+    if (e.type === "StripeCardError" || e.code === "authentication_required" || e.code === "card_declined") {
+      throw Object.assign(new Error(e.message || "The card was declined."), { declined: true, paymentIntentId: e.raw && e.raw.payment_intent && e.raw.payment_intent.id });
+    }
+    throw e;
+  }
+}
+
+module.exports = { enabled, createAndSend, get, voidInvoice, verifyEvent, normalizeStatus, webhookConfigured: !!WEBHOOK_SECRET,
+  findOrCreateCustomer, createCardSession, readCardSession, chargeSavedCard };
