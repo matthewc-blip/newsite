@@ -175,6 +175,9 @@ module.exports.sendTest = async (to) => {
     const info = await transport.sendMail({ from: FROM, to, subject: "MCC Solutions test email", text: `This is a test from your MCC Solutions site.\n\nSent from: ${FROM}\nServer: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}\n\nIf you got this, booking emails are working.` });
     return { ok: true, from: FROM, to, id: info.messageId };
   } catch (e) {
-    return { ok: false, error: e.message };
+    const u = process.env.SMTP_USER || "(not set)";
+    const pw = process.env.SMTP_PASS || "";
+    const hint = ` [Server is logging in as: ${u} · password is ${pw.length} characters${/\s/.test(pw) ? ", HAS SPACES" : ""}${pw.length && pw.length !== 16 && /gmail|google/i.test(process.env.SMTP_HOST || "") ? " (a Google App Password is 16)" : ""}]`;
+    return { ok: false, error: e.message + hint };
   }
 };
