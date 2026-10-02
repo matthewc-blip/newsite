@@ -517,6 +517,7 @@ app.on("booking:created", async (row) => {
 
 /* ---------------- search landing pages, sitemap, robots ---------------- */
 require("./src/seo").register(app);
+require("./src/pages").register(app);
 
 /* ---------------- static ---------------- */
 app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));

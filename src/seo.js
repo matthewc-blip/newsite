@@ -105,6 +105,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
     <div><h4>New Jersey</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
     <div><h4>Desk</h4><ul><li class="mono"><a href="${telHref(biz.phone)}">${phone}</a></li><li class="mono">${email}</li><li>Mon–Fri 7AM–9PM ET</li><li>Sat 9AM–5PM ET</li><li><a href="/notary/#order" style="color:var(--brass)">Order a signing →</a></li></ul></div>
   </div>
+  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
   <div class="legal">
     <p>MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
     <p>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</p>
@@ -228,7 +229,7 @@ function register(app) {
 
   app.get("/sitemap.xml", (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"])];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/privacy", "0.3"], ["/terms", "0.3"]];
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}
@@ -248,4 +249,4 @@ Sitemap: ${base(req)}/sitemap.xml
   });
 }
 
-module.exports = { register, COUNTIES, SERVICES, countyPath, servicePath, NJ_HUB };
+module.exports = { register, layout, business, telHref, base, esc, COUNTIES, SERVICES, countyPath, servicePath, NJ_HUB };
