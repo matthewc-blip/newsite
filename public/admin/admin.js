@@ -600,7 +600,7 @@
       return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)}</h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
         <p class="meta">${esc(full(a.created_at))}</p>
         <dl class="kvs"><dt>Phone</dt><dd>${esc(d.phone)}</dd><dt>Email</dt><dd>${esc(d.email)}</dd><dt>Commission</dt><dd>${esc(d.commissionState)} · exp ${esc(d.commissionExpires || "?")}</dd>
-        <dt>Area</dt><dd>${esc(d.zip)} · ${esc(d.radius)}</dd><dt>E&amp;O</dt><dd>${esc(d.eo)}</dd><dt>Background</dt><dd>${esc(d.backgroundDate || "—")}</dd><dt>Signings</dt><dd>${esc(d.signings)}</dd><dt>Has</dt><dd>${esc(caps || "—")}</dd></dl>
+        <dt>Area</dt><dd>${esc(d.zip)} · ${esc(d.radius)}</dd><dt>E&amp;O</dt><dd>${esc(d.eo)}</dd><dt>Background</dt><dd>${esc(d.backgroundDate || "—")}</dd><dt>Signings</dt><dd>${esc(d.signings)}</dd><dt>Has</dt><dd>${esc(caps || "—")}</dd>${d.languages ? `<dt>Languages</dt><dd>${esc(d.languages)}</dd>` : ""}</dl>
         ${a.status === "new" ? `<div class="actions"><button class="btn btn-primary btn-sm" data-app="${a.id}" data-s="approved">Approve &amp; send onboarding email</button><button class="btn btn-ghost btn-sm" data-app="${a.id}" data-s="declined">Decline</button></div>` : ""}</div>`;
     }).join("");
     $$("[data-app]", box).forEach((b) => b.addEventListener("click", async () => {

@@ -128,7 +128,7 @@ window.MCC = (function () {
   }
 
   wireForm("joinForm", "joinOk", "/api/applications",
-    { name: "j-name", email: "j-email", phone: "j-phone", zip: "j-zip", radius: "j-radius", commissionState: "j-state", commissionExpires: "j-exp", eo: "j-eo", backgroundDate: "j-bg", signings: "j-count" },
+    { name: "j-name", email: "j-email", phone: "j-phone", zip: "j-zip", radius: "j-radius", commissionState: "j-state", commissionExpires: "j-exp", eo: "j-eo", backgroundDate: "j-bg", signings: "j-count", languages: "j-lang" },
     { nsa: "j-nna", ron: "j-ron", rin: "j-rin", laser: "j-printer", reverse: "j-reverse" },
     "<b>Application received.</b> We review applications within 3 business days. Once approved, you'll get an email to finish onboarding in the notary portal.");
   wireForm("contactForm", "contactOk", "/api/messages",

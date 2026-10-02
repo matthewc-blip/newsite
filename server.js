@@ -252,7 +252,7 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   const data = {
     name: str(d.name, 120), email: str(d.email, 160), phone: str(d.phone, 40), zip: str(d.zip, 10), radius: str(d.radius, 20),
     commissionState: str(d.commissionState, 40), commissionExpires: str(d.commissionExpires, 10), eo: str(d.eo, 20),
-    backgroundDate: str(d.backgroundDate, 10), signings: str(d.signings, 30),
+    backgroundDate: str(d.backgroundDate, 10), signings: str(d.signings, 30), languages: str(d.languages, 120),
     nsa: !!d.nsa, ron: !!d.ron, rin: !!d.rin, laser: !!d.laser, reverse: !!d.reverse,
   };
   const fields = {};
