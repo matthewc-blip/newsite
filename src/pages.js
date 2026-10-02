@@ -127,7 +127,7 @@ function register(app) {
               message: "Company: " + g("v-company") + "\\nPhone: " + (g("v-phone") || "-") + "\\nNJ signings per month: " + g("v-volume") + "\\n\\n" + (g("v-msg") || "(no notes)") }) });
             var d = await r.json().catch(function () { return {}; });
             if (!r.ok) throw new Error(d.error || "Couldn't send. Call the desk instead.");
-            this.reset(); m.className = "form-msg ok"; m.textContent = "Thanks. We'll email the vendor packet today.";
+            if (window.mccTrack) window.mccTrack("generate_lead", { form: "vendor_packet" }); this.reset(); m.className = "form-msg ok"; m.textContent = "Thanks. We'll email the vendor packet today.";
           } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
           b.disabled = false;
         });
@@ -156,7 +156,8 @@ function register(app) {
             "<b>Documents:</b> closing packages, scanbacks and other files uploaded by clients, the desk or notaries.",
             "<b>Notary applicant and contractor information:</b> commission details, insurance and background check records, W-9 tax information, service areas, and agreement signatures.",
             "<b>Billing information:</b> invoice details. Card and bank payments are handled by Stripe; we don't store full card or bank account numbers.",
-            "<b>Technical information:</b> IP addresses, browser type and pages visited, kept in server logs for security. We use only the cookies needed to keep you signed in.",
+            "<b>Technical information:</b> IP addresses, browser type and pages visited, kept in server logs for security.",
+            "<b>Cookies and analytics:</b> our public pages use Google Analytics, which sets cookies to measure visits and how pages are used. You can block these cookies in your browser or use Google's <a href=\"https://tools.google.com/dlpage/gaoptout\" rel=\"noopener\">opt-out add-on</a>. The notary and client portals and the desk dashboard don't use analytics; they use only the cookies needed to keep you signed in.",
           ])],
           ["How we use it", ul([
             "To schedule, assign and complete appointments, and to send confirmations, reminders and status updates.",
@@ -167,7 +168,7 @@ function register(app) {
           ["Who we share it with", ul([
             "<b>The assigned notary,</b> who receives the appointment details and documents needed to complete the signing.",
             "<b>The client who placed the order,</b> such as the title company, lender or attorney on the file.",
-            "<b>Service providers</b> that run our systems: website hosting, database and file storage, email delivery, text messaging and payment processing (Stripe). They may use the information only to provide their services to us.",
+            "<b>Service providers</b> that run our systems: website hosting, database and file storage, email delivery, text messaging, website analytics (Google Analytics) and payment processing (Stripe). They may use the information only to provide their services to us.",
             "<b>Authorities,</b> when the law requires it, or to protect the rights and safety of our clients, signers, notaries or MCC.",
           ])],
           ["Text messages", p("Notaries who opt in may receive job offers, reminders and account notices by text. Clients may receive appointment updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. We don't sell or share phone numbers or text-message consent with third parties for their marketing.")],

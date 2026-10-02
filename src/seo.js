@@ -67,6 +67,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/css/site.css">
 <script type="application/ld+json">${json}</script>
+<script src="/js/ga.js" async></script>
 </head>
 <body class="seo">
 <div class="strip"><div class="wrap">
@@ -234,6 +235,25 @@ function register(app) {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}
 </urlset>`);
+  });
+
+  // Google Analytics loader. Set GA_MEASUREMENT_ID (G-XXXXXXX) on the server to turn it on.
+  // Loaded only on public pages; the admin, notary and client portals never include it.
+  app.get("/js/ga.js", (req, res) => {
+    const id = String(process.env.GA_MEASUREMENT_ID || "").trim();
+    res.type("application/javascript").set("Cache-Control", "public, max-age=300");
+    if (!/^G-[A-Z0-9]{4,}$/.test(id)) return res.send("window.mccTrack=function(){};");
+    res.send(`(function(){
+var id=${JSON.stringify(id)};
+window.dataLayer=window.dataLayer||[];
+window.gtag=function(){dataLayer.push(arguments);};
+gtag("js",new Date());
+gtag("config",id);
+var s=document.createElement("script");s.async=true;s.src="https://www.googletagmanager.com/gtag/js?id="+id;document.head.appendChild(s);
+window.mccTrack=function(name,params){try{gtag("event",name,params||{});}catch(e){}};
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href^='tel:'],a[href^='mailto:']");if(!a)return;
+window.mccTrack(a.href.indexOf("tel:")===0?"phone_click":"email_click",{link_url:a.href,page_path:location.pathname});});
+})();`);
   });
 
   app.get("/robots.txt", (req, res) => {

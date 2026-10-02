@@ -110,6 +110,7 @@ window.MCC = (function () {
       ok.hidden = true;
       try {
         await api(endpoint, { method: "POST", body });
+        if (window.mccTrack) window.mccTrack(formId === "joinForm" ? "notary_application" : "generate_lead", { form: formId });
         showErrors(f, {}, map);
         ok.hidden = false;
         ok.style.background = ""; ok.style.borderColor = "";

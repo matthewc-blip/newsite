@@ -317,6 +317,7 @@
 
   function done(res) {
     const b = res.booking;
+    if (window.mccTrack) window.mccTrack("generate_lead", { form: "booking", service: b.service, category: b.category });
     const token = new URLSearchParams(res.manageUrl.split("?")[1]).get("token");
     form.hidden = true;
     $("#stepbar").hidden = true;
