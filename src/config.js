@@ -76,6 +76,7 @@ const DEFAULT_SETTINGS = {
     defaultNotarialFees: { NJ: { financing: 25, transfer: 15 } }, // per-state caps used as the notarial line
     cardAtBooking: "ask",       // "ask": individuals are asked to save a card when they book (Stripe); "off": never
     autoChargeCards: true,      // charge the saved card automatically when the job is marked completed
+    minMarginPct: 20,           // block notary fees that leave MCC less than this % of the client fee (0 = off)
   },
   // Google review requests emailed after a completed job.
   reviews: {

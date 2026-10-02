@@ -178,6 +178,9 @@ Stripe sends your invoices, collects card or ACH bank payments, and pays out to 
 ### Card on file for individual customers
 When Stripe is connected, people who book online without a client account are asked to save a card through Stripe Checkout. Nothing is charged at booking. When the job is marked completed, the saved card is charged the client fee automatically (turn this off in Settings → Billing), and Stripe emails the receipt. From a booking in the dashboard you can also charge a no-show or cancellation fee, or email the customer a link to add a card. A declined card leaves a draft invoice you can send from Billing for a pay link. Add `checkout.session.completed` to your Stripe webhook events.
 
+## Margin protection
+Settings → Billing → Minimum margin (default 20%). The desk can't save a notary fee or client fee that leaves MCC less than that share of the client fee; the dashboard shows the margin on every booking and the most you can pay the notary. You can override a single job when you choose to, and the override is recorded in the booking history. Automatic offers are capped so they never exceed the allowed notary fee. Set the minimum to 0 to turn the check off.
+
 ## Google review requests
 Settings → Google reviews: paste your Google Business Profile review link and turn it on. A few hours after a job is completed (you choose the delay), the customer gets one email asking for a review. The same email address is asked at most once every 180 days, every email has a one-click opt-out, and only jobs completed in the last 14 days are included, so turning it on never emails old customers.
 

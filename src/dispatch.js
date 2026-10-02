@@ -78,7 +78,12 @@ async function autoOffer(bookingId) {
   const rush = Date.parse(b.start_utc) - Date.now() < 4 * 3600 * 1000;
   const minutes = rush ? cfg.rushOfferMinutes || 10 : cfg.offerMinutes || 30;
   const expiresAt = new Date(Date.now() + minutes * MIN).toISOString();
-  const fee = b.notary_fee ?? defaultFee(settings, b);
+  let fee = b.notary_fee ?? defaultFee(settings, b);
+  const cap = require("./margin").offerCap(b, settings);
+  if (fee != null && cap != null && Number(fee) > cap) {
+    await logEvent(b.id, "system", `Offer fee lowered from $${Number(fee).toFixed(2)} to $${cap.toFixed(2)} to keep the ${require("./margin").minPct(settings)}% minimum margin`);
+    fee = cap;
+  }
   await assignNotary(b, { notaryId: pick.id, direct: false, fee, notify: true, expiresAt, auto: true });
   return { offered: pick.id, miles: pick.miles, expiresAt };
 }

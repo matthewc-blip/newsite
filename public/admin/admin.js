@@ -19,7 +19,7 @@
     let j = {};
     try { j = await res.json(); } catch {}
     if (res.status === 401) { showLogin(); throw new Error(j.error || "Sign in again."); }
-    if (!res.ok) throw Object.assign(new Error(j.error || "Request failed"), { fields: j.fields });
+    if (!res.ok) throw Object.assign(new Error(j.error || "Request failed"), { fields: j.fields, code: j.code, data: j });
     return j;
   }
 
@@ -188,7 +188,7 @@
   async function openBooking(id) {
     openId = id;
     await loadNotaries();
-    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn }, { documents: bdocs }, cand, cl] = await Promise.all([
+    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn, margin: mg }, { documents: bdocs }, cand, cl] = await Promise.all([
       api("/api/admin/bookings/" + id), api(`/api/admin/bookings/${id}/documents`), api(`/api/admin/bookings/${id}/candidates`), api("/api/admin/clients"),
     ]);
     $("#dSvc").textContent = `${SVC[b.service]} · ${b.ref}`;
@@ -243,6 +243,8 @@
         <div class="inline"><input id="dFee" type="number" min="0" step="0.01" placeholder="${b.est_fee != null ? "Estimate $" + b.est_fee : "Total charged to client"}" value="${b.quoted_fee ?? ""}" ${b.invoice_id ? "disabled" : ""}>
           <input id="dNotarial" type="number" min="0" step="0.01" placeholder="${b.default_notarial != null ? "Notarial $" + b.default_notarial + " (" + esc(b.state) + " limit)" : "Notarial portion"}" value="${b.notarial_fee ?? ""}" ${b.invoice_id ? "disabled" : ""} title="Part of the client fee billed as the notarial fee">
           ${b.invoice_id ? "" : '<button class="btn btn-ghost btn-sm" id="dFeeSave" type="button">Save</button>'}</div>
+        ${mg && !mg.unknown ? `<p style="margin-top:8px"><span class="pill ${mg.ok ? "p-ok" : "p-warn"}">Margin $${mg.kept.toFixed(2)} · ${mg.pct}%</span> <span style="font-size:.84rem;color:var(--muted)">${mg.ok ? `minimum ${mg.min}% · notary can be paid up to $${mg.maxNotaryFee.toFixed(2)}` : `below your ${mg.min}% minimum (override on file)`}</span></p>`
+          : mg && mg.min > 0 ? `<p style="font-size:.84rem;color:var(--muted);margin-top:6px">Set the client fee and notary fee to see the margin (minimum ${mg.min}%).</p>` : ""}
         <p style="font-size:.84rem;color:var(--muted);margin-top:6px">Invoices list the notarial portion separately from the signing-service fee. Leave the notarial box empty to use the state default.</p>
         ${binv ? `<p style="margin-top:8px"><span class="pill ${binv.status === "paid" ? "p-ok" : binv.status === "void" ? "p-warn" : "p-info"}">Invoice ${esc(binv.number)} · ${esc(binv.status)}</span> <a href="/api/admin/billing/invoices/${binv.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></p>`
           : b.status === "completed" ? `<button class="btn btn-ghost btn-sm" id="dInvoice" type="button" style="margin-top:8px">${b.client_account_id ? "Invoice this job now" : "Send invoice to customer"}</button>` : ""}</div>
@@ -268,7 +270,10 @@
 
     const patch = async (body, okText) => {
       try { await api("/api/admin/bookings/" + id, { method: "PATCH", body }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = okText; loadBoard(); loadStats(); }
-      catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+      catch (e) {
+        if (e.code === "margin" && !body.override_margin && confirm(e.message + "\n\nSave anyway? The override is recorded in the booking history.")) return patch({ ...body, override_margin: true }, okText + " (margin override)");
+        $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message;
+      }
     };
     $$(".status-btns button", $("#dBody")).forEach((btn) => btn.addEventListener("click", () => patch({ status: btn.dataset.status, notify: $("#dNotify").checked }, "Status updated.")));
     const syncAssignLabel = () => {
@@ -677,6 +682,7 @@
             <div class="field"><label>Individual terms (days)</label><input type="number" min="0" id="biInd" value="${s.billing.individualTermsDays}"></div>
           </div>
           <div class="field"><label>Copy invoices to (emails, comma-separated)</label><input id="biCc" value="${esc((s.billing.ccEmails || []).join(", "))}"></div>
+          <div class="field"><label>Minimum margin (% of client fee kept after paying the notary)</label><input type="number" min="0" max="90" step="1" id="biMargin" value="${s.billing.minMarginPct ?? 20}"></div>
           <h4 style="margin-top:14px">Card on file (individual customers)</h4>
           <label class="switch"><input type="checkbox" id="biCards" ${(s.billing.cardAtBooking || "ask") !== "off" ? "checked" : ""}> Ask individuals to save a card when they book (needs Stripe)</label>
           <label class="switch"><input type="checkbox" id="biAutoCharge" ${s.billing.autoChargeCards !== false ? "checked" : ""}> Charge the saved card automatically when a job is marked completed</label>
@@ -719,7 +725,7 @@
     s.notaryFees = { mobile: { loan: num("#nfLoan"), general: num("#nfGen") }, ron: num("#nfRon"), rin: num("#nfRin") };
     s.billing = { ...s.billing, termsDays: num("#biTerms") ?? 30, individualTermsDays: num("#biInd") ?? 0,
       stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean),
-      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked };
+      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20 };
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);

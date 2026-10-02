@@ -7,6 +7,7 @@ const { slotsForDate, openDays, validateSlot, overlapping } = require("./src/ava
 const { dateInTz, zonedToUtc, addDays } = require("./src/time");
 const mail = require("./src/email");
 const payments = require("./src/payments");
+const margin = require("./src/margin");
 const { buildIcs } = require("./src/ics");
 const notary = require("./src/notary");
 const dispatch = require("./src/dispatch");
@@ -375,7 +376,7 @@ app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const { token, ...rest } = row;
   const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url, provider, error FROM invoices WHERE id = $1", [row.invoice_id]) : null;
   const settings = await getSettings();
-  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
+  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee, settings), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
 });
 
 app.post("/api/admin/bookings", requireAdmin, async (req, res) => {
@@ -396,6 +397,10 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const settings = await getSettings();
   const row = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);
   if (!row) return res.status(404).json({ error: "Not found" });
+  // Margin protection: block fee changes that leave less than the minimum margin, unless the desk overrides.
+  const mg = margin.checkPatch(row, req.body, settings);
+  if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message, code: "margin", margin: mg });
+  if (!mg.ok) await logEvent(row.id, "desk", `Margin override: ${mg.pct}% ($${mg.kept.toFixed(2)}), below the ${mg.min}% minimum`);
   const sets = {}, notes = [];
   if (req.body.status !== undefined) {
     if (!STATUSES.includes(req.body.status)) return res.status(400).json({ error: "Invalid status" });
@@ -529,6 +534,11 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
       if (!(Number.isFinite(Number(c[f])) && Number(c[f]) >= (f === "leadMinutes" ? 0 : 1))) return res.status(400).json({ error: `${k}.${f} must be a positive number` });
       c[f] = Number(c[f]);
     }
+  }
+  if (s.billing && s.billing.minMarginPct !== undefined) {
+    const p = Number(s.billing.minMarginPct);
+    if (!(p >= 0 && p <= 90)) return res.status(400).json({ error: "Minimum margin must be between 0 and 90%." });
+    s.billing.minMarginPct = p;
   }
   if (s.reviews) {
     const u = String(s.reviews.googleUrl || "").trim();
