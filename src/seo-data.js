@@ -158,6 +158,18 @@ const SERVICES = [
       ["Why isn't RIN available everywhere?", "Most temporary RIN rules from 2020 and 2021 have ended, and only a few states have permanent rules. We check eligibility for each order."],
       ["How long does RIN take?", "The video signing takes about 30 minutes. The notary finishes once the originals arrive, usually one to three business days later."],
     ] },
+  { slug: "business-notary", code: "BUSINESS", name: "Business & Dealer Notary Services", short: "Business notary",
+    title: "Business & Auto Dealer Notary Services in New Jersey",
+    description: "Mobile notary accounts for NJ auto dealers, property managers, HR teams, contractors, insurers and funeral homes. On-site visits, monthly invoicing.",
+    h1: "Notary services for New Jersey businesses",
+    lede: "Dealerships, property managers, HR teams and other businesses need documents notarized every week. Open a business account and MCC Solutions sends a commissioned notary to your office, lot or job site, or to your customer, and bills you once a month.",
+    included: ["On-site visits at your office, dealership, job site or a customer's home", "Notarization for out-of-state buyers and customers who can't come in", "Remote online notarization for signers who are out of state or traveling", "One business account: online ordering, status updates and monthly invoices", "Standing instructions saved to your account, so every visit is done your way"],
+    who: ["Auto dealers: title and registration paperwork, powers of attorney, out-of-state buyers", "Property managers and landlords: leases, affidavits, estoppel certificates", "HR and staffing teams: I-9 verifications and employment documents", "Contractors: lien waivers, contracts and affidavits", "Insurance and public adjusters: sworn proofs of loss, often at the property", "Funeral homes: affidavits and estate paperwork for families", "Banks, credit unions, accountants and financial advisors: overflow and homebound clients"],
+    faqs: [
+      ["How does billing work for businesses?", "Business accounts get one invoice a month for every visit, payable by ACH or card. Each line shows the notarial fee separately from the service and travel fee."],
+      ["Can a notary come to our customer instead of our office?", "Yes. We send the notary wherever the signer is: home, hospital, job site or another office. You place the order; we confirm the time with the signer."],
+      ["Can you prepare our documents?", "No. Notaries can't draft documents or give legal advice. Send completed documents, and we handle the signing and notarization."],
+    ] },
 ];
 
 module.exports = { COUNTIES, SERVICES };
