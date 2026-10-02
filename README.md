@@ -191,6 +191,14 @@ Each service page for process serving, document recording, embassy legalization,
 - Upload the papers to serve. The process server logs each attempt (time, result, who was served) and uploads the signed affidavit. A process serve can't be completed without a successful serve and an affidavit.
 - Send the invoice in one click. Team pay shows up in Team payouts like any other job.
 
+## Law firms
+- **/notary/law-firms** pitches process serving, notaries and witnesses to firms and has a "Request a firm account" form. Requests land in your Inbox; set the firm up in Clients and invite their team.
+- **Client portal → Serves & Legal:** firm users order any service request, attach papers, follow every attempt, download the affidavit once the request is completed, and cancel before work starts.
+- **Attempt emails:** for process serving and inspections, the customer gets an email each time an attempt is logged (date, time, result, notes). Turn it off for a single request in its panel in the Requests tab.
+- **File numbers:** the customer's file or matter number is captured on the request form and portal, shown in the Requests tab, and printed on the invoice line.
+- **Papers on the public form:** customers can attach up to 10 files when they send a request (a one-time upload link valid for 24 hours).
+- Proof and affidavits stay hidden from the customer until the request is marked completed.
+
 ## Checkout add-ons
 Settings → Checkout add-ons: printing, scanbacks, witnesses, courier and apostille handling are offered when customers book online and when clients order in the portal. Turn each on or off and set its price. Chosen add-ons show on the booking, in the notary's job details ("Also needed"), in confirmation emails, and as separate lines on invoices and card charges. Margin protection counts add-ons as part of the client total.
 

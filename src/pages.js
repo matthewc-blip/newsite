@@ -70,6 +70,109 @@ function register(app) {
     }));
   });
 
+  /* ---------- For law firms ---------- */
+  app.get("/notary/law-firms", async (req, res) => {
+    const { getSettings } = require("./db");
+    const settings = await getSettings().catch(() => null);
+    const biz = settings ? settings.business : await business();
+    const url = base(req);
+    const ps = settings ? require("./prices").list(settings).find((x) => x.key === "process_serve") : null;
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["For law firms", "/notary/law-firms"]];
+    const faqs = [
+      ["Do you give legal advice or prepare documents?", "No. We serve, notarize, witness, record and certify documents your firm prepares. Questions about the documents themselves go to your attorneys."],
+      ["Will I know when each serve attempt happens?", "Yes. You get an email each time an attempt is logged, with the date, time and result, and your team can see every attempt in the client portal."],
+      ["How do we get the papers to you?", "Attach them when you place the request in the client portal or on the request form. We can also pick up originals."],
+      ["How is billing handled?", "Each request is billed with your file or matter number on the invoice. Firm accounts are invoiced, with terms set when the account opens."],
+      ["Can you serve outside New Jersey?", "We serve across New Jersey with our own team. For other states, ask the desk and we'll arrange service through a trusted partner."],
+    ];
+    res.send(layout({
+      req, biz, path: "/notary/law-firms", crumbs,
+      title: "Process Serving, Notaries & Witnesses for NJ Law Firms | MCC",
+      description: "Process serving with every attempt emailed and the affidavit uploaded, plus notaries, witnesses, apostilles and recording for New Jersey law firms. One account, one invoice.",
+      body: {
+        hero: `<p class="eyebrow">For law firms</p><h1 style="margin-top:10px">Process serving, notaries and witnesses from one desk</h1><p class="lede" style="margin-top:14px">Send serves, estate signings, apostilles and recordings from one portal. Every serve attempt is emailed to you as it happens, the affidavit is uploaded when it's done, and your file number is on every invoice.</p>${ps ? `<p class="from-price"><span>Process serving from</span> <b>${require("./prices").money(ps.price)}</b> <small>${esc(ps.note)}</small></p>` : ""}<div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#account">Request a firm account</a><a class="btn btn-ghost" href="/notary/process-serving#request">Send a serve now</a></div>`,
+        main: `<section class="band"><div class="wrap">
+          <div class="sec-head"><p class="eyebrow">What firms send us</p><h2>The work around the case file</h2></div>
+          <div class="grid g3">
+            <a class="svc" href="/notary/process-serving"><span class="code">PROCESS SERVING</span><h3>Serves with a paper trail</h3><p>Personal and substitute service as the court rules allow. Attempts at different times of day, each one logged and emailed to you, then a signed affidavit of service.</p><span class="more">Process serving →</span></a>
+            <a class="svc" href="/notary/estate-planning-notary"><span class="code">ESTATE SIGNINGS</span><h3>Notaries and witnesses</h3><p>Wills, trusts, powers of attorney and advance directives, with independent witnesses, at the client's home, office or hospital bed.</p><span class="more">Estate signings →</span></a>
+            <a class="svc" href="/notary/apostille-services"><span class="code">INTERNATIONAL</span><h3>Apostilles and legalization</h3><p>Documents notarized and certified for use abroad, including embassy legalization for countries outside the Hague Convention.</p><span class="more">Apostilles →</span></a>
+            <a class="svc" href="/notary/document-recording"><span class="code">RECORDING</span><h3>Deeds and releases recorded</h3><p>Submitted to the county with the recorded copy back to you, in all 21 New Jersey counties.</p><span class="more">Recording →</span></a>
+            <a class="svc" href="/notary/certified-translation"><span class="code">TRANSLATION</span><h3>Certified translation</h3><p>Translations certified by our partners and notarized when the court or agency requires it.</p><span class="more">Translation →</span></a>
+            <a class="svc" href="/notary/hospital-notary"><span class="code">URGENT</span><h3>Hospital and same-day visits</h3><p>Bedside notarizations and rush serves, including evenings and weekends.</p><span class="more">Hospital visits →</span></a>
+          </div>
+        </div></section>
+        <section class="band alt"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">Your firm account</p><h2>Built for paralegals</h2><ul class="checks">
+            <li>One client portal for serves, signings and every other request</li>
+            <li>Attach the papers when you order, or add them later</li>
+            <li>See each serve attempt, and download the affidavit when it's done</li>
+            <li>Your file or matter number on every request and invoice</li>
+            <li>Invoiced to the firm, with terms set when the account opens</li>
+            <li>Add as many people from your team as you need</li>
+          </ul></div>
+          <div class="stack"><p class="eyebrow">Our servers</p><h2>Who serves your papers</h2><ul class="checks">
+            <li>Adults with no interest in your case, as Rule 4:4-3 requires</li>
+            <li>Background check on file before their first assignment</li>
+            <li>Valid driver's license, plus a registered and insured vehicle, each tracked to expiration</li>
+            <li>Signed contractor agreement covering confidentiality and conduct</li>
+            <li>Every attempt recorded with date, time, place and result</li>
+          </ul></div>
+        </div></section>
+        <section class="band" id="account"><div class="wrap form-layout">
+          <form class="form-card" id="firmForm" novalidate>
+            <fieldset><legend>Request a firm account</legend>
+              <div class="field full"><label for="f-firm">Firm name</label><input id="f-firm" required autocomplete="organization"></div>
+              <div class="field"><label for="f-name">Your name</label><input id="f-name" required autocomplete="name"></div>
+              <div class="field"><label for="f-title">Role <span class="opt">(optional)</span></label><input id="f-title" placeholder="Paralegal, office manager, attorney…"></div>
+              <div class="field"><label for="f-email">Work email</label><input id="f-email" type="email" required autocomplete="email"></div>
+              <div class="field"><label for="f-phone">Phone</label><input id="f-phone" type="tel" required autocomplete="tel"></div>
+              <fieldset class="field full" style="border:0;padding:0;margin:0"><legend style="font-size:.88rem;font-weight:600;margin-bottom:6px">What you'll send us</legend>
+                <div class="chk-row">${["Process serving", "Notaries & witnesses", "Apostilles", "Recording", "Translation", "Other"].map((x, i) => `<label><input type="checkbox" name="f-need" value="${esc(x)}"${i === 0 ? " checked" : ""}> ${esc(x)}</label>`).join("")}</div>
+              </fieldset>
+              <div class="field"><label for="f-vol">Roughly how many a month?</label><select id="f-vol"><option>1–5</option><option selected>5–20</option><option>20–50</option><option>50+</option></select></div>
+              <div class="field"><label for="f-team">People who'll order <span class="opt">(optional)</span></label><input id="f-team" placeholder="Names and emails, or just a number"></div>
+              <div class="field full"><label for="f-msg">Anything else? <span class="opt">(optional)</span></label><textarea id="f-msg" rows="3" placeholder="Counties you need, billing contact, vendor forms…"></textarea></div>
+              <input type="text" id="f-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+            </fieldset>
+            <div class="form-foot"><small>We set up the account and email your team a sign-in link, usually within one business day.</small><button class="btn btn-primary" type="submit">Request account</button></div>
+            <p class="form-msg" id="firmMsg" role="status"></p>
+          </form>
+          <aside class="stack"><h3>Need something served today?</h3><p>You don't need an account to start. <a href="/notary/process-serving#request">Send a request</a> or call <a href="${telHref(biz.phone)}">${esc(biz.phone)}</a>.</p><h3 style="margin-top:12px">Vendor paperwork</h3><p>Our <a href="/notary/vendors">vendor packet</a> covers insurance, vetting and data handling.</p></aside>
+        </div></section>
+        <section class="band alt"><div class="wrap" style="max-width:860px">
+          <div class="sec-head"><p class="eyebrow">FAQ</p><h2>Common questions from firms</h2></div>
+          <div class="faq-group">${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</div>
+        </div></section>
+        <script>
+        document.getElementById("firmForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var g = function (id) { return document.getElementById(id).value.trim(); };
+          var m = document.getElementById("firmMsg"), b = this.querySelector("button[type=submit]");
+          var needs = Array.prototype.map.call(this.querySelectorAll('input[name="f-need"]:checked'), function (i) { return i.value; });
+          if (!g("f-firm") || !g("f-name") || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(g("f-email")) || g("f-phone").replace(/\\D/g, "").length < 10) { m.className = "form-msg"; m.textContent = "Enter the firm name, your name, a work email and a phone number."; return; }
+          b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+          var text = ["Firm: " + g("f-firm"), "Contact: " + g("f-name") + (g("f-title") ? " (" + g("f-title") + ")" : ""), "Phone: " + g("f-phone"), "Needs: " + (needs.join(", ") || "-"), "Volume: " + g("f-vol") + " a month", "Team: " + (g("f-team") || "-"), "", g("f-msg")].join("\\n");
+          try {
+            var r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: g("f-name"), email: g("f-email"), topic: "Firm account request: " + g("f-firm"), message: text, website: g("f-website") }) });
+            var d = await r.json().catch(function () { return {}; });
+            if (!r.ok) throw new Error(d.error || "Couldn't send. Try again or call the desk.");
+            if (window.mccTrack) window.mccTrack("generate_lead", { form: "firm_account" });
+            this.reset(); m.className = "form-msg ok"; m.textContent = "Thanks. We'll set up the account and email your team a sign-in link, usually within one business day.";
+          } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
+          b.disabled = false;
+        });
+        </script>`,
+        ctaTitle: "Have papers to serve? Send them to the desk.",
+      },
+      schema: [
+        { "@type": "Service", name: "Legal support services for law firms", serviceType: "Process serving, notarization and witness services", provider: { "@id": url + "/#business" }, areaServed: { "@type": "State", name: "New Jersey" }, audience: { "@type": "BusinessAudience", name: "Law firms" }, url: url + "/notary/law-firms" },
+        { "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+        { "@type": "BreadcrumbList", itemListElement: crumbs.map(([n, pth], i) => ({ "@type": "ListItem", position: i + 1, name: n, item: url + pth })) },
+      ],
+    }));
+  });
+
   /* ---------- Vendor packet ---------- */
   app.get("/notary/vendors", async (req, res) => {
     const biz = await business();

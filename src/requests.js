@@ -96,7 +96,7 @@ async function invoiceRequest(id) {
   }
   const terms = to.accountId ? to.termsDays ?? settings.billing.termsDays ?? 30 : settings.billing.individualTermsDays ?? 0;
   const due = require("./time").addDays(today, terms);
-  const name = `${(TYPES[r.type] || {}).label || r.type} · ${r.ref}`.slice(0, 195);
+  const name = `${(TYPES[r.type] || {}).label || r.type} · ${r.ref}${r.client_ref ? ` · File ${r.client_ref}` : ""}`.slice(0, 195);
   const inv = await db.tx(async (t) => {
     const row = await t.one(`INSERT INTO invoices(client_account_id, bill_to_name, bill_to_email, invoice_date, due_date, period_start, period_end, amount, status, provider)
       VALUES($1,$2,$3,$4,$5,$4,$4,$6,'draft',$7) RETURNING *`, [to.accountId, to.name, to.email, today, due, num(r.fee), billing.PROVIDER]);
@@ -112,47 +112,73 @@ async function invoiceRequest(id) {
   return (await db.one("SELECT id, number, status, provider, error FROM invoices WHERE id = $1", [inv.id]));
 }
 
+const sha = (t) => crypto.createHash("sha256").update(t).digest("hex");
+
+// Validate and save a new request (public form or client portal). Throws {status, message, fields} on bad input.
+async function createRequest(body, c, { accountId = null, userId = null, actor = "customer", fields = {} } = {}) {
+  const type = str(body.type, 30);
+  const t = TYPES[type];
+  if (!t) throw err("Choose a service.", 400, { fields: { type: "Choose a service." } });
+  const d = {};
+  const inDetails = body.details && typeof body.details === "object" ? body.details : {};
+  for (const f of t.fields) {
+    let v = str(inDetails[f.key], f.textarea ? 1000 : 300);
+    if (f.options && v && !f.options.includes(v)) v = "";
+    if (f.required && !v) fields[f.key] = `Enter ${f.label.toLowerCase().replace(/\s*\(.*\)$/, "")}.`;
+    if (v) d[f.key] = v;
+  }
+  const due = str(body.dueDate, 10);
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) fields.dueDate = "Pick a valid date.";
+  if (Object.keys(fields).length) throw err("Check the highlighted fields.", 400, { fields });
+  const clientRef = str(body.clientRef, 80) || null;
+  let row;
+  for (let i = 0; i < 5 && !row; i++) {
+    try {
+      row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, client_user_id, details, notes, due_date, client_ref)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+        [newRef(), type, c.name, c.email, c.phone || null, c.company || null, accountId, userId, JSON.stringify(d), str(body.notes, 2000) || null, due || null, clientRef]);
+    } catch (e) { if (e.code !== "23505") throw e; }
+  }
+  await logReq(row.id, actor, actor === "client" ? `Requested in the client portal by ${c.name}` : "Requested online");
+  const settings = await getSettings();
+  const lines = t.fields.filter((f) => d[f.key]).map((f) => `${f.label}: ${d[f.key]}`).join("\n");
+  mail.deskNotice(`New request ${row.ref}: ${t.label}${c.company ? " · " + c.company : ""}`, `${c.name}${c.company ? ` (${c.company})` : ""} · ${c.phone || ""} · ${c.email}${clientRef ? `\nClient file: ${clientRef}` : ""}\n${lines}${due ? `\nNeeded by: ${due}` : ""}${row.notes ? `\nNotes: ${row.notes}` : ""}\n\nOpen the Requests tab to quote and assign it.`);
+  mail.send({ to: c.email, subject: `We received your request ${row.ref} · ${t.label}${clientRef ? ` · File ${clientRef}` : ""}`,
+    text: `Hi ${c.name},\n\nThanks for your ${t.label.toLowerCase()} request (${row.ref}). The desk will confirm the details and the price, usually within one business day.\n\n${lines}\n\n${accountId ? `Track it in your client portal: ${mail.BASE}/client/#request-${row.id}\n\n` : ""}Questions? ${settings.business.phone} · ${settings.business.email}\n\n${settings.business.name}` });
+  return row;
+}
+
 function register(app, { requireAdmin, requireNotary, loadMe }) {
   /* ---------- public ---------- */
   app.get("/api/request-types", (req, res) => res.json({ types: publicCatalog() }));
 
   app.post("/api/requests", rateLimit(8, 10 * 60000), async (req, res) => {
     if (req.body.website) return res.status(400).json({ error: "Rejected" });
-    const type = str(req.body.type, 30);
-    const t = TYPES[type];
-    if (!t) return res.status(400).json({ error: "Choose a service." });
     const c = { name: str(req.body.contactName, 120), email: str(req.body.contactEmail, 160).toLowerCase(), phone: str(req.body.contactPhone, 40), company: str(req.body.company, 160) };
     const fields = {};
     if (!c.name) fields.contactName = "Enter your name.";
     if (!emailOk(c.email)) fields.contactEmail = "Enter a valid email.";
     if (!phoneOk(c.phone)) fields.contactPhone = "Enter a phone number with area code.";
-    const d = {};
-    const inDetails = req.body.details && typeof req.body.details === "object" ? req.body.details : {};
-    for (const f of t.fields) {
-      let v = str(inDetails[f.key], f.textarea ? 1000 : 300);
-      if (f.options && v && !f.options.includes(v)) v = "";
-      if (f.required && !v) fields[f.key] = `Enter ${f.label.toLowerCase().replace(/\s*\(.*\)$/, "")}.`;
-      if (v) d[f.key] = v;
-    }
-    const due = str(req.body.dueDate, 10);
-    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) fields.dueDate = "Pick a valid date.";
-    if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });
-    const acct = await db.one("SELECT account_id FROM client_users WHERE lower(email) = $1 AND active = 1", [c.email]);
-    let row;
-    for (let i = 0; i < 5 && !row; i++) {
-      try {
-        row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, details, notes, due_date)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-          [newRef(), type, c.name, c.email, c.phone, c.company || null, acct ? acct.account_id : null, JSON.stringify(d), str(req.body.notes, 2000) || null, due || null]);
-      } catch (e) { if (e.code !== "23505") throw e; }
-    }
-    await logReq(row.id, "customer", "Requested online");
-    const settings = await getSettings();
-    const lines = t.fields.filter((f) => d[f.key]).map((f) => `${f.label}: ${d[f.key]}`).join("\n");
-    mail.deskNotice(`New request ${row.ref}: ${t.label}`, `${c.name}${c.company ? ` (${c.company})` : ""} · ${c.phone} · ${c.email}\n${lines}${due ? `\nNeeded by: ${due}` : ""}${row.notes ? `\nNotes: ${row.notes}` : ""}\n\nOpen the Requests tab to quote and assign it.`);
-    mail.send({ to: c.email, subject: `We received your request ${row.ref} · ${t.label}`,
-      text: `Hi ${c.name},\n\nThanks for your ${t.label.toLowerCase()} request (${row.ref}). The desk will confirm the details and the price, usually within one business day.\n\n${lines}\n\nQuestions? ${settings.business.phone} · ${settings.business.email}\n\n${settings.business.name}` });
-    res.status(201).json({ ref: row.ref });
+    const acct = emailOk(c.email) ? await db.one("SELECT id, account_id FROM client_users WHERE lower(email) = $1 AND active = 1", [c.email]) : null;
+    try {
+      const row = await createRequest(req.body, c, { accountId: acct ? acct.account_id : null, userId: acct ? acct.id : null, actor: "customer", fields });
+      // One-time link so the customer can attach the papers right after sending the form (24 hours, up to 10 files).
+      const token = crypto.randomBytes(24).toString("base64url");
+      await db.run("UPDATE service_requests SET upload_token_hash = $1, upload_token_expires = now() + interval '24 hours' WHERE id = $2", [sha(token), row.id]);
+      res.status(201).json({ ref: row.ref, uploadToken: token });
+    } catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message, fields: e.fields }); }
+  });
+  app.post("/api/requests/:ref/papers", rateLimit(30, 10 * 60000), raw, async (req, res) => {
+    const t = str(req.query.token, 100);
+    const r = t && (await db.one("SELECT * FROM service_requests WHERE ref = $1 AND upload_token_hash = $2 AND upload_token_expires > now()", [str(req.params.ref, 20), sha(t)]));
+    if (!r) return res.status(401).json({ error: "This upload link has expired. Email the papers to the desk instead." });
+    const n = (await db.one("SELECT COUNT(*)::int AS n FROM request_documents WHERE request_id = $1 AND uploaded_by = 'customer'", [r.id])).n;
+    if (n >= 10) return res.status(400).json({ error: "That's the most files we can take here. Email any others to the desk." });
+    try {
+      const doc = await storage.saveRequestFile({ requestId: r.id, kind: "papers", filename: str(req.query.filename, 200), contentType: (req.get("Content-Type") || "").split(";")[0], buffer: req.body, by: "customer", byName: r.contact_name });
+      await logReq(r.id, "customer", `Customer uploaded ${doc.filename}`);
+      res.status(201).json({ document: { id: doc.id, filename: doc.filename } });
+    } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : "Upload failed. Try again." }); }
   });
 
   /* ---------- desk ---------- */
@@ -188,6 +214,8 @@ function register(app, { requireAdmin, requireNotary, loadMe }) {
     }
     if (req.body.due_date !== undefined) { const v = str(req.body.due_date, 10); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return res.status(400).json({ error: "Invalid date" }); sets.due_date = v || null; notes.push(`Due date: ${v || "cleared"}`); }
     if (req.body.internal_notes !== undefined) sets.internal_notes = str(req.body.internal_notes, 5000);
+    if (req.body.client_ref !== undefined) { const v = str(req.body.client_ref, 80) || null; if (v !== r.client_ref) { sets.client_ref = v; notes.push(`Client file #: ${v || "cleared"}`); } }
+    if (req.body.notify_attempts !== undefined) sets.notify_attempts = req.body.notify_attempts ? 1 : 0;
     const mg = marginFor(r, settings, sets);
     if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message.replace("Pay the notary at most", "Keep team + partner cost at or under"), code: "margin", margin: mg });
     if (!Object.keys(sets).length) return res.json({ ok: true });
@@ -198,7 +226,7 @@ function register(app, { requireAdmin, requireNotary, loadMe }) {
     if (sets.status && req.body.notify !== false && ["quoted", "completed", "canceled"].includes(sets.status)) {
       const t = TYPES[r.type] || { label: r.type };
       const msg = { quoted: `We've reviewed your ${t.label.toLowerCase()} request${num(sets.fee ?? r.fee) != null ? ` and the price is $${num(sets.fee ?? r.fee).toFixed(2)}` : ""}. Reply to this email or call ${settings.business.phone} to confirm.`,
-        completed: `Your ${t.label.toLowerCase()} request is complete.${r.type === "process_serve" ? " The affidavit of service will be sent to you." : ""}`, canceled: `Your ${t.label.toLowerCase()} request was canceled.` }[sets.status];
+        completed: `Your ${t.label.toLowerCase()} request is complete.${r.type === "process_serve" ? (r.client_account_id ? ` Download the affidavit of service in your client portal: ${mail.BASE}/client/#request-${r.id}` : " The affidavit of service will be sent to you.") : ""}`, canceled: `Your ${t.label.toLowerCase()} request was canceled.` }[sets.status];
       mail.send({ to: r.contact_email, subject: `${t.label} ${r.ref}: ${sets.status === "quoted" ? "your quote" : sets.status}`, text: `Hi ${r.contact_name},\n\n${msg}\n\n${settings.business.name} · ${settings.business.phone}` });
     }
     res.json({ ok: true });
@@ -340,6 +368,103 @@ function register(app, { requireAdmin, requireNotary, loadMe }) {
     mail.deskNotice(`${r.ref} completed by ${req.notary.name}`, `${r.ref} (${(TYPES[r.type] || {}).label || r.type}) is complete.${note ? "\nNote: " + note : ""}\nReview it and send the invoice from the Requests tab.`);
     res.json({ ok: true });
   });
+
+  /* ---------- client portal (firm accounts) ---------- */
+  const { requireClient, loadClient } = require("./clients");
+  const clientDocVisible = (r, d) => d.kind !== "proof" || r.status === "completed";
+  function clientView(r) {
+    const t = TYPES[r.type] || { label: r.type, fields: [] };
+    const d = r.details || {};
+    const summary = d.serve_name || d.property || d.project || d.doc_type || d.country || [d.from_lang, d.to_lang].filter(Boolean).join(" → ") || d.volume || "";
+    return { id: r.id, ref: r.ref, type: r.type, type_label: t.label, status: r.status, client_ref: r.client_ref, due_date: r.due_date, created_at: r.created_at, completed_at: r.completed_at,
+      summary, fee: r.fee, notes: r.notes, contact_name: r.contact_name, can_cancel: ["new", "quoted"].includes(r.status) && r.assignee_status !== "accepted" };
+  }
+  async function myReq(req, res) {
+    const r = await db.one("SELECT * FROM service_requests WHERE id = $1 AND client_account_id = $2", [Number(req.params.id) || 0, req.client.account_id]);
+    if (!r) { res.status(404).json({ error: "Request not found." }); return null; }
+    return r;
+  }
+  app.get("/api/client/request-types", requireClient, loadClient, (req, res) => res.json({ types: publicCatalog() }));
+  app.get("/api/client/requests", requireClient, loadClient, async (req, res) => {
+    const rows = await db.all(`SELECT r.*, (SELECT COUNT(*) FROM request_attempts a WHERE a.request_id = r.id)::int AS attempt_count,
+        (SELECT result FROM request_attempts a WHERE a.request_id = r.id ORDER BY a.at DESC LIMIT 1) AS last_result
+      FROM service_requests r WHERE r.client_account_id = $1 ORDER BY r.created_at DESC LIMIT 300`, [req.client.account_id]);
+    res.json({ requests: rows.map((r) => ({ ...clientView(r), attempt_count: r.attempt_count, last_result: r.last_result ? RESULTS[r.last_result] : null })) });
+  });
+  app.get("/api/client/requests/:id", requireClient, loadClient, async (req, res) => {
+    const r = await myReq(req, res); if (!r) return;
+    const t = TYPES[r.type] || { fields: [] };
+    const [attempts, docs, events] = await Promise.all([
+      db.all("SELECT at, result, served_to, description FROM request_attempts WHERE request_id = $1 ORDER BY at", [r.id]),
+      db.all("SELECT id, kind, filename, uploaded_by, created_at FROM request_documents WHERE request_id = $1 ORDER BY id", [r.id]),
+      db.all("SELECT at, text FROM request_events WHERE request_id = $1 ORDER BY id", [r.id]),
+    ]);
+    const CLIENT_EVT = /^(Requested|Status: |Accepted by|Completed by|Customer uploaded|Uploaded papers|Billed on invoice)/;
+    res.json({
+      request: clientView(r),
+      details: t.fields.filter((f) => (r.details || {})[f.key]).map((f) => ({ label: f.label, value: r.details[f.key] })),
+      attempts: attempts.map((a) => ({ ...a, result_label: RESULTS[a.result] || a.result })),
+      documents: docs.filter((d) => clientDocVisible(r, d)).map((d) => ({ ...d, label: d.kind === "papers" ? "Papers" : d.kind === "proof" ? (r.type === "process_serve" ? "Affidavit / proof" : "Proof") : "Other" })),
+      events: events.filter((e) => CLIENT_EVT.test(e.text)).map((e) => ({ at: e.at, text: e.text.replace(/^Accepted by .*/, "Assigned to our team").replace(/^Completed by .*/, "Completed").replace(/^Customer uploaded /, "Uploaded ").replace(/^Status: \w+ → /, "Status: ") })),
+      can_upload: ["new", "quoted", "in_progress"].includes(r.status),
+    });
+  });
+  app.post("/api/client/requests", requireClient, loadClient, rateLimit(30, 10 * 60000), async (req, res) => {
+    const a = await db.one("SELECT company, phone FROM client_accounts WHERE id = $1", [req.client.account_id]);
+    const c = { name: req.client.name, email: req.client.email, phone: str(req.body.contactPhone, 40) || a.phone || "", company: a.company };
+    try {
+      const row = await createRequest(req.body, c, { accountId: req.client.account_id, userId: req.client.id, actor: "client" });
+      res.status(201).json({ request: clientView(row) });
+    } catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message, fields: e.fields }); }
+  });
+  app.post("/api/client/requests/:id/documents", requireClient, loadClient, raw, async (req, res) => {
+    const r = await myReq(req, res); if (!r) return;
+    if (!OPEN.includes(r.status)) return res.status(400).json({ error: "This request is closed. Contact the desk to add documents." });
+    try {
+      const doc = await storage.saveRequestFile({ requestId: r.id, kind: "papers", filename: str(req.query.filename, 200), contentType: (req.get("Content-Type") || "").split(";")[0], buffer: req.body, by: "customer", byName: req.client.name });
+      await logReq(r.id, "client", `Customer uploaded ${doc.filename}`);
+      if (r.assignee_id && r.assignee_status === "accepted") {
+        const n = await db.one("SELECT name, email FROM notaries WHERE id = $1", [r.assignee_id]);
+        if (n && n.email) mail.send({ to: n.email, subject: `New papers for ${r.ref}`, text: `Hi ${n.name},\n\nThe client added ${doc.filename} to ${r.ref}. Open your portal to download it.` });
+      }
+      mail.deskNotice(`Papers uploaded for ${r.ref}`, `${req.client.name} (${req.client.company}) uploaded ${doc.filename} to ${r.ref}.`);
+      res.status(201).json({ document: { id: doc.id, filename: doc.filename } });
+    } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : "Upload failed. Try again." }); }
+  });
+  app.get("/api/client/request-documents/:id", requireClient, loadClient, async (req, res) => {
+    const doc = await db.one(`SELECT d.id, d.kind, d.filename, d.content_type, d.storage, d.path, r.status FROM request_documents d JOIN service_requests r ON r.id = d.request_id
+      WHERE d.id = $1 AND r.client_account_id = $2`, [Number(req.params.id) || 0, req.client.account_id]);
+    if (!doc || !clientDocVisible(doc, doc)) return res.status(404).send("Not found");
+    await sendDoc(res, doc);
+  });
+  app.post("/api/client/requests/:id/cancel", requireClient, loadClient, async (req, res) => {
+    const r = await myReq(req, res); if (!r) return;
+    if (!clientView(r).can_cancel) return res.status(400).json({ error: "Work has started on this request. Call the desk to cancel." });
+    await db.run("UPDATE service_requests SET status = 'canceled', updated_at = now() WHERE id = $1", [r.id]);
+    await logReq(r.id, "client", `Status: ${r.status} → canceled (by ${req.client.name})`);
+    if (r.assignee_id) {
+      const n = await db.one("SELECT name, email FROM notaries WHERE id = $1", [r.assignee_id]);
+      if (n && n.email) mail.send({ to: n.email, subject: `Canceled · ${r.ref}`, text: `Hi ${n.name},\n\n${r.ref} was canceled by the client. No further work is needed.` });
+    }
+    mail.deskNotice(`Client canceled ${r.ref}`, `${req.client.name} (${req.client.company}) canceled ${r.ref}.`);
+    res.json({ ok: true });
+  });
+}
+
+// Email the customer each time an attempt is logged (process serving and inspections), so they never have to ask.
+async function notifyAttempt(requestId, a) {
+  const r = await db.one("SELECT * FROM service_requests WHERE id = $1", [requestId]);
+  if (!r || !r.notify_attempts || !r.contact_email || !["process_serve", "inspection"].includes(r.type)) return;
+  const settings = await getSettings();
+  const t = TYPES[r.type] || { label: r.type };
+  const d = r.details || {};
+  const who = d.serve_name || d.property || "";
+  const at = new Date(a.at).toLocaleString("en-US", { timeZone: settings.business.timezone, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const served = a.result === "served";
+  const line = served ? `Served${a.served_to ? `: ${a.served_to}` : ""} on ${at}.` : `Attempt on ${at}: ${RESULTS[a.result] || a.result}.`;
+  const next = served ? (r.type === "process_serve" ? "The signed affidavit of service will follow." : "") : "We'll keep trying at different times of day and update you after each attempt.";
+  mail.send({ to: r.contact_email, subject: `${served ? "Served" : "Attempt logged"} · ${r.ref}${r.client_ref ? ` · File ${r.client_ref}` : ""}${who ? ` · ${who}` : ""}`,
+    text: `Hi ${r.contact_name},\n\n${t.label} ${r.ref}${who ? ` (${who})` : ""}\n${line}${a.description ? `\nNotes: ${a.description}` : ""}\n\n${next}${r.client_account_id ? `\n\nSee every attempt in your client portal: ${mail.BASE}/client/#request-${r.id}` : ""}\n\n${settings.business.name} · ${settings.business.phone}` });
 }
 
 async function addAttempt(requestId, body, byName) {
@@ -353,6 +478,7 @@ async function addAttempt(requestId, body, byName) {
     [requestId, at.toISOString(), result, servedTo || null, str(body.description, 1000) || null, byName]);
   await logReq(requestId, byName === "Desk" ? "desk" : "team", `Attempt: ${RESULTS[result]}${servedTo ? ` · ${servedTo}` : ""} (${byName})`);
   if (result === "served") mail.deskNotice(`Served: request #${requestId}`, `${byName} logged a successful serve${servedTo ? ` on ${servedTo}` : ""}.`);
+  notifyAttempt(requestId, row).catch((e) => console.error("Attempt email failed:", e.message));
   return row;
 }
 

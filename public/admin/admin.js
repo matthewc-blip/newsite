@@ -500,7 +500,7 @@
   async function loadRequests() {
     const { requests } = await api("/api/admin/requests?status=" + encodeURIComponent(reqView));
     $("#reqRows").innerHTML = requests.length ? requests.map((r) => `<tr data-req="${r.id}" style="cursor:pointer">
-      <td><b>${esc(r.ref)}</b><br><small style="color:var(--muted)">${esc(full(r.created_at).replace(/, \d{4}.*/, ""))}</small></td>
+      <td><b>${esc(r.ref)}</b><br><small style="color:var(--muted)">${esc(full(r.created_at).replace(/, \d{4}.*/, ""))}${r.client_ref ? " · File " + esc(r.client_ref) : ""}</small></td>
       <td>${esc(r.type_label)}</td><td>${esc(r.company || r.contact_name)}<br><small style="color:var(--muted)">${esc(r.contact_email)}</small></td>
       <td>${esc(r.due_date || "—")}</td><td><span class="pill ${(REQ_ST[r.status] || [])[0]}">${(REQ_ST[r.status] || [])[1] || esc(r.status)}</span></td>
       <td>${r.assignee_name ? `${esc(r.assignee_name)} <small style="color:var(--muted)">${ASG_ST[r.assignee_status] || ""}</small>` : r.roles.length ? '<span style="color:var(--muted)">—</span>' : '<small style="color:var(--muted)">Desk / partner</small>'}</td>
@@ -520,7 +520,9 @@
       <div class="dsec"><h4>Status</h4><div class="status-btns">${Object.entries(REQ_ST).map(([k, [, l]]) => `<button type="button" aria-pressed="${r.status === k}" data-rst="${k}">${l}</button>`).join("")}</div>
         <label class="agree" style="margin-top:8px"><input type="checkbox" id="rNotify" checked> Email the client about quoted, completed or canceled</label></div>
       <div class="dsec"><h4>Request</h4>${kv([...det, ["Needed by", r.due_date], ["Notes", r.notes]])}</div>
-      <div class="dsec"><h4>Client</h4>${kv([["Name", r.contact_name], ["Company", r.company], ["Phone", r.contact_phone], ["Email", r.contact_email]])}</div>
+      <div class="dsec"><h4>Client</h4>${kv([["Name", r.contact_name], ["Company", r.company], ["Phone", r.contact_phone], ["Email", r.contact_email], ["Account", r.client_account_id ? "Client portal account" : ""]])}
+        <div class="inline" style="margin-top:8px"><input id="rClientRef" placeholder="Client file / matter #" value="${esc(r.client_ref || "")}" aria-label="Client file or matter number"><button class="btn btn-ghost btn-sm" id="rRefSave" type="button">Save</button></div>
+        ${r.type === "process_serve" || r.type === "inspection" ? `<label class="agree" style="margin-top:8px"><input type="checkbox" id="rNotifyAtt" ${r.notify_attempts !== 0 ? "checked" : ""}> Email the client each time an attempt is logged</label>` : ""}</div>
       <div class="dsec"><h4>Price &amp; costs</h4>
         <div class="inline"><input id="rFee" type="number" min="0" step="0.01" placeholder="Client fee $" value="${r.fee ?? ""}" ${r.invoice_id ? "disabled" : ""}>
           <input id="rVendor" type="number" min="0" step="0.01" placeholder="Partner cost $" value="${r.vendor_cost ?? ""}" title="Recording fees, translator, shredding company…">
@@ -535,7 +537,7 @@
           : `<p style="font-size:.86rem;color:var(--muted)">No one on the team can take this yet. Approve ${r.type === "process_serve" ? "process server" : "team"} applications to add them.</p>`) : ""}</div>`
         : `<div class="dsec"><h4>Handled by</h4><p style="font-size:.9rem;color:var(--ink-2)">The desk or a partner. Track the partner's charge as the partner cost so the margin stays accurate.</p></div>`}
       <div class="dsec"><h4>Documents</h4>
-        ${d.documents.length ? `<ul class="log" style="margin-bottom:8px">${d.documents.map((x) => `<li style="grid-template-columns:1fr auto auto"><a href="/api/admin/request-documents/${x.id}" target="_blank" rel="noopener">${esc(x.filename)}</a><span class="pill p-info">${x.kind === "papers" ? "To serve" : x.kind === "proof" ? "Proof" : "Other"}</span><button class="linkbtn" data-rdel="${x.id}">Delete</button></li>`).join("")}</ul>` : ""}
+        ${d.documents.length ? `<ul class="log" style="margin-bottom:8px">${d.documents.map((x) => `<li style="grid-template-columns:1fr auto auto"><a href="/api/admin/request-documents/${x.id}" target="_blank" rel="noopener">${esc(x.filename)}</a><span class="pill p-info">${x.kind === "papers" ? (x.uploaded_by === "customer" ? "From client" : "To serve") : x.kind === "proof" ? "Proof" : "Other"}</span><button class="linkbtn" data-rdel="${x.id}">Delete</button></li>`).join("")}</ul>` : ""}
         <div class="inline"><select id="rDocKind"><option value="papers">${r.type === "process_serve" ? "Papers to serve" : "Documents"}</option><option value="proof">Proof / affidavit</option><option value="other">Other</option></select>
           <label class="btn btn-ghost btn-sm" style="cursor:pointer">Upload<input type="file" id="rDocFile" accept="application/pdf,image/*" multiple hidden></label></div></div>
       ${r.type === "process_serve" || d.attempts.length ? `<div class="dsec"><h4>Attempts</h4>
@@ -559,6 +561,8 @@
     if ($("#rAssign")) $("#rAssign").onclick = () => run((ov) => api(`/api/admin/requests/${id}/assign`, { method: "POST", body: { assignee_id: $("#rWho").value, assignee_fee: $("#rPay").value, override_margin: ov } }), "Request sent. They'll get an email to accept or decline.", true);
     if ($("#rUnassign")) $("#rUnassign").onclick = () => run(() => api(`/api/admin/requests/${id}/assign`, { method: "DELETE" }), "Removed.");
     if ($("#rInvoice")) $("#rInvoice").onclick = () => run(() => api(`/api/admin/requests/${id}/invoice`, { method: "POST", body: {} }), "Invoice created and sent.");
+    $("#rRefSave").onclick = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { client_ref: $("#rClientRef").value } }), "File number saved.");
+    if ($("#rNotifyAtt")) $("#rNotifyAtt").onchange = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { notify_attempts: $("#rNotifyAtt").checked } }), $("#rNotifyAtt").checked ? "The client will get attempt emails." : "Attempt emails turned off.");
     $("#rNotesSave").onclick = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { internal_notes: $("#rNotes").value } }), "Notes saved.");
     if ($("#raAdd")) $("#raAdd").onclick = () => run(() => api(`/api/admin/requests/${id}/attempts`, { method: "POST", body: { result: $("#raRes").value, at: $("#raAt").value ? new Date($("#raAt").value).toISOString() : "", servedTo: $("#raTo").value, description: $("#raDesc").value } }), "Attempt logged.");
     $("#rDocFile").onchange = async () => {

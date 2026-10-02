@@ -375,3 +375,13 @@ alter table service_requests enable row level security;
 alter table request_events enable row level security;
 alter table request_attempts enable row level security;
 alter table request_documents enable row level security;
+
+-- ===== Law firm features (added in v11; safe to re-run) =====
+-- client's own file / matter number, who at the client account placed it, one-time upload link for the public form,
+-- and whether the customer gets an email for each logged attempt
+alter table service_requests add column if not exists client_ref text;
+alter table service_requests add column if not exists client_user_id integer references client_users(id) on delete set null;
+alter table service_requests add column if not exists upload_token_hash text;
+alter table service_requests add column if not exists upload_token_expires timestamptz;
+alter table service_requests add column if not exists notify_attempts integer default 1;
+create index if not exists idx_service_requests_client on service_requests(client_account_id);

@@ -43,11 +43,13 @@
   /* ---------- tabs ---------- */
   function showTab(t) {
     tab = t;
-    $$("#tabs button[data-tab]").forEach((b) => (b.dataset.tab === t || (t === "detail" && b.dataset.tab === "orders") ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+    $$("#tabs button[data-tab]").forEach((b) => (b.dataset.tab === t || (t === "detail" && b.dataset.tab === "orders") || ((t === "reqdetail" || t === "newreq") && b.dataset.tab === "requests") ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
     $$("section[data-tab]").forEach((s) => (s.hidden = s.dataset.tab !== t));
     if (t === "orders") { history.replaceState(null, "", "/client/"); loadOrders(); }
     if (t === "new") prepNew();
     if (t === "invoices") loadInvoices();
+    if (t === "requests") { history.replaceState(null, "", "/client/#requests"); loadRequests(); }
+    if (t === "newreq") prepNewReq();
     scrollTo(0, 0);
   }
   $$("#tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
@@ -97,8 +99,8 @@
     $("#dCancelBox").hidden = !o.can_cancel;
     msg($("#dMsg"), ""); msg($("#dCancelMsg"), "");
   }
-  function showTabNoLoad(t) {
-    $$("#tabs button[data-tab]").forEach((b) => (b.dataset.tab === "orders" ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+  function showTabNoLoad(t, parent = "orders") {
+    $$("#tabs button[data-tab]").forEach((b) => (b.dataset.tab === parent ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
     $$("section[data-tab]").forEach((s) => (s.hidden = s.dataset.tab !== t));
     scrollTo(0, 0);
   }
@@ -191,6 +193,103 @@
     } finally { btn.disabled = false; }
   });
 
+  /* ---------- service requests ---------- */
+  const RST = { new: ["Received", "p-info"], quoted: ["Quoted", "p-info"], in_progress: ["In progress", "p-ok"], completed: ["Completed", "p-ok"], canceled: ["Canceled", "p-warn"] };
+  let reqs = [], rFilter = "open", curReq = null, reqTypes = null;
+  const reqOpen = (r) => ["new", "quoted", "in_progress"].includes(r.status);
+  $$("#rFilter button").forEach((b) => b.addEventListener("click", () => { rFilter = b.dataset.f; $$("#rFilter button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderReqs(); }));
+  $("#rq").addEventListener("input", renderReqs);
+  async function loadRequests() { reqs = (await api("/api/client/requests")).requests; renderReqs(); }
+  const day = (iso) => iso ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(iso.length === 10 ? iso + "T12:00:00" : iso)) : "";
+  function renderReqs() {
+    const q = $("#rq").value.trim().toLowerCase();
+    let list = reqs.filter((r) => (rFilter === "all" ? true : rFilter === "open" ? reqOpen(r) : !reqOpen(r)));
+    if (q) list = list.filter((r) => [r.ref, r.client_ref, r.summary, r.type_label].join(" ").toLowerCase().includes(q));
+    $("#reqList").innerHTML = list.length ? list.map((r) => `<button class="orow" data-rid="${r.id}">
+        <span class="when"><b>${esc(day(r.created_at))}</b><small>${r.due_date ? "Due " + esc(day(r.due_date)) : "No due date"}</small></span>
+        <span><b>${esc(r.summary || r.type_label)}</b><small>${esc(r.ref)}${r.client_ref ? " · File " + esc(r.client_ref) : ""} · ${esc(r.type_label)}</small></span>
+        <span class="hide-sm"><b>${r.attempt_count ? r.attempt_count + " attempt" + (r.attempt_count > 1 ? "s" : "") : "—"}</b><small>${r.last_result ? "Last: " + esc(r.last_result) : ""}</small></span>
+        <span class="hide-sm"><b>${r.fee != null ? "$" + Number(r.fee).toFixed(2) : "Quote pending"}</b></span>
+        <span class="pills">${pill(RST[r.status] || [r.status, "p-info"])}</span></button>`).join("")
+      : `<div class="empty">${rFilter === "open" ? "No open requests." : "Nothing here yet."} <button class="linkbtn" style="color:var(--brass-ink)" data-go="newreq">Send a request</button></div>`;
+    $$("[data-rid]").forEach((b) => b.addEventListener("click", () => openReq(Number(b.dataset.rid))));
+  }
+  async function openReq(id) {
+    const d = await api("/api/client/requests/" + id);
+    const r = d.request; curReq = r;
+    history.replaceState(null, "", "/client/#request-" + id);
+    showTabNoLoad("reqdetail", "requests");
+    $("#rTitle").textContent = `${r.summary || r.type_label} · ${r.type_label}`;
+    $("#rStatus").innerHTML = pill(RST[r.status] || [r.status, "p-info"]);
+    const rows = [["Request", r.ref], ["Your file #", r.client_ref], ["Service", r.type_label], ...d.details.map((x) => [x.label, x.value]), ["Needed by", r.due_date ? day(r.due_date) : ""], ["Instructions", r.notes], ["Price", r.fee != null ? "$" + Number(r.fee).toFixed(2) : "The desk will confirm the price"]];
+    $("#rKv").innerHTML = rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+    $("#rFiles").innerHTML = d.documents.length ? d.documents.map((x) => `<div class="file"><span><a href="/api/client/request-documents/${x.id}" target="_blank" rel="noopener">${esc(x.filename)}</a> <small style="color:var(--muted)">${esc(x.label)}</small></span></div>`).join("")
+      : '<p style="color:var(--ink-2);font-size:.92rem">No documents yet.</p>';
+    $("#rDrop").hidden = !d.can_upload;
+    const showAtt = r.type === "process_serve" || r.type === "inspection" || d.attempts.length;
+    $("#rAttBox").hidden = !showAtt;
+    $("#rAttempts").innerHTML = d.attempts.length ? d.attempts.map((a) => `<li><time>${esc(when(a.at).replace(/, \d{4}/, ""))}</time><span><b>${esc(a.result_label)}</b>${a.served_to ? " · " + esc(a.served_to) : ""}${a.description ? `<br><span style="color:var(--ink-2)">${esc(a.description)}</span>` : ""}</span></li>`).join("")
+      : '<li><span style="color:var(--ink-2)">No attempts yet. You\'ll get an email as soon as one is logged.</span></li>';
+    $("#rTimeline").innerHTML = d.events.map((e) => `<li><time>${esc(when(e.at).replace(/, \d{4}/, ""))}</time><span>${esc(e.text)}</span></li>`).join("");
+    $("#rCancelBox").hidden = !r.can_cancel;
+    msg($("#rMsg"), ""); msg($("#rCancelMsg"), "");
+  }
+  async function uploadReqFiles(files, id, m) {
+    for (const f of files) {
+      if (f.size > 60 * 1024 * 1024) { msg(m, `${f.name} is over 60 MB.`, "err"); return false; }
+      msg(m, `Uploading ${f.name}…`, "ok");
+      try { await api(`/api/client/requests/${id}/documents?filename=${encodeURIComponent(f.name)}`, { method: "POST", raw: f, type: f.type || "application/octet-stream" }); }
+      catch (e) { msg(m, `${f.name}: ${e.message}`, "err"); return false; }
+    }
+    return true;
+  }
+  $("#rUpload").addEventListener("change", async (e) => { if (await uploadReqFiles(e.target.files, curReq.id, $("#rMsg"))) { await openReq(curReq.id); msg($("#rMsg"), "Uploaded. The desk has been notified.", "ok"); } e.target.value = ""; });
+  const rDrop = $("#rDrop");
+  ["dragenter", "dragover"].forEach((ev) => rDrop.addEventListener(ev, (e) => { e.preventDefault(); rDrop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => rDrop.addEventListener(ev, (e) => { e.preventDefault(); rDrop.classList.remove("over"); }));
+  rDrop.addEventListener("drop", async (e) => { if (await uploadReqFiles(e.dataTransfer.files, curReq.id, $("#rMsg"))) { await openReq(curReq.id); msg($("#rMsg"), "Uploaded. The desk has been notified.", "ok"); } });
+  $("#rCancel").addEventListener("click", async () => {
+    const b = $("#rCancel");
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Click again to cancel this request"; return; }
+    try { await api(`/api/client/requests/${curReq.id}/cancel`, { method: "POST", body: {} }); b.dataset.confirm = ""; b.textContent = "Cancel Request"; openReq(curReq.id); }
+    catch (e) { msg($("#rCancelMsg"), e.message, "err"); }
+  });
+
+  async function prepNewReq() {
+    if (!reqTypes) reqTypes = (await api("/api/client/request-types")).types;
+    const sel = $("#q-type");
+    if (!sel.options.length) {
+      sel.innerHTML = Object.entries(reqTypes).map(([k, t]) => `<option value="${k}">${esc(t.label)}</option>`).join("");
+      sel.addEventListener("change", renderReqFields);
+    }
+    renderReqFields();
+  }
+  function renderReqFields() {
+    const t = reqTypes[$("#q-type").value];
+    $("#q-fields").innerHTML = t.fields.map((f) => {
+      const id = "qf-" + f.key, lab = `<label for="${id}">${esc(f.label)}${f.required ? "" : ' <span class="opt">(optional)</span>'}</label>`;
+      const ctl = f.options ? `<select id="${id}" data-qk="${f.key}">${f.options.map((o) => `<option>${esc(o)}</option>`).join("")}</select>`
+        : f.textarea ? `<textarea id="${id}" data-qk="${f.key}" rows="2"></textarea>` : `<input id="${id}" data-qk="${f.key}">`;
+      return `<div class="field${f.wide || f.textarea ? " full" : ""}">${lab}${ctl}</div>`;
+    }).join("");
+  }
+  $("#reqForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const m = $("#qMsg"), btn = e.target.querySelector("button[type=submit]");
+    const details = {}; $$("[data-qk]").forEach((el) => (details[el.dataset.qk] = el.value.trim()));
+    btn.disabled = true; msg(m, "Sending…", "ok");
+    try {
+      const { request } = await api("/api/client/requests", { method: "POST", body: { type: $("#q-type").value, details, clientRef: $("#q-ref").value.trim(), dueDate: $("#q-due").value, contactPhone: $("#q-phone").value.trim(), notes: $("#q-notes").value.trim() } });
+      const files = $("#q-files").files;
+      if (files.length) await uploadReqFiles(files, request.id, m);
+      e.target.reset(); renderReqFields();
+      await openReq(request.id);
+      msg($("#rMsg"), `Request ${request.ref} sent. The desk will confirm the price shortly.`, "ok");
+    } catch (err) {
+      msg(m, err.fields ? Object.values(err.fields).join(" ") : err.message, "err");
+    } finally { btn.disabled = false; }
+  });
+
   /* ---------- invoices ---------- */
   async function loadInvoices() {
     const { invoices } = await api("/api/client/invoices");
@@ -211,12 +310,17 @@
     $("#aDesk").textContent = `${me.business.phone} · ${me.business.email}`;
   }
 
-  window.addEventListener("hashchange", () => { const m = location.hash.match(/^#order-(\d+)$/); if (m && me) openOrder(Number(m[1])).catch(() => {}); });
+  window.addEventListener("hashchange", () => {
+    const m = location.hash.match(/^#order-(\d+)$/); if (m && me) openOrder(Number(m[1])).catch(() => {});
+    const r = location.hash.match(/^#request-(\d+)$/); if (r && me) openReq(Number(r[1])).catch(() => {});
+  });
   // keep statuses fresh while the page is open
   setInterval(() => {
     if (!me || document.hidden) return;
     if (tab === "orders" && !$("section[data-tab=orders]").hidden) loadOrders().catch(() => {});
     if (current && !$("section[data-tab=detail]").hidden && !$("#dUpload").files.length) openOrder(current.id).catch(() => {});
+    if (tab === "requests" && !$("section[data-tab=requests]").hidden) loadRequests().catch(() => {});
+    if (curReq && !$("section[data-tab=reqdetail]").hidden) openReq(curReq.id).catch(() => {});
   }, 60000);
 
   /* ---------- start ---------- */
@@ -231,8 +335,10 @@
     $("#signin").hidden = true; $("#tabs").hidden = false;
     $("#who").textContent = `${me.account.company} · ${me.user.name}`;
     renderAccount();
-    const m = location.hash.match(/^#order-(\d+)$/);
+    const m = location.hash.match(/^#order-(\d+)$/), rq = location.hash.match(/^#request-(\d+)$/);
     if (m) openOrder(Number(m[1])).catch(() => showTab("orders"));
+    else if (rq) openReq(Number(rq[1])).catch(() => showTab("requests"));
+    else if (location.hash === "#requests") showTab("requests");
     else showTab("orders");
   })();
 })();

@@ -259,7 +259,7 @@ const SERVICES = [
     faqs: [
       ["Who can serve papers in New Jersey?", "New Jersey court rules allow service by the sheriff or by a competent adult who isn't a party to the case. Our servers are background-checked adults who aren't involved in your matter."],
       ["What if the person can't be found?", "We make repeat attempts at different times and log each one. If service isn't possible, you get the attempt log and an affidavit of non-service for your next step."],
-      ["How do I send the papers?", "Submit the request here and the desk will send you a secure way to upload the papers, or we can pick them up."],
+      ["How do I send the papers?", "Attach them to the request form above (PDF or photos). Firms with an account can upload them in the client portal. We can also pick up originals."],
     ] },
   { slug: "document-recording", requestType: "recording", code: "RECORDING", name: "Document Recording", short: "Document recording",
     title: "Document Recording Service in New Jersey | Deeds & Mortgages",

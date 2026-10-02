@@ -112,7 +112,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
     <div><h4>New Jersey</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
     <div><h4>Desk</h4><ul><li class="mono"><a href="${telHref(biz.phone)}">${phone}</a></li><li class="mono">${email}</li><li>Mon–Fri 7AM–9PM ET</li><li>Sat 9AM–5PM ET</li><li><a href="/notary/#order" style="color:var(--brass)">Order a signing →</a></li></ul></div>
   </div>
-  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/guides">Guides</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/law-firms">For law firms</a> · <a href="/notary/guides">Guides</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
   <div class="legal">
     <p>MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
     <p>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</p>
@@ -152,18 +152,20 @@ function requestForm(s) {
       <fieldset><legend>${esc(t.label)} request</legend>${t.fields.map(field).join("")}
         <div class="field"><label for="rq-due">Needed by <span class="opt">(optional)</span></label><input id="rq-due" type="date"></div>
         <div class="field full"><label for="rq-notes">Anything else? <span class="opt">(optional)</span></label><textarea id="rq-notes" rows="2"></textarea></div>
+        <div class="field full"><label for="rq-files">Attach documents <span class="opt">(optional, PDF or photos, up to 10 files)</span></label><input id="rq-files" type="file" accept="application/pdf,image/*" multiple></div>
       </fieldset>
       <fieldset><legend>Your details</legend>
         <div class="field"><label for="rq-name">Name</label><input id="rq-name" autocomplete="name"><span class="err" data-err="contactName"></span></div>
         <div class="field"><label for="rq-co">Company <span class="opt">(optional)</span></label><input id="rq-co" autocomplete="organization"></div>
         <div class="field"><label for="rq-email">Email</label><input id="rq-email" type="email" autocomplete="email"><span class="err" data-err="contactEmail"></span></div>
         <div class="field"><label for="rq-phone">Phone</label><input id="rq-phone" type="tel" autocomplete="tel"><span class="err" data-err="contactPhone"></span></div>
+        <div class="field"><label for="rq-ref">Your file or matter number <span class="opt">(optional, shows on the invoice)</span></label><input id="rq-ref"></div>
         <input type="text" id="rq-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
       </fieldset>
       <div class="form-foot"><small>The desk confirms details and price before any work starts, usually within one business day. See our <a href="/privacy">privacy policy</a>.</small><button class="btn btn-primary" type="submit">Send request</button></div>
       <p class="form-msg" id="reqMsg" role="status"></p>
     </form>
-    <aside class="stack"><h3>Prefer to talk?</h3><p>Call the desk and we'll take the request by phone.</p></aside>
+    <aside class="stack"><h3>Prefer to talk?</h3><p>Call the desk and we'll take the request by phone.</p><h3 style="margin-top:12px">Ordering for a firm?</h3><p>A <a href="/notary/law-firms#account">firm account</a> lets your team order, attach papers, follow every attempt and download affidavits in one portal.</p></aside>
   </div></section>
   <script>
   document.getElementById("reqForm").addEventListener("submit", async function (e) {
@@ -174,11 +176,18 @@ function requestForm(s) {
     f.querySelectorAll("[data-err]").forEach(function (el) { el.textContent = ""; });
     b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
     try {
-      var r = await fetch("/api/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: ${JSON.stringify(s.requestType)}, details: details, dueDate: g("rq-due"), notes: g("rq-notes"), contactName: g("rq-name"), company: g("rq-co"), contactEmail: g("rq-email"), contactPhone: g("rq-phone"), website: g("rq-website") }) });
+      var r = await fetch("/api/requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: ${JSON.stringify(s.requestType)}, details: details, dueDate: g("rq-due"), notes: g("rq-notes"), contactName: g("rq-name"), company: g("rq-co"), contactEmail: g("rq-email"), contactPhone: g("rq-phone"), clientRef: g("rq-ref"), website: g("rq-website") }) });
       var d = await r.json().catch(function () { return {}; });
       if (!r.ok) { Object.keys(d.fields || {}).forEach(function (k) { var el = f.querySelector('[data-err="' + k + '"]'); if (el) el.textContent = d.fields[k]; }); throw new Error(d.error || "Couldn't send. Try again or call the desk."); }
       if (window.mccTrack) window.mccTrack("generate_lead", { form: "request_" + ${JSON.stringify(s.requestType)} });
-      f.reset(); m.className = "form-msg ok"; m.textContent = "Request " + d.ref + " received. We emailed you a copy and the desk will follow up within one business day.";
+      var files = Array.prototype.slice.call(document.getElementById("rq-files").files || []).slice(0, 10), failed = [];
+      for (var i = 0; i < files.length; i++) {
+        m.className = "form-msg"; m.textContent = "Uploading " + files[i].name + "…";
+        if (files[i].size > 60 * 1024 * 1024) { failed.push(files[i].name + " (over 60 MB)"); continue; }
+        var u = await fetch("/api/requests/" + encodeURIComponent(d.ref) + "/papers?token=" + encodeURIComponent(d.uploadToken) + "&filename=" + encodeURIComponent(files[i].name), { method: "POST", headers: { "Content-Type": files[i].type || "application/octet-stream" }, body: files[i] });
+        if (!u.ok) failed.push(files[i].name);
+      }
+      f.reset(); m.className = "form-msg ok"; m.textContent = "Request " + d.ref + " received" + (files.length ? " with " + (files.length - failed.length) + " document" + (files.length - failed.length === 1 ? "" : "s") : "") + ". We emailed you a copy and the desk will follow up within one business day." + (failed.length ? " These didn't upload, so please email them to the desk: " + failed.join(", ") + "." : "");
     } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
     b.disabled = false;
   });
@@ -347,7 +356,7 @@ function register(app) {
 
   app.get("/sitemap.xml", (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}

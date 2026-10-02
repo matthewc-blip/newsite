@@ -15,6 +15,9 @@
   .c-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
   .c-top .wrap{display:flex;align-items:center;gap:14px;padding-block:10px;flex-wrap:wrap}
   .c-tabs{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap;align-items:center}
+  .c-top .brand{min-width:0;max-width:100%}
+  .c-top .brand > span:last-child{min-width:0}
+  #who{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(560px,72vw)}
   .c-tabs button{background:none;border:0;font:500 .92rem var(--f-body);color:var(--ink-2);padding:9px 12px;border-radius:4px;cursor:pointer}
   .c-tabs button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 -2px 0 var(--brass)}
   main.c{padding-block:26px 64px}
@@ -68,6 +71,7 @@
   <nav class="c-tabs" id="tabs" hidden>
     <button data-tab="orders" aria-current="page">Orders</button>
     <button data-tab="new">New Order</button>
+    <button data-tab="requests">Serves &amp; Legal</button>
     <button data-tab="invoices">Invoices</button>
     <button data-tab="account">Account</button>
     <button id="logout">Sign out</button>
@@ -83,7 +87,7 @@
       <div class="field"><label for="l-email">Work email</label><input id="l-email" type="email" autocomplete="email" placeholder="you@company.com"></div>
       <button class="btn btn-primary" type="submit">Email Me a Link</button>
       <p class="msg" id="loginMsg" role="status"></p>
-      <p style="font-size:.85rem;color:var(--muted)">Need an account? <a href="/notary/#contact">Contact the desk</a>.</p>
+      <p style="font-size:.85rem;color:var(--muted)">Need an account? <a href="/notary/law-firms#account">Request a firm account</a> or <a href="/notary/#contact">contact the desk</a>.</p>
     </form>
   </section>
 
@@ -148,6 +152,58 @@
         <div class="field full"><label for="n-pkg">Closing package <span class="opt">(optional now, you can add it later)</span></label><input id="n-pkg" type="file" accept="application/pdf,image/*" multiple></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px"><button class="btn btn-primary" type="submit">Place Order</button><p class="msg" id="nMsg"></p></div>
+    </form>
+  </section>
+
+  <!-- SERVICE REQUESTS (process serving, recording, apostilles…) -->
+  <section class="c-sec" data-tab="requests" hidden>
+    <div class="c-head"><h2>Serves &amp; legal requests</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div class="seg" id="rFilter"><button data-f="open" aria-pressed="true">Open</button><button data-f="done">Completed</button><button data-f="all">All</button></div>
+        <input id="rq" type="search" placeholder="Search file #, name, ref" aria-label="Search requests" style="width:220px;padding:8px 10px">
+        <button class="btn btn-primary btn-sm" data-go="newreq">New Request</button>
+      </div></div>
+    <p style="color:var(--ink-2);font-size:.92rem;margin:0">Process serving, document recording, apostilles, translation, lien waivers, inspections and estate services. You get an email each time a serve attempt is logged.</p>
+    <div class="orders" id="reqList"></div>
+  </section>
+
+  <!-- REQUEST DETAIL -->
+  <section class="c-sec" data-tab="reqdetail" hidden>
+    <div class="c-head"><div><button class="linkbtn" style="color:var(--brass-ink);padding:0" data-go="requests">← All requests</button><h2 id="rTitle" style="margin-top:6px"></h2></div><span id="rStatus"></span></div>
+    <div class="detail-grid">
+      <div class="c-sec">
+        <div class="card"><p class="sub">Request</p><dl class="kvs" id="rKv"></dl></div>
+        <div class="card"><p class="sub">Documents</p>
+          <div class="files" id="rFiles"></div>
+          <div class="drop" id="rDrop" style="margin-top:12px">Drag the papers here, or <label style="color:var(--brass-ink);font-weight:600;cursor:pointer">choose files<input type="file" id="rUpload" accept="application/pdf,image/*" multiple hidden></label>. PDF or photos, up to 60 MB each.</div>
+          <p class="msg" id="rMsg"></p>
+        </div>
+      </div>
+      <div class="c-sec">
+        <div class="card" id="rAttBox"><p class="sub">Attempts</p><ul class="timeline" id="rAttempts"></ul></div>
+        <div class="card"><p class="sub">Progress</p><ul class="timeline" id="rTimeline"></ul></div>
+        <div class="card" id="rCancelBox"><p class="sub">Cancel</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="rCancel" style="border-color:var(--warn);color:var(--warn)">Cancel Request</button></div>
+          <p class="msg" id="rCancelMsg"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEW REQUEST -->
+  <section class="c-sec" data-tab="newreq" hidden>
+    <h2>New request</h2>
+    <form class="card" id="reqForm" novalidate>
+      <div class="grid2">
+        <div class="field"><label for="q-type">Service</label><select id="q-type"></select></div>
+        <div class="field"><label for="q-ref">Your file or matter number <span class="opt">(shows on the invoice)</span></label><input id="q-ref" class="mono" placeholder="2026-0412-SMITH"></div>
+        <div id="q-fields" class="grid2 full" style="gap:14px"></div>
+        <div class="field"><label for="q-due">Needed by <span class="opt">(optional)</span></label><input id="q-due" type="date"></div>
+        <div class="field"><label for="q-phone">Best phone for this request <span class="opt">(optional)</span></label><input id="q-phone" type="tel"></div>
+        <div class="field full"><label for="q-notes">Instructions <span class="opt">(optional)</span></label><textarea id="q-notes" rows="3" placeholder="Gate code, best times, description of the person…"></textarea></div>
+        <div class="field full"><label for="q-files">Papers <span class="opt">(attach now or later)</span></label><input id="q-files" type="file" accept="application/pdf,image/*" multiple></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px"><button class="btn btn-primary" type="submit">Send Request</button><p class="msg" id="qMsg"></p></div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:10px">The desk confirms the price before work starts, usually within one business day.</p>
     </form>
   </section>
 
