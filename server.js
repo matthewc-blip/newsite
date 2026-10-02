@@ -30,6 +30,9 @@ app.disable("x-powered-by");
 const PUBLIC_ORIGIN = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const PUBLIC_HOST = (() => { try { return PUBLIC_ORIGIN ? new URL(PUBLIC_ORIGIN).host : ""; } catch { return ""; } })();
 app.use((req, res, next) => {
+  // Off unless REDIRECT_WWW=1: Render or Cloudflare may already redirect between www and non-www,
+  // and two redirects pointing opposite ways loop forever.
+  if (process.env.REDIRECT_WWW !== "1") return next();
   if (!PUBLIC_HOST || (req.method !== "GET" && req.method !== "HEAD") || req.path.startsWith("/api/")) return next();
   const host = (req.get("host") || "").toLowerCase();
   if (host !== PUBLIC_HOST && (host === "www." + PUBLIC_HOST || "www." + host === PUBLIC_HOST)) return res.redirect(301, PUBLIC_ORIGIN + req.originalUrl);
