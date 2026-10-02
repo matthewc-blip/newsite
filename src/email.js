@@ -145,12 +145,13 @@ async function notarySignIn(n, link, settings) {
 }
 
 async function notaryWelcome(n, link, settings) {
-  const steps = "1. Upload your commission certificate, E&O policy, background check and W-9\n2. Enter your expiration dates\n3. Sign the contractor agreement";
+  const w = n.role === "witness";
+  const steps = w ? "1. Upload your photo ID, background check and W-9\n2. Set your service area\n3. Sign the witness agreement" : "1. Upload your commission certificate, E&O policy, background check and W-9\n2. Enter your expiration dates\n3. Sign the contractor agreement";
   await send({
     to: n.email,
     subject: `Welcome to ${settings.business.name}: finish your onboarding`,
-    text: `Hi ${n.name},\n\nYour application was approved. Finish onboarding in the notary portal so we can start sending you assignments:\n\n${steps}\n\n${link}\n\nThis link expires in 7 days. After that, sign in at ${BASE}/portal/ with this email address.`,
-    html: wrapHtml("You're approved", `Hi ${esc(n.name)}, finish onboarding so we can start sending you assignments:<br><br>1. Upload your commission certificate, E&amp;O policy, background check and W-9<br>2. Enter your expiration dates<br>3. Sign the contractor agreement`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Finish onboarding</a><br><br>This link expires in 7 days. After that, sign in at ${esc(BASE)}/portal/`),
+    text: `Hi ${n.name},\n\nYour application was approved. Finish onboarding in the ${w ? "team" : "notary"} portal so we can start sending you assignments:\n\n${steps}\n\n${link}\n\nThis link expires in 7 days. After that, sign in at ${BASE}/portal/ with this email address.`,
+    html: wrapHtml("You're approved", `Hi ${esc(n.name)}, finish onboarding so we can start sending you assignments:<br><br>${esc(steps).replace(/\n/g, "<br>")}`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Finish onboarding</a><br><br>This link expires in 7 days. After that, sign in at ${esc(BASE)}/portal/`),
   });
 }
 
@@ -183,3 +184,16 @@ module.exports.sendTest = async (to) => {
     return { ok: false, error: e.message + hint };
   }
 };
+
+async function witnessOffer(w, b, link, fee, settings) {
+  const tz = settings.business.timezone;
+  const when = fmt(new Date(b.start_utc), b.customer_tz || tz);
+  const area = b.service === "mobile" ? [b.city, b.state].filter(Boolean).join(", ") : "Remote (video)";
+  await send({
+    to: w.email,
+    subject: `Witness request ${b.ref} · ${when}`,
+    text: `Hi ${w.name},\n\nCan you witness a signing?\n\nWhen: ${when}\nWhere: ${area}\nType: ${b.category}${fee != null ? `\nYour fee: $${Number(fee).toFixed(2)}` : ""}\n\nAccept or decline: ${link}\n\nThe full address and contact details appear after you accept.`,
+    html: wrapHtml("Witness request", `Hi ${esc(w.name)}, can you witness this signing?`, [["When", when], ["Where", area], ["Type", b.category], ...(fee != null ? [["Your fee", `$${Number(fee).toFixed(2)}`]] : [])], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Accept or decline</a>`),
+  });
+}
+module.exports.witnessOffer = witnessOffer;

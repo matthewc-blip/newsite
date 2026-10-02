@@ -278,3 +278,22 @@ alter table review_optouts enable row level security;
 -- ===== Checkout add-ons (added in v8; safe to re-run) =====
 alter table bookings add column if not exists addons jsonb default '[]'::jsonb;
 alter table bookings add column if not exists addons_total double precision default 0;
+
+-- ===== Witnesses (added in v9; safe to re-run) =====
+alter table notaries add column if not exists role text default 'notary';   -- notary | witness
+alter table notary_documents drop constraint if exists notary_documents_kind_check;
+alter table notary_documents add constraint notary_documents_kind_check
+  check (kind in ('commission','eo','background','w9','certification','other','id'));
+create table if not exists booking_witnesses (
+  id integer generated always as identity primary key,
+  booking_id integer not null references bookings(id) on delete cascade,
+  witness_id integer not null references notaries(id) on delete cascade,
+  status text not null default 'offered' check (status in ('offered','accepted','declined','removed')),
+  fee double precision,
+  paid_at timestamptz,
+  responded_at timestamptz,
+  created_at timestamptz default now()
+);
+create unique index if not exists idx_booking_witnesses_pair on booking_witnesses(booking_id, witness_id);
+create index if not exists idx_booking_witnesses_witness on booking_witnesses(witness_id);
+alter table booking_witnesses enable row level security;

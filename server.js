@@ -258,16 +258,18 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   if (req.body.website) return res.status(400).json({ error: "Rejected" });
   const d = req.body || {};
   const data = {
+    role: d.role === "witness" ? "witness" : "notary",
     name: str(d.name, 120), email: str(d.email, 160), phone: str(d.phone, 40), zip: str(d.zip, 10), radius: str(d.radius, 20),
     commissionState: str(d.commissionState, 40), commissionExpires: str(d.commissionExpires, 10), eo: str(d.eo, 20),
-    backgroundDate: str(d.backgroundDate, 10), signings: str(d.signings, 30), languages: str(d.languages, 120),
+    backgroundDate: str(d.backgroundDate, 10), signings: str(d.signings, 30), languages: str(d.languages, 120), availability: str(d.availability, 80),
     nsa: !!d.nsa, ron: !!d.ron, rin: !!d.rin, laser: !!d.laser, reverse: !!d.reverse,
   };
   const fields = {};
   if (!data.name) fields.name = "Enter your name.";
   if (!emailOk(data.email)) fields.email = "Enter a valid email.";
   if (!phoneOk(data.phone)) fields.phone = "Enter a phone number.";
-  if (!data.commissionState) fields.commissionState = "Choose your commission state.";
+  if (data.role === "notary" && !data.commissionState) fields.commissionState = "Choose your commission state.";
+  if (data.role === "witness" && !/^\d{5}$/.test(data.zip)) fields.zip = "Enter your 5-digit home ZIP code.";
   if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });
   await db.run("INSERT INTO applications(data) VALUES($1)", [JSON.stringify(data)]);
   mail.deskNotice(`New notary application: ${data.name}`, JSON.stringify(data, null, 2));
@@ -370,11 +372,49 @@ app.get("/api/admin/stats", requireAdmin, async (req, res) => {
     (SELECT COUNT(*) FROM applications WHERE status = 'new')::int AS "newApplications",
     (SELECT COUNT(*) FROM messages WHERE handled = 0)::int AS "openMessages",
     (SELECT COUNT(*) FROM bookings WHERE notary_status = 'offered' AND status IN ('requested','confirmed','assigned') AND start_utc >= $4)::int AS "openOffers",
-    (SELECT coalesce(sum(notary_fee),0) FROM bookings WHERE status = 'completed' AND notary_paid_at IS NULL)::float AS "unpaidPayouts",
+    ((SELECT coalesce(sum(notary_fee),0) FROM bookings WHERE status = 'completed' AND notary_paid_at IS NULL)
+      + (SELECT coalesce(sum(w.fee),0) FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id WHERE w.status = 'accepted' AND b.status = 'completed' AND w.paid_at IS NULL))::float AS "unpaidPayouts",
     (SELECT COUNT(*) FROM bookings WHERE scanback_status = 'pending')::int AS "scanbacksToReview",
     (SELECT COUNT(*) FROM bookings WHERE notary_status = 'unfilled' AND status IN ('requested','confirmed','assigned') AND start_utc >= $4)::int AS unfilled`, [t0, t1, t7, now]);
   const ns = await notary.notariesForStats();
   res.json({ ...r, credentialIssues: ns });
+});
+
+/* ---------------- admin: witnesses on a booking ---------------- */
+async function witnessCost(bookingId) {
+  return (await db.one("SELECT coalesce(sum(fee),0)::float AS c FROM booking_witnesses WHERE booking_id = $1 AND status IN ('offered','accepted')", [bookingId])).c;
+}
+async function witnessData(bookingId) {
+  const list = await db.all(`SELECT w.id, w.witness_id, w.status, w.fee, w.paid_at, n.name, n.phone, n.email FROM booking_witnesses w JOIN notaries n ON n.id = w.witness_id
+    WHERE w.booking_id = $1 AND w.status <> 'removed' ORDER BY w.id`, [bookingId]);
+  const pool = (await db.all("SELECT * FROM notaries WHERE active = 1 AND role = 'witness' ORDER BY name"));
+  const docs = pool.length ? await db.all("SELECT notary_id, kind FROM notary_documents WHERE notary_id = ANY($1)", [pool.map((n) => n.id)]) : [];
+  const today = dateInTz(new Date(), (await getSettings()).business.timezone);
+  return { list, pool: pool.map((n) => ({ id: n.id, name: n.name, home_zip: n.home_zip, ready: notary.compliance(n, docs, today).ready })) };
+}
+app.post("/api/admin/bookings/:id/witnesses", requireAdmin, async (req, res) => {
+  const settings = await getSettings();
+  const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);
+  if (!b) return res.status(404).json({ error: "Not found" });
+  if (!["requested", "confirmed", "assigned"].includes(b.status)) return res.status(400).json({ error: "This booking is no longer open." });
+  const w = await db.one("SELECT * FROM notaries WHERE id = $1 AND active = 1 AND role = 'witness'", [Number(req.body.witness_id) || 0]);
+  if (!w) return res.status(400).json({ error: "Choose an active witness." });
+  const fee = req.body.fee === "" || req.body.fee == null ? null : Number(req.body.fee);
+  if (fee !== null && !(fee >= 0 && fee <= 1000)) return res.status(400).json({ error: "Witness fee must be between $0 and $1,000." });
+  const mg = margin.check(margin.clientPrice(b), b.notary_fee == null ? null : Number(b.notary_fee) + (await witnessCost(b.id)) + (fee || 0), settings, Number(b.addons_total) || 0);
+  if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message.replace("Pay the notary at most", "Keep notary + witness pay at or under"), code: "margin", margin: mg });
+  const row = await db.one(`INSERT INTO booking_witnesses(booking_id, witness_id, fee, status) VALUES($1,$2,$3,'offered')
+    ON CONFLICT (booking_id, witness_id) DO UPDATE SET status = 'offered', fee = EXCLUDED.fee, responded_at = NULL RETURNING *`, [b.id, w.id, fee]);
+  await logEvent(b.id, "desk", `Witness request sent to ${w.name}${fee != null ? ` at $${fee.toFixed(2)}` : ""}${!mg.ok ? ` (margin override: ${mg.pct}%)` : ""}`);
+  if (w.email) mail.witnessOffer(w, b, await notary.createLoginLink(w.id, 72 * 60, `#job-${b.id}`), fee, settings);
+  res.json({ ok: true, id: row.id });
+});
+app.delete("/api/admin/bookings/:id/witnesses/:wid", requireAdmin, async (req, res) => {
+  const r = await db.one(`UPDATE booking_witnesses w SET status = 'removed' FROM notaries n WHERE w.id = $1 AND w.booking_id = $2 AND n.id = w.witness_id AND w.paid_at IS NULL RETURNING n.name`,
+    [Number(req.params.wid) || 0, Number(req.params.id) || 0]);
+  if (!r) return res.status(404).json({ error: "Not found, or already paid." });
+  await logEvent(Number(req.params.id), "desk", `Witness ${r.name} removed`);
+  res.json({ ok: true });
 });
 
 app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
@@ -384,7 +424,7 @@ app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const { token, ...rest } = row;
   const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url, provider, error FROM invoices WHERE id = $1", [row.invoice_id]) : null;
   const settings = await getSettings();
-  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee, settings, Number(row.addons_total) || 0), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
+  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee == null ? null : Number(row.notary_fee) + (await witnessCost(row.id)), settings, Number(row.addons_total) || 0), witnesses: await witnessData(row.id), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
 });
 
 app.post("/api/admin/bookings", requireAdmin, async (req, res) => {
@@ -406,7 +446,7 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const row = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);
   if (!row) return res.status(404).json({ error: "Not found" });
   // Margin protection: block fee changes that leave less than the minimum margin, unless the desk overrides.
-  const mg = margin.checkPatch(row, req.body, settings);
+  const mg = margin.checkPatch(row, req.body, settings, await witnessCost(row.id));
   if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message, code: "margin", margin: mg });
   if (!mg.ok) await logEvent(row.id, "desk", `Margin override: ${mg.pct}% ($${mg.kept.toFixed(2)}), below the ${mg.min}% minimum`);
   const sets = {}, notes = [];
@@ -509,12 +549,12 @@ app.patch("/api/admin/applications/:id", requireAdmin, async (req, res) => {
     const d = a.data;
     const existing = d.email ? await db.one("SELECT id FROM notaries WHERE lower(email) = lower($1)", [d.email]) : null;
     const nid = existing ? existing.id : (await db.one(
-      `INSERT INTO notaries(name,email,phone,states,ron,rin,notes,commission_expires,eo_amount,background_date,home_zip,travel_miles)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-      [d.name, (d.email || "").toLowerCase() || null, d.phone, STATE_CODES[d.commissionState] || (d.commissionState || "").slice(0, 2).toUpperCase(), d.ron ? 1 : 0, d.rin ? 1 : 0,
-       `From application #${a.id}. ZIP ${d.zip}, radius ${d.radius}, ${d.signings} signings`, /^\d{4}-\d{2}-\d{2}$/.test(d.commissionExpires || "") ? d.commissionExpires : null,
+      `INSERT INTO notaries(name,email,phone,states,ron,rin,notes,commission_expires,eo_amount,background_date,home_zip,travel_miles,role)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+      [d.name, (d.email || "").toLowerCase() || null, d.phone, d.role === "witness" ? "" : STATE_CODES[d.commissionState] || (d.commissionState || "").slice(0, 2).toUpperCase(), d.ron ? 1 : 0, d.rin ? 1 : 0,
+       d.role === "witness" ? `Witness, from application #${a.id}. ZIP ${d.zip}, radius ${d.radius}` : `From application #${a.id}. ZIP ${d.zip}, radius ${d.radius}, ${d.signings} signings`, /^\d{4}-\d{2}-\d{2}$/.test(d.commissionExpires || "") ? d.commissionExpires : null,
        d.eo && d.eo !== "None yet" ? d.eo : null, /^\d{4}-\d{2}-\d{2}$/.test(d.backgroundDate || "") ? d.backgroundDate : null,
-       /^\d{5}$/.test(d.zip || "") ? d.zip : null, parseInt(d.radius, 10) || 30])).id;
+       /^\d{5}$/.test(d.zip || "") ? d.zip : null, parseInt(d.radius, 10) || 30, d.role === "witness" ? "witness" : "notary"])).id;
     const n = await db.one("SELECT * FROM notaries WHERE id = $1", [nid]);
     if (n.email) mail.notaryWelcome(n, await notary.createLoginLink(n.id, 7 * 24 * 60), await getSettings());
   }

@@ -138,6 +138,73 @@ function register(app) {
     }));
   });
 
+  /* ---------- Become a witness (application) ---------- */
+  app.get("/notary/become-a-witness", async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Become a witness", "/notary/become-a-witness"]];
+    res.send(layout({
+      req, biz, path: "/notary/become-a-witness", crumbs,
+      title: "Become a Paid Signing Witness in New Jersey | MCC",
+      description: "Get paid to witness wills, deeds and remote signings near you in New Jersey. Flexible, per-assignment work. No notary commission needed. Apply in minutes.",
+      body: {
+        hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Get paid to witness signings near you</h1><p class="lede" style="margin-top:14px">Wills, deeds and some remote signings need independent witnesses. MCC Solutions sends witnesses with our notaries across New Jersey. You choose which requests to accept, and you're paid for every completed signing. No notary commission needed.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#apply">Apply now</a></div>`,
+        main: `<section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">What you'll need</p><h2>Requirements</h2><ul class="checks">
+            <li>18 or older, with a valid government photo ID</li>
+            <li>A background check on file (we'll tell you how if you don't have one)</li>
+            <li>Reliable transportation and a phone for email and texts</li>
+            <li>Not related to signers, and never named in documents you witness</li>
+            <li>Professional, on time, and calm in hospitals and family settings</li>
+          </ul></div>
+          <div class="stack"><p class="eyebrow">How it works</p><h2>From request to payment</h2><ol class="steps" style="grid-template-columns:1fr">
+            <li><h3>Apply</h3><p>Takes two minutes. We review applications within 3 business days.</p></li>
+            <li><h3>Onboard online</h3><p>Upload your ID, background check and W-9, and sign the witness agreement in the portal.</p></li>
+            <li><h3>Accept requests</h3><p>We email you witness requests near you. Accept the ones that fit your schedule.</p></li>
+            <li><h3>Get paid</h3><p>You're paid for every completed signing, as an independent contractor.</p></li>
+          </ol></div>
+        </div></section>
+        <section class="band alt" id="apply"><div class="wrap form-layout">
+          <form class="form-card" id="witForm" novalidate>
+            <fieldset><legend>Witness application</legend>
+              <div class="field"><label for="w-name">Full name</label><input id="w-name" required autocomplete="name"></div>
+              <div class="field"><label for="w-email">Email</label><input id="w-email" type="email" required autocomplete="email"></div>
+              <div class="field"><label for="w-phone">Mobile phone</label><input id="w-phone" type="tel" required autocomplete="tel"></div>
+              <div class="field"><label for="w-zip">Home ZIP</label><input id="w-zip" inputmode="numeric" maxlength="5" required></div>
+              <div class="field"><label for="w-radius">How far will you travel?</label><select id="w-radius"><option>10 miles</option><option selected>20 miles</option><option>30 miles</option><option>50 miles</option></select></div>
+              <div class="field"><label for="w-avail">When are you available?</label><select id="w-avail"><option>Weekdays</option><option>Evenings</option><option>Weekends</option><option selected>Evenings and weekends</option><option>Anytime</option></select></div>
+              <div class="field"><label for="w-bg">Background check date <span class="opt">(if you have one)</span></label><input id="w-bg" type="date"></div>
+              <div class="field"><label for="w-lang">Languages besides English <span class="opt">(optional)</span></label><input id="w-lang" placeholder="Spanish…"></div>
+              <input type="text" id="w-website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+            </fieldset>
+            <div class="form-foot"><small>By applying you agree to our <a href="/privacy">privacy policy</a>.</small><button class="btn btn-primary" type="submit">Submit application</button></div>
+            <p class="form-msg" id="witMsg" role="status"></p>
+          </form>
+          <aside class="stack"><h3>Are you a notary?</h3><p>Commissioned notaries and signing agents can <a href="/notary/#notaries">apply to the notary network</a> instead, and still take witness requests.</p></aside>
+        </div></section>
+        <script>
+        document.getElementById("witForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var g = function (id) { return document.getElementById(id).value.trim(); };
+          var m = document.getElementById("witMsg"), b = this.querySelector("button");
+          if (!g("w-name") || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(g("w-email")) || g("w-phone").replace(/\\D/g, "").length < 10 || !/^\\d{5}$/.test(g("w-zip"))) { m.className = "form-msg"; m.textContent = "Enter your name, email, mobile phone and 5-digit ZIP."; return; }
+          b.disabled = true; m.className = "form-msg"; m.textContent = "Sending…";
+          try {
+            var r = await fetch("/api/applications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: "witness", name: g("w-name"), email: g("w-email"), phone: g("w-phone"), zip: g("w-zip"), radius: g("w-radius"), availability: g("w-avail"), backgroundDate: g("w-bg"), languages: g("w-lang"), website: g("w-website") }) });
+            var d = await r.json().catch(function () { return {}; });
+            if (!r.ok) throw new Error(d.error || "Couldn't send. Try again.");
+            if (window.mccTrack) window.mccTrack("witness_application", { form: "witness" });
+            this.reset(); m.className = "form-msg ok"; m.textContent = "Application received. We review applications within 3 business days and will email you next steps.";
+          } catch (err) { m.className = "form-msg"; m.textContent = err.message; }
+          b.disabled = false;
+        });
+        </script>`,
+        ctaTitle: "Questions about witnessing? Call the desk.",
+      },
+      schema: [{ "@type": "JobPosting", title: "Signing Witness (independent contractor)", description: "Witness wills, deeds and remote signings for MCC Solutions across New Jersey. Per-assignment, flexible schedule.", employmentType: "CONTRACTOR", datePosted: new Date().toISOString().slice(0, 10), hiringOrganization: { "@type": "Organization", name: "MCC Solutions", sameAs: url + "/" }, jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressRegion: "NJ", addressCountry: "US" } } }],
+    }));
+  });
+
   /* ---------- Notary training (interest list) ---------- */
   app.get("/notary/training", async (req, res) => {
     const biz = await business();

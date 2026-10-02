@@ -178,6 +178,9 @@ Stripe sends your invoices, collects card or ACH bank payments, and pays out to 
 ### Card on file for individual customers
 When Stripe is connected, people who book online without a client account are asked to save a card through Stripe Checkout. Nothing is charged at booking. When the job is marked completed, the saved card is charged the client fee automatically (turn this off in Settings → Billing), and Stripe emails the receipt. From a booking in the dashboard you can also charge a no-show or cancellation fee, or email the customer a link to add a card. A declined card leaves a draft invoice you can send from Billing for a pay link. Add `checkout.session.completed` to your Stripe webhook events.
 
+## Witnesses
+People apply at /notary/become-a-witness. Approve them in Applications and they get an onboarding email for the same portal notaries use, with a shorter checklist: photo ID, background check, service area, W-9 and a witness agreement. On a booking (shown automatically when the customer added witnesses at checkout), choose a witness and fee and click Ask witness; they accept or decline in the portal and see the address only after accepting. Witnesses never get notary offers. Witness pay shows in Payouts next to notary pay, and margin protection counts notary plus witness pay.
+
 ## Checkout add-ons
 Settings → Checkout add-ons: printing, scanbacks, witnesses, courier and apostille handling are offered when customers book online and when clients order in the portal. Turn each on or off and set its price. Chosen add-ons show on the booking, in the notary's job details ("Also needed"), in confirmation emails, and as separate lines on invoices and card charges. Margin protection counts add-ons as part of the client total.
 

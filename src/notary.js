@@ -10,7 +10,7 @@ const { sendSms } = require("./sms");
 const agreement = require("./agreement");
 const { rulesFor } = require("./state-rules");
 
-const DOC_KINDS = { commission: "Commission certificate", eo: "E&O insurance", background: "Background check", w9: "W-9", certification: "Signing agent certification", other: "Other" };
+const DOC_KINDS = { commission: "Commission certificate", eo: "E&O insurance", background: "Background check", w9: "W-9", certification: "Signing agent certification", id: "Photo ID", other: "Other" };
 const ACTIVE = ["requested", "confirmed", "assigned"];
 const DAY = 86400000;
 
@@ -24,6 +24,8 @@ function daysUntil(dateStr, today) {
 function compliance(n, docs, today) {
   const has = (k) => docs.some((d) => d.notary_id === n.id && d.kind === k);
   const items = [];
+  const witness = n.role === "witness";
+  if (witness) items.push({ key: "id", label: "Photo ID", state: has("id") ? "ok" : "missing", detail: has("id") ? "On file" : "Not uploaded" });
   const dated = (key, label, date, docKind) => {
     const d = daysUntil(date, today);
     let state = "ok", detail = date ? `Expires ${date}` : "No expiration date";
@@ -32,8 +34,10 @@ function compliance(n, docs, today) {
     else if (d <= 30) { state = "warn"; detail = `Expires in ${d} day${d === 1 ? "" : "s"} (${date})`; }
     items.push({ key, label, state, detail });
   };
-  dated("commission", "Notary commission", n.commission_expires, "commission");
-  dated("eo", "E&O insurance", n.eo_expires, "eo");
+  if (!witness) {
+    dated("commission", "Notary commission", n.commission_expires, "commission");
+    dated("eo", "E&O insurance", n.eo_expires, "eo");
+  }
   // Background checks are treated as good for 12 months.
   const bgExpiry = n.background_date ? new Date(Date.parse(n.background_date) + 365 * DAY).toISOString().slice(0, 10) : null;
   const bg = { key: "background", label: "Background check (last 12 months)" };
@@ -45,15 +49,16 @@ function compliance(n, docs, today) {
   items.push({ key: "area", label: "Service area", state: n.home_zip ? "ok" : "missing", detail: n.home_zip ? `Within ${n.travel_miles || 30} miles of ${n.home_zip}` : "Home ZIP not set" });
   items.push({ key: "w9", label: "W-9", state: has("w9") ? "ok" : "missing", detail: has("w9") ? "On file" : "Not uploaded" });
   const att = n.attestations || {};
-  for (const r of rulesFor(n)) {
+  for (const r of witness ? [] : rulesFor(n)) {
     const a = att[r.key];
     items.push({ key: r.key, label: r.label, state: a && a.at ? "ok" : "missing", detail: a && a.at ? `Confirmed ${String(a.at).slice(0, 10)}${a.value ? " · " + a.value : ""}` : "Confirmation needed" });
   }
   const signed = !!n.agreement_at;
+  const current = agreement.forRole(n.role).version;
   items.push({
-    key: "agreement", label: "Contractor agreement",
-    state: !signed ? "missing" : n.agreement_version !== agreement.VERSION ? "warn" : "ok",
-    detail: !signed ? "Not signed" : n.agreement_version !== agreement.VERSION ? "Signed an older version" : `Signed ${n.agreement_at.slice(0, 10)}`,
+    key: "agreement", label: witness ? "Witness agreement" : "Contractor agreement",
+    state: !signed ? "missing" : n.agreement_version !== current ? "warn" : "ok",
+    detail: !signed ? "Not signed" : n.agreement_version !== current ? "Signed an older version" : `Signed ${n.agreement_at.slice(0, 10)}`,
   });
   return { ready: items.every((i) => i.state === "ok" || i.state === "warn"), items };
 }
@@ -217,8 +222,8 @@ function register(app, { requireAdmin }) {
         background_date: n.background_date, home_zip: n.home_zip, travel_miles: n.travel_miles, agreement_name: n.agreement_name, agreement_at: n.agreement_at, agreement_version: n.agreement_version,
       },
       documents: n.documents, compliance: n.compliance, docKinds: DOC_KINDS,
-      agreement: { version: agreement.VERSION, text: agreement.TEXT },
-      stateRules: rulesFor(req.notary), attestations: req.notary.attestations || {},
+      agreement: agreement.forRole(n.role), role: n.role || "notary",
+      stateRules: req.notary.role === "witness" ? [] : rulesFor(req.notary), attestations: req.notary.attestations || {},
       business: s.business, timezone: s.business.timezone,
     });
   });
@@ -276,8 +281,9 @@ function register(app, { requireAdmin }) {
     const name = str(req.body.name, 120);
     if (!req.body.agree) return res.status(400).json({ error: "Check the box to agree.", fields: { agree: "Check the box to agree." } });
     if (name.replace(/[^a-zA-Z]/g, "").length < 4 || !/\s/.test(name)) return res.status(400).json({ error: "Type your full legal name.", fields: { name: "Type your full legal name (first and last)." } });
-    await db.run("UPDATE notaries SET agreement_name = $1, agreement_at = now(), agreement_ip = $2, agreement_version = $3 WHERE id = $4", [name, req.ip, agreement.VERSION, req.notary.id]);
-    mail.deskNotice(`${req.notary.name} signed the contractor agreement`, `Signed as "${name}" (version ${agreement.VERSION}) from ${req.ip}.`);
+    const ver = agreement.forRole(req.notary.role).version;
+    await db.run("UPDATE notaries SET agreement_name = $1, agreement_at = now(), agreement_ip = $2, agreement_version = $3 WHERE id = $4", [name, req.ip, ver, req.notary.id]);
+    mail.deskNotice(`${req.notary.name} signed the ${req.notary.role === "witness" ? "witness" : "contractor"} agreement`, `Signed as "${name}" (version ${ver}) from ${req.ip}.`);
     res.json({ ok: true });
   });
 
@@ -321,9 +327,50 @@ function register(app, { requireAdmin }) {
         if (ins && ins.instructions) j.client_instructions = ins.instructions;
       }
     }
+    // Witness assignments (anyone on the roster can be asked to witness; witnesses only get these).
+    const wrows = await db.all(`SELECT w.id AS wid, w.status AS wstatus, w.fee AS wfee, w.paid_at AS wpaid, b.*, n.name AS notary_name
+        FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id LEFT JOIN notaries n ON n.id = b.notary_id
+        WHERE w.witness_id = $1 AND w.status IN ('offered','accepted') ORDER BY b.start_utc`, [req.notary.id]);
+    for (const r of wrows) {
+      const accepted = r.wstatus === "accepted";
+      const j = { ...jobView(r, accepted), id: r.id, witness_id: r.wid, witness: true, notary_fee: r.wfee, notary_paid_at: r.wpaid,
+        notary_name: accepted ? r.notary_name : null, addons: [] };
+      if (accepted) { delete j.documents; delete j.notes; }
+      const active = ACTIVE.includes(r.status);
+      if (active && r.wstatus === "offered" && Date.parse(r.end_utc) > now) offers.push(j);
+      else if (active && accepted) upcoming.push(j);
+      else if (accepted && (r.status === "completed" || r.status === "no_show")) past.unshift(j);
+    }
+    upcoming.sort((a, c) => Date.parse(a.start) - Date.parse(c.start));
     const earned = past.filter((j) => j.status === "completed").reduce((a, j) => a + (j.notary_fee || 0), 0);
     const unpaid = past.filter((j) => j.status === "completed" && !j.notary_paid_at).reduce((a, j) => a + (j.notary_fee || 0), 0);
     res.json({ offers, upcoming, past: past.slice(0, 100), totals: { earned, unpaid } });
+  });
+
+  async function myWitnessJob(req, res) {
+    const w = await db.one(`SELECT w.*, b.status AS bstatus, b.ref, b.end_utc FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id
+      WHERE w.id = $1 AND w.witness_id = $2`, [Number(req.params.id) || 0, req.notary.id]);
+    if (!w || ["removed"].includes(w.status)) { res.status(404).json({ error: "This request is no longer assigned to you." }); return null; }
+    return w;
+  }
+  app.post("/api/portal/witness/:id/accept", requireNotary, loadMe, async (req, res) => {
+    const w = await myWitnessJob(req, res); if (!w) return;
+    if (w.status !== "offered" || !ACTIVE.includes(w.bstatus) || Date.parse(w.end_utc) < Date.now()) return res.status(400).json({ error: "This request is no longer open." });
+    const me = await notaryWithCompliance(req.notary);
+    if (!me.compliance.ready) return res.status(400).json({ error: "Finish onboarding before accepting." });
+    await db.run("UPDATE booking_witnesses SET status = 'accepted', responded_at = now() WHERE id = $1", [w.id]);
+    await logEvent(w.booking_id, "notary", `Witness ${req.notary.name} accepted`);
+    mail.deskNotice(`Witness accepted ${w.ref}`, `${req.notary.name} will witness ${w.ref}.`);
+    res.json({ ok: true });
+  });
+  app.post("/api/portal/witness/:id/decline", requireNotary, loadMe, async (req, res) => {
+    const w = await myWitnessJob(req, res); if (!w) return;
+    if (w.status !== "offered") return res.status(400).json({ error: "This request is no longer open." });
+    const reason = str(req.body.reason, 300);
+    await db.run("UPDATE booking_witnesses SET status = 'declined', responded_at = now() WHERE id = $1", [w.id]);
+    await logEvent(w.booking_id, "notary", `Witness ${req.notary.name} declined${reason ? `: ${reason}` : ""}`);
+    mail.deskNotice(`Witness declined ${w.ref}: pick another`, `${req.notary.name} can't witness ${w.ref}.${reason ? " Reason: " + reason : ""}\nAssign another witness in the dashboard.`);
+    res.json({ ok: true });
   });
 
   async function myJob(req, res) {
@@ -456,25 +503,42 @@ function register(app, { requireAdmin }) {
   });
 
   /* ----- admin: payouts ----- */
+  // Payouts cover notaries (key "b<bookingId>") and witnesses (key "w<witnessAssignmentId>").
   app.get("/api/admin/payouts", requireAdmin, async (req, res) => {
-    const unpaid = await db.all(`SELECT b.id, b.ref, b.service, b.category, b.start_utc, b.completed_at, b.notary_fee, b.notary_id, n.name AS notary_name, n.email AS notary_email
+    const nUnpaid = await db.all(`SELECT 'b' || b.id AS key, b.id, b.ref, b.service, b.category, b.start_utc, b.completed_at, b.notary_fee AS amount, b.notary_id AS payee_id, n.name AS payee_name, 'notary' AS kind
       FROM bookings b JOIN notaries n ON n.id = b.notary_id
-      WHERE b.status = 'completed' AND b.notary_paid_at IS NULL ORDER BY n.name, b.start_utc`);
-    const paid = await db.all(`SELECT b.id, b.ref, b.category, b.start_utc, b.notary_fee, b.notary_paid_at, n.name AS notary_name
-      FROM bookings b JOIN notaries n ON n.id = b.notary_id WHERE b.notary_paid_at IS NOT NULL ORDER BY b.notary_paid_at DESC LIMIT 100`);
+      WHERE b.status = 'completed' AND b.notary_paid_at IS NULL`);
+    const wUnpaid = await db.all(`SELECT 'w' || w.id AS key, b.id, b.ref, b.service, 'Witness · ' || b.category AS category, b.start_utc, b.completed_at, w.fee AS amount, w.witness_id AS payee_id, n.name AS payee_name, 'witness' AS kind
+      FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id JOIN notaries n ON n.id = w.witness_id
+      WHERE w.status = 'accepted' AND b.status = 'completed' AND w.paid_at IS NULL`);
+    const unpaid = nUnpaid.concat(wUnpaid).sort((a, c) => a.payee_name.localeCompare(c.payee_name) || Date.parse(a.start_utc) - Date.parse(c.start_utc));
+    const paid = (await db.all(`SELECT 'b' || b.id AS key, b.ref, b.category, b.notary_fee AS amount, b.notary_paid_at AS paid_at, n.name AS payee_name
+        FROM bookings b JOIN notaries n ON n.id = b.notary_id WHERE b.notary_paid_at IS NOT NULL
+      UNION ALL
+      SELECT 'w' || w.id, b.ref, 'Witness · ' || b.category, w.fee, w.paid_at, n.name
+        FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id JOIN notaries n ON n.id = w.witness_id WHERE w.paid_at IS NOT NULL
+      ORDER BY 5 DESC LIMIT 100`));
     res.json({ unpaid, paid });
   });
+  const splitKeys = (keys) => {
+    const b = [], w = [];
+    for (const k of Array.isArray(keys) ? keys : []) { const m = /^([bw])(\d+)$/.exec(String(k)); if (m) (m[1] === "b" ? b : w).push(Number(m[2])); }
+    return { b, w };
+  };
   app.post("/api/admin/payouts/mark-paid", requireAdmin, async (req, res) => {
-    const ids = (Array.isArray(req.body.bookingIds) ? req.body.bookingIds : []).map(Number).filter(Boolean);
-    if (!ids.length) return res.status(400).json({ error: "Choose at least one job." });
-    const rows = await db.all("UPDATE bookings SET notary_paid_at = now() WHERE id = ANY($1) AND status = 'completed' AND notary_paid_at IS NULL RETURNING id", [ids]);
+    const { b, w } = splitKeys(req.body.keys || (req.body.bookingIds || []).map((id) => "b" + id));
+    if (!b.length && !w.length) return res.status(400).json({ error: "Choose at least one job." });
+    const rows = b.length ? await db.all("UPDATE bookings SET notary_paid_at = now() WHERE id = ANY($1) AND status = 'completed' AND notary_paid_at IS NULL RETURNING id", [b]) : [];
     for (const r of rows) await logEvent(r.id, "desk", "Notary marked paid");
-    res.json({ updated: rows.length });
+    const wr = w.length ? await db.all(`UPDATE booking_witnesses SET paid_at = now() WHERE id = ANY($1) AND status = 'accepted' AND paid_at IS NULL
+      AND booking_id IN (SELECT id FROM bookings WHERE status = 'completed') RETURNING booking_id`, [w]) : [];
+    for (const r of wr) await logEvent(r.booking_id, "desk", "Witness marked paid");
+    res.json({ updated: rows.length + wr.length });
   });
   app.post("/api/admin/payouts/mark-unpaid", requireAdmin, async (req, res) => {
-    const id = Number(req.body.bookingId) || 0;
-    await db.run("UPDATE bookings SET notary_paid_at = NULL WHERE id = $1", [id]);
-    await logEvent(id, "desk", "Notary payment undone");
+    const { b, w } = splitKeys([req.body.key || (req.body.bookingId ? "b" + req.body.bookingId : "")]);
+    if (b[0]) { await db.run("UPDATE bookings SET notary_paid_at = NULL WHERE id = $1", [b[0]]); await logEvent(b[0], "desk", "Notary payment undone"); }
+    if (w[0]) { const r = await db.one("UPDATE booking_witnesses SET paid_at = NULL WHERE id = $1 RETURNING booking_id", [w[0]]); if (r) await logEvent(r.booking_id, "desk", "Witness payment undone"); }
     res.json({ ok: true });
   });
   app.get("/api/admin/payouts.csv", requireAdmin, async (req, res) => {

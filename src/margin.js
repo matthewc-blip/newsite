@@ -27,7 +27,7 @@ function check(price, notaryFee, settings, extras = 0) {
 }
 
 // What the booking's fees would be after an admin edit, and whether that edit breaks the minimum.
-function checkPatch(row, body, settings) {
+function checkPatch(row, body, settings, otherCosts = 0) {
   const touches = body.quoted_fee !== undefined || body.notary_fee !== undefined || body.notary_id !== undefined;
   if (!touches) return { ok: true, unknown: true, min: minPct(settings) };
   const quoted = body.quoted_fee !== undefined ? num(body.quoted_fee) : num(row.quoted_fee);
@@ -35,7 +35,7 @@ function checkPatch(row, body, settings) {
   const price = base == null ? null : base + (num(row.addons_total) || 0);
   let fee = body.notary_fee !== undefined ? num(body.notary_fee) : num(row.notary_fee);
   if (body.notary_id !== undefined && !Number(body.notary_id)) fee = null; // notary removed
-  return check(price, fee, settings, num(row.addons_total) || 0);
+  return check(price, fee == null ? null : fee + (Number(otherCosts) || 0), settings, num(row.addons_total) || 0);
 }
 
 // Highest fee an automatic offer may carry for this booking (null = no cap, price unknown).

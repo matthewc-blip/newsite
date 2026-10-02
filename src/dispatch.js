@@ -22,7 +22,7 @@ function defaultFee(settings, b) {
 
 // Ranked list of notaries who can take this booking, with the reason others were skipped.
 async function candidates(b, settings) {
-  const notaries = await db.all("SELECT * FROM notaries WHERE active = 1");
+  const notaries = await db.all("SELECT * FROM notaries WHERE active = 1 AND coalesce(role, 'notary') = 'notary'");
   const docs = await db.all("SELECT notary_id, kind FROM notary_documents");
   const today = dateInTz(new Date(), settings.business.timezone);
   const buffer = (b.service === "mobile" ? 60 : 15) * MIN;

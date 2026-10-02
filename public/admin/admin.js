@@ -188,12 +188,12 @@
   async function openBooking(id) {
     openId = id;
     await loadNotaries();
-    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn, margin: mg }, { documents: bdocs }, cand, cl] = await Promise.all([
+    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn, margin: mg, witnesses: wit }, { documents: bdocs }, cand, cl] = await Promise.all([
       api("/api/admin/bookings/" + id), api(`/api/admin/bookings/${id}/documents`), api(`/api/admin/bookings/${id}/candidates`), api("/api/admin/clients"),
     ]);
     $("#dSvc").textContent = `${SVC[b.service]} · ${b.ref}`;
     $("#dTitle").textContent = b.category;
-    const eligible = notaries.filter((n) => n.active && (b.service === "ron" ? n.ron : b.service === "rin" ? n.rin : true));
+    const eligible = notaries.filter((n) => n.active && n.role !== "witness" && (b.service === "ron" ? n.ron : b.service === "rin" ? n.rin : true));
     const stateMatch = (n) => b.service !== "mobile" || !n.states || n.states.split(",").includes(b.state);
     const rank = (n) => (n.compliance.ready ? 2 : 0) + (stateMatch(n) ? 1 : 0);
     const opts = eligible.sort((a, c) => rank(c) - rank(a)).map((n) => `<option value="${n.id}" ${n.id === b.notary_id ? "selected" : ""}>${n.compliance.ready ? "✓" : "⚠"} ${esc(n.name)}${stateMatch(n) ? "" : " (other state)"}${n.compliance.ready ? "" : " · onboarding incomplete"}</option>`).join("");
@@ -240,6 +240,20 @@
         ${eligible.length ? "" : `<p style="color:var(--muted);font-size:.86rem;margin-top:8px">No active ${b.service === "mobile" ? "" : SVC[b.service] + "-capable "}notaries on the roster yet. Add them in the Notaries tab.</p>`}</div>
       ${docsHtml}
       ${dispatchHtml}
+      ${(() => {
+        const want = (b.addons || []).filter((a) => a.id === "witness").reduce((n, a) => n + a.qty, 0);
+        const list = (wit && wit.list) || [], pool = (wit && wit.pool) || [];
+        if (!want && !list.length) return "";
+        const open = ["requested", "confirmed", "assigned"].includes(b.status);
+        const st = { offered: ["p-warn", "Asked · waiting"], accepted: ["p-ok", "Accepted"], declined: ["p-info", "Declined"] };
+        const avail = pool.filter((p) => !list.some((l) => l.witness_id === p.id && l.status !== "declined"));
+        return `<div class="dsec"><h4>Witnesses${want ? ` · ${want} needed` : ""}</h4>
+          ${list.length ? `<ul class="log" style="margin-bottom:10px">${list.map((w) => `<li style="grid-template-columns:1fr auto"><span>${esc(w.name)} <span class="pill ${(st[w.status] || [])[0] || "p-info"}">${(st[w.status] || [])[1] || esc(w.status)}</span>${w.fee != null ? ` · $${Number(w.fee).toFixed(2)}` : ""}${w.phone ? ` · ${esc(w.phone)}` : ""}</span>${open && !w.paid_at ? `<button class="linkbtn" data-wrm="${w.id}">Remove</button>` : ""}</li>`).join("")}</ul>` : ""}
+          ${open ? (pool.length ? `<div class="inline"><select id="dWit">${avail.map((p) => `<option value="${p.id}">${p.ready ? "✓" : "⚠"} ${esc(p.name)}${p.home_zip ? " · " + esc(p.home_zip) : ""}${p.ready ? "" : " · onboarding incomplete"}</option>`).join("")}</select>
+            <input id="dWitFee" type="number" min="0" step="0.01" placeholder="Witness fee $" style="max-width:130px"><button class="btn btn-ghost btn-sm" id="dWitAsk" type="button" ${avail.length ? "" : "disabled"}>Ask witness</button></div>`
+            : `<p style="font-size:.86rem;color:var(--muted)">No witnesses on the roster yet. Approve witness applications to add them.</p>`) : ""}
+        </div>`;
+      })()}
       <div class="dsec"><h4>Client fee</h4>
         <div class="inline"><input id="dFee" type="number" min="0" step="0.01" placeholder="${b.est_fee != null ? "Estimate $" + b.est_fee : "Total charged to client"}" value="${b.quoted_fee ?? ""}" ${b.invoice_id ? "disabled" : ""}>
           <input id="dNotarial" type="number" min="0" step="0.01" placeholder="${b.default_notarial != null ? "Notarial $" + b.default_notarial + " (" + esc(b.state) + " limit)" : "Notarial portion"}" value="${b.notarial_fee ?? ""}" ${b.invoice_id ? "disabled" : ""} title="Part of the client fee billed as the notarial fee">
@@ -307,6 +321,18 @@
       try { await api(`/api/admin/bookings/${id}/card-link`, { method: "POST", body: {} }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Emailed the customer a link to add their card."; }
       catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
     };
+    if ($("#dWitAsk")) $("#dWitAsk").onclick = async (ev, override) => {
+      const body = { witness_id: $("#dWit").value, fee: $("#dWitFee").value, override_margin: !!override };
+      try { await api(`/api/admin/bookings/${id}/witnesses`, { method: "POST", body }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Witness request sent. They'll get an email to accept or decline."; }
+      catch (e) {
+        if (e.code === "margin" && !override && confirm(e.message + "\n\nSend anyway? The override is recorded in the booking history.")) return $("#dWitAsk").onclick(ev, true);
+        $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message;
+      }
+    };
+    $$("[data-wrm]", $("#dBody")).forEach((btn) => btn.addEventListener("click", async () => {
+      try { await api(`/api/admin/bookings/${id}/witnesses/${btn.dataset.wrm}`, { method: "DELETE" }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Witness removed."; }
+      catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+    }));
     $("#dMove").onclick = () => $("#dStart").value && patch({ start: localToUtc($("#dStart").value, TZ) }, "Rescheduled. Let the customer know the new time.");
     $("#dNotesSave").onclick = () => patch({ internal_notes: $("#dNotes").value }, "Notes saved.");
     $("#dClientSave").onclick = () => patch({ client_account_id: $("#dClient").value || null }, "Client account updated.");
@@ -387,7 +413,7 @@
       <td><button class="linkbtn" style="color:var(--ink);font-size:.95rem;padding:0" data-open="${n.id}">${esc(n.name)}</button></td>
       <td>${esc(n.phone)}<br><small style="color:var(--muted)">${esc(n.email)}</small></td>
       <td class="mono">${esc(n.states)}</td>
-      <td>${n.ron ? '<span class="pill p-info">RON</span> ' : ""}${n.rin ? '<span class="pill p-info">RIN</span>' : ""}</td>
+      <td>${n.role === "witness" ? '<span class="pill p-warn">Witness</span>' : ""}${n.ron ? '<span class="pill p-info">RON</span> ' : ""}${n.rin ? '<span class="pill p-info">RIN</span>' : ""}</td>
       <td>${onboardingCell(n)}</td>
       <td>${n.completed}${n.open_offers ? ` <small style="color:var(--muted)">+${n.open_offers} offer${n.open_offers > 1 ? "s" : ""}</small>` : ""}</td>
       <td>${n.unpaid ? "$" + Number(n.unpaid).toFixed(0) : "—"}</td>
@@ -468,24 +494,24 @@
   async function loadPayouts() {
     const { unpaid, paid } = await api("/api/admin/payouts");
     const groups = new Map();
-    unpaid.forEach((j) => { if (!groups.has(j.notary_id)) groups.set(j.notary_id, []); groups.get(j.notary_id).push(j); });
+    unpaid.forEach((j) => { if (!groups.has(j.payee_id)) groups.set(j.payee_id, []); groups.get(j.payee_id).push(j); });
     $("#payoutGroups").innerHTML = groups.size ? [...groups.values()].map((list) => {
-      const total = list.reduce((a, j) => a + (j.notary_fee || 0), 0);
-      const noFee = list.filter((j) => j.notary_fee == null).length;
-      return `<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h3>${esc(list[0].notary_name)}</h3><b style="font-family:var(--f-display);font-size:1.5rem">$${total.toFixed(2)}</b></div>
-        ${noFee ? `<p class="form-msg">${noFee} job${noFee > 1 ? "s have" : " has"} no notary fee set. Open the booking to add it.</p>` : ""}
-        <ul class="log" style="margin:12px 0">${list.map((j) => `<li style="grid-template-columns:24px 1fr auto"><input type="checkbox" data-pay="${j.id}" checked aria-label="Include ${esc(j.ref)}"><span>${esc(j.ref)} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}</span><b>${j.notary_fee != null ? "$" + Number(j.notary_fee).toFixed(2) : "—"}</b></li>`).join("")}</ul>
-        <button class="btn btn-primary btn-sm" style="align-self:flex-start" data-paygroup="${list[0].notary_id}">Mark Selected Paid</button></div>`;
-    }).join("") : `<div class="empty-state">Nothing owed right now. Completed jobs with a notary appear here until you mark them paid.</div>`;
+      const total = list.reduce((a, j) => a + (j.amount || 0), 0);
+      const noFee = list.filter((j) => j.amount == null).length;
+      return `<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h3>${esc(list[0].payee_name)}</h3><b style="font-family:var(--f-display);font-size:1.5rem">$${total.toFixed(2)}</b></div>
+        ${noFee ? `<p class="form-msg">${noFee} job${noFee > 1 ? "s have" : " has"} no fee set. Open the booking to add it.</p>` : ""}
+        <ul class="log" style="margin:12px 0">${list.map((j) => `<li style="grid-template-columns:24px 1fr auto"><input type="checkbox" data-pay="${j.key}" checked aria-label="Include ${esc(j.ref)}"><span>${esc(j.ref)} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}</span><b>${j.amount != null ? "$" + Number(j.amount).toFixed(2) : "—"}</b></li>`).join("")}</ul>
+        <button class="btn btn-primary btn-sm" style="align-self:flex-start" data-paygroup="${list[0].payee_id}">Mark Selected Paid</button></div>`;
+    }).join("") : `<div class="empty-state">Nothing owed right now. Completed jobs with a notary or witness appear here until you mark them paid.</div>`;
     $$("[data-paygroup]").forEach((b) => b.addEventListener("click", async () => {
-      const ids = $$("input[data-pay]", b.closest(".card")).filter((i) => i.checked).map((i) => Number(i.dataset.pay));
-      if (!ids.length) return;
-      await api("/api/admin/payouts/mark-paid", { method: "POST", body: { bookingIds: ids } });
+      const keys = $$("input[data-pay]", b.closest(".card")).filter((i) => i.checked).map((i) => i.dataset.pay);
+      if (!keys.length) return;
+      await api("/api/admin/payouts/mark-paid", { method: "POST", body: { keys } });
       loadPayouts(); loadStats();
     }));
-    $("#paidRows").innerHTML = paid.length ? paid.map((j) => `<tr><td>${esc(j.notary_paid_at.slice(0, 10))}</td><td>${esc(j.notary_name)}</td><td>${esc(j.ref)} · ${esc(j.category)}</td><td>${j.notary_fee != null ? "$" + Number(j.notary_fee).toFixed(2) : "—"}</td><td><button class="linkbtn" data-unpay="${j.id}">Undo</button></td></tr>`).join("")
+    $("#paidRows").innerHTML = paid.length ? paid.map((j) => `<tr><td>${esc(String(j.paid_at).slice(0, 10))}</td><td>${esc(j.payee_name)}</td><td>${esc(j.ref)} · ${esc(j.category)}</td><td>${j.amount != null ? "$" + Number(j.amount).toFixed(2) : "—"}</td><td><button class="linkbtn" data-unpay="${j.key}">Undo</button></td></tr>`).join("")
       : `<tr><td colspan="5" style="font-weight:400;color:var(--ink-2)">No payments recorded yet.</td></tr>`;
-    $$("[data-unpay]").forEach((b) => b.addEventListener("click", async () => { await api("/api/admin/payouts/mark-unpaid", { method: "POST", body: { bookingId: Number(b.dataset.unpay) } }); loadPayouts(); loadStats(); }));
+    $$("[data-unpay]").forEach((b) => b.addEventListener("click", async () => { await api("/api/admin/payouts/mark-unpaid", { method: "POST", body: { key: b.dataset.unpay } }); loadPayouts(); loadStats(); }));
   }
 
   function alertInline(el, text) {
@@ -598,6 +624,10 @@
     box.innerHTML = applications.map((a) => {
       const d = a.data;
       const caps = [d.nsa && "NSA certified", d.ron && "RON", d.rin && "RIN", d.laser && "Dual-tray laser", d.reverse && "Reverse mortgage"].filter(Boolean).join(" · ");
+      if (d.role === "witness") return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)} <span class="pill p-warn">Witness</span></h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
+        <p class="meta">${esc(full(a.created_at))}</p>
+        <dl class="kvs"><dt>Phone</dt><dd>${esc(d.phone)}</dd><dt>Email</dt><dd>${esc(d.email)}</dd><dt>Area</dt><dd>${esc(d.zip)} · ${esc(d.radius)}</dd><dt>Background</dt><dd>${esc(d.backgroundDate || "—")}</dd><dt>Available</dt><dd>${esc(d.availability || "—")}</dd>${d.languages ? `<dt>Languages</dt><dd>${esc(d.languages)}</dd>` : ""}</dl>
+        ${a.status === "new" ? `<div class="actions"><button class="btn btn-primary btn-sm" data-app="${a.id}" data-s="approved">Approve &amp; send onboarding email</button><button class="btn btn-ghost btn-sm" data-app="${a.id}" data-s="declined">Decline</button></div>` : ""}</div>`;
       return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(d.name)}</h3><span class="pill ${a.status === "new" ? "p-warn" : a.status === "approved" ? "p-ok" : "p-info"}">${esc(a.status)}</span></div>
         <p class="meta">${esc(full(a.created_at))}</p>
         <dl class="kvs"><dt>Phone</dt><dd>${esc(d.phone)}</dd><dt>Email</dt><dd>${esc(d.email)}</dd><dt>Commission</dt><dd>${esc(d.commissionState)} · exp ${esc(d.commissionExpires || "?")}</dd>

@@ -59,6 +59,7 @@
     $("#signin").hidden = true;
     $("#tabs").hidden = false;
     $("#who").textContent = me.notary.name;
+    if (me.role === "witness") { const bn = document.querySelector(".brand-name"); if (bn) bn.textContent = "Witness Portal"; document.title = "Witness Portal · MCC Solutions"; }
     $("#bOnb").hidden = me.compliance.ready && me.compliance.items.every((i) => i.state === "ok");
     $("#notReady").hidden = me.compliance.ready;
     renderOnboarding();
@@ -91,7 +92,7 @@
     return `<dl class="kvs">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
   }
   function head(j) {
-    return `<div class="job-top"><div><p class="meta">${esc(j.ref)} · ${SVC[j.service]}</p><h3>${esc(j.category)}</h3></div>
+    return `<div class="job-top"><div><p class="meta">${esc(j.ref)} · ${SVC[j.service]}${j.witness ? " · <b>Witness</b>" : ""}</p><h3>${j.witness ? "Witness: " : ""}${esc(j.category)}</h3></div>
       <div class="fee">${j.notary_fee != null ? money(j.notary_fee) : "—"}<small>Your fee</small></div></div>`;
   }
 
@@ -103,12 +104,19 @@
       <article class="job" id="job-${j.id}">${head(j)}${details(j, false)}
         ${j.offer_expires_at ? `<p class="timer" data-expires="${esc(j.offer_expires_at)}"></p>` : ""}
         <p style="font-size:.86rem;color:var(--muted)">The full address, signer contact and documents appear after you accept.</p>
-        <div class="row"><button class="btn btn-primary" data-accept="${j.id}" ${me.compliance.ready ? "" : "disabled title='Finish onboarding first'"}>Accept Job</button>
+        ${j.witness
+          ? `<div class="row"><button class="btn btn-primary" data-waccept="${j.witness_id}" ${me.compliance.ready ? "" : "disabled title='Finish onboarding first'"}>Accept</button>
+          <input id="wreason-${j.witness_id}" placeholder="Reason for declining (optional)" aria-label="Reason for declining"><button class="btn btn-ghost" data-wdecline="${j.witness_id}">Decline</button></div>
+          <p class="msg" id="wm-${j.witness_id}"></p>`
+          : `<div class="row"><button class="btn btn-primary" data-accept="${j.id}" ${me.compliance.ready ? "" : "disabled title='Finish onboarding first'"}>Accept Job</button>
           <input id="reason-${j.id}" placeholder="Reason for declining (optional)" aria-label="Reason for declining"><button class="btn btn-ghost" data-decline="${j.id}">Decline</button></div>
-        <p class="msg" id="m-${j.id}"></p></article>`).join("")
+          <p class="msg" id="m-${j.id}"></p>`}</article>`).join("")
       : `<div class="empty">No open offers right now. We'll email${me.notary.sms_ok ? " and text" : ""} you when one comes in.</div>`;
 
     $("#upcoming").innerHTML = upcoming.length ? upcoming.map((j) => {
+      if (j.witness) return `<article class="job" id="job-${j.id}">${head(j)}${details(j, true)}
+        ${j.notary_name ? `<p style="font-size:.9rem">Notary on this signing: <b>${esc(j.notary_name)}</b></p>` : ""}
+        <p style="font-size:.86rem;color:var(--muted)">Bring your photo ID. The notary marks the signing complete; you're paid after it's done. Can't make it? Call the desk right away.</p></article>`;
       const started = Date.parse(j.start) <= Date.now() + 15 * 60000;
       const needsTracking = j.service !== "ron" && j.is_loan;
       return `<article class="job" id="job-${j.id}">${head(j)}${details(j, true)}${jobDocs(j)}
@@ -124,6 +132,8 @@
     tickTimers();
     $$("[data-accept]").forEach((b) => b.addEventListener("click", () => act(b, `/api/portal/jobs/${b.dataset.accept}/accept`, {}, "Accepted. The details are below.")));
     $$("[data-decline]").forEach((b) => b.addEventListener("click", () => act(b, `/api/portal/jobs/${b.dataset.decline}/decline`, { reason: $("#reason-" + b.dataset.decline).value }, "Declined. Thanks for letting us know.")));
+    $$("[data-waccept]").forEach((b) => b.addEventListener("click", () => wact(b, `/api/portal/witness/${b.dataset.waccept}/accept`, {}, "Accepted. The details are below.", "wm-" + b.dataset.waccept)));
+    $$("[data-wdecline]").forEach((b) => b.addEventListener("click", () => wact(b, `/api/portal/witness/${b.dataset.wdecline}/decline`, { reason: $("#wreason-" + b.dataset.wdecline).value }, "Declined. Thanks for letting us know.", "wm-" + b.dataset.wdecline)));
     $$("[data-complete]").forEach((b) => b.addEventListener("click", () => act(b, `/api/portal/jobs/${b.dataset.complete}/complete`, { tracking: $("#trk-" + b.dataset.complete).value, note: $("#note-" + b.dataset.complete).value }, "Marked complete. Thank you.")));
 
     $("#tEarned").textContent = money(totals.earned);
@@ -174,6 +184,11 @@
     run(); timerInt = setInterval(run, 1000);
   }
 
+  async function wact(btn, path, body, okText, msgId) {
+    btn.disabled = true;
+    try { await api(path, { method: "POST", body }); await loadJobs(); alertTop(okText); }
+    catch (e) { const m = $("#" + msgId); if (m) msg(m, e.message, "err"); else alertTop(e.message); btn.disabled = false; }
+  }
   async function act(btn, path, body, okText) {
     const id = path.split("/")[4];
     btn.disabled = true;
@@ -204,7 +219,9 @@
     $("#c-bg").value = n.background_date || ""; $("#c-phone").value = n.phone || ""; $("#c-sms").checked = !!n.sms_ok;
     $("#c-zip").value = n.home_zip || ""; $("#c-miles").value = n.travel_miles || 30;
 
-    const kinds = ["commission", "eo", "background", "w9", "certification"];
+    const witness = me.role === "witness";
+    ["#c-num", "#c-exp", "#c-eoamt", "#c-eoexp"].forEach((sel) => { const f = $(sel) && $(sel).closest(".field"); if (f) f.hidden = witness; });
+    const kinds = witness ? ["id", "background", "w9"] : ["commission", "eo", "background", "w9", "certification"];
     $("#docs").innerHTML = kinds.map((k) => {
       const files = me.documents.filter((d) => d.kind === k);
       return `<div class="doc-row"><span><b>${esc(me.docKinds[k])}</b>${k === "certification" ? ' <span style="color:var(--muted);font-size:.85rem">(optional, e.g. NNA)</span>' : ""}</span>

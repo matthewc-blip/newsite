@@ -25,4 +25,32 @@ This agreement is between MCC Solutions ("MCC") and the notary signing below ("C
 
 By typing my full legal name and checking the box, I agree to this agreement and confirm the information I provided is true.`;
 
-module.exports = { VERSION, TEXT };
+// Shorter agreement for witnesses (no notary commission; same confidentiality duties).
+const WITNESS_VERSION = "2026-10-w1";
+const WITNESS_TEXT = `INDEPENDENT CONTRACTOR & CONFIDENTIALITY AGREEMENT (WITNESS)
+
+This agreement is between MCC Solutions ("MCC") and the person signing below ("Witness").
+
+1. Relationship. Witness is an independent contractor, not an employee, partner or agent of MCC. Witness decides whether to accept each assignment, provides their own transportation, and is responsible for their own taxes. MCC will issue an IRS Form 1099 when required.
+
+2. Role. Witness attends signings to observe and sign as a witness when a document calls for one. Witness does not give legal advice, explain documents, or act as a notary. Witness will not witness a document if they are related to a signer, are named in or benefit from the document, or believe a signer is confused, pressured or not acting willingly; in that case Witness will tell the notary and the desk.
+
+3. Identification and screening. Witness will carry valid government photo ID to every assignment and keeps a current background screening on file with MCC.
+
+4. Confidentiality. Documents and personal information seen at a signing are confidential. Witness will not copy, photograph, share or keep any of it, and will report any lost or misdirected document to MCC within 24 hours.
+
+5. Conduct. Witness arrives on time, dresses professionally, and follows the notary's and the facility's instructions, including hospital and care-facility rules.
+
+6. Payment. MCC pays the fee shown on each accepted assignment after the signing is completed.
+
+7. Non-solicitation. For 12 months after their last assignment, Witness will not solicit MCC clients met through MCC assignments for witness or notary services.
+
+8. Term. Either party may end this agreement at any time with notice. Sections 4 and 7 survive.
+
+By typing their name and checking the box, Witness agrees to these terms.`;
+
+function forRole(role) {
+  return role === "witness" ? { version: WITNESS_VERSION, text: WITNESS_TEXT } : { version: VERSION, text: TEXT };
+}
+
+module.exports = { forRole, WITNESS_VERSION, WITNESS_TEXT, VERSION, TEXT };
