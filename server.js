@@ -40,10 +40,16 @@ app.use((req, res, next) => {
 });
 // The homepage and notary page are static files written with www.mcc-solutionsnj.com links; serve them
 // with PUBLIC_URL instead so every page points search engines at the same address.
-const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html" };
+const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html", "/bookkeeping/": "bookkeeping/index.html" };
 app.get(Object.keys(STATIC_CANON), (req, res, next) => {
-  if (!PUBLIC_ORIGIN || PUBLIC_ORIGIN === "https://www.mcc-solutionsnj.com") return next();
-  require("fs").readFile(path.join(__dirname, "public", STATIC_CANON[req.path]), "utf8", (err, html) => {
+  // Express matches /notary and /notary/ alike; send the no-slash form to the folder URL like the static server does.
+  if (!STATIC_CANON[req.path] && STATIC_CANON[req.path + "/"]) {
+    const q = req.originalUrl.indexOf("?");
+    return res.redirect(301, req.path + "/" + (q >= 0 ? req.originalUrl.slice(q) : ""));
+  }
+  const file = STATIC_CANON[req.path];
+  if (!file || !PUBLIC_ORIGIN || PUBLIC_ORIGIN === "https://www.mcc-solutionsnj.com") return next();
+  require("fs").readFile(path.join(__dirname, "public", file), "utf8", (err, html) => {
     if (err) return next();
     res.type("html").send(html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN));
   });
@@ -311,8 +317,9 @@ app.post("/api/waitlist", rateLimit(5, 10 * 60000), async (req, res) => {
   if (!picks.length) fields.services = "Choose at least one service.";
   if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });
   const labels = picks.map((s) => WAITLIST[s]).join(", ");
+  const company = str(req.body.company, 160), note = str(req.body.note, 1000);
   await db.run("INSERT INTO messages(name,email,topic,message) VALUES($1,$2,$3,$4)",
-    [name || "(no name)", email, `Waitlist: ${labels}`, `${name || "This person"} wants to hear when ${labels} launches.`]);
+    [name || "(no name)", email, `Waitlist: ${labels}`, `${name || "This person"}${company ? ` (${company})` : ""} wants to hear when ${labels} launches.${note ? `\n\n${note}` : ""}`]);
   mail.deskNotice(`Waitlist signup: ${labels}`, `${name} <${email}>`);
   res.status(201).json({ ok: true });
 });
