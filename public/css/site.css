@@ -383,3 +383,4 @@ h2.as-h1{font-size:clamp(2.3rem,5.4vw,4rem);font-weight:800}
 .chk-row{display:flex;flex-wrap:wrap;gap:8px}
 .chk-row label{display:flex;align-items:center;gap:7px;font-weight:500;font-size:.9rem;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);cursor:pointer}
 .chk-row input{accent-color:var(--brass);margin:0}
+.pay-line{margin-top:14px;padding:12px 14px;background:var(--brass-soft);border-left:3px solid var(--brass);border-radius:4px;font-size:.95rem;color:var(--ink)}
