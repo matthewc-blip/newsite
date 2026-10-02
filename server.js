@@ -515,6 +515,9 @@ app.on("booking:created", async (row) => {
   } catch (e) { console.error("Auto-dispatch failed:", e.message); }
 });
 
+/* ---------------- search landing pages, sitemap, robots ---------------- */
+require("./src/seo").register(app);
+
 /* ---------------- static ---------------- */
 app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));

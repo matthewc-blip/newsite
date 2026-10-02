@@ -301,3 +301,14 @@ footer .brand-name{color:var(--deep-fg)}
 #sumFee{color:var(--deep-fg);font-weight:600}
 button:disabled{opacity:.6;cursor:progress}
 .loading{opacity:.55;pointer-events:none}
+
+/* location + service landing pages */
+.town-list,.county-links{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 18px}
+.town-list li{color:var(--ink-2);padding-left:16px;position:relative}
+.town-list li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--brass)}
+.county-links a{font-weight:600;color:var(--brass-ink);text-decoration:none}
+.county-links a:hover{text-decoration:underline}
+.grid .county-links{grid-template-columns:1fr 1fr}
+footer ul.foot-counties{display:block;columns:2;column-gap:14px}
+footer ul.foot-counties li{margin-bottom:8px;break-inside:avoid}
+@media (max-width:620px){.town-list,.county-links{grid-template-columns:1fr 1fr}}
