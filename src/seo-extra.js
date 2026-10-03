@@ -133,6 +133,42 @@ const EXTRA = {
     turnaround: "Most inspections are completed within a few business days.",
     faqs: [["Do you go inside the property?", "Only when access has been arranged with the owner or occupant. Otherwise the inspection is exterior only."], ["Who uses these inspections?", "Lenders, loan servicers, investors and property managers."]],
   },
+  "court-filing": {
+    steps: [["Send the run", "Tell us the court, the case and exactly what to file, deliver or copy."], ["Runner assigned", "A runner picks up the originals if needed and heads to the courthouse."], ["At the counter", "Papers are filed, delivered or copied as you asked, and court fees are paid at cost."], ["Proof back to you", "You get the stamped copy, a delivery confirmation or the scanned copies the same day."]],
+    ready: ["The court, county and docket number", "Exactly what to file, deliver or copy", "The originals, or where to pick them up", "Payment for any court fees"],
+    turnaround: "Same-day runs are usually possible for requests received by late morning.",
+    faqs: [["Can you file the affidavit after you serve?", "Yes. Add affidavit filing to a process serve and we file it with the court when service is complete."]],
+  },
+  "records-retrieval": {
+    steps: [["Tell us what you need", "Send the record type, where it's held and the names, address or docket number."], ["We locate it", "We search the county or agency index and confirm we've found the right record."], ["Copies made", "Plain or certified copies are ordered and the agency's fee is paid at cost."], ["Delivered", "Scans go to you right away, and certified originals follow by courier or mail."]],
+    ready: ["Names, property address, book and page, or docket number", "The county, court or agency", "Whether you need a certified copy", "Proof of eligibility for vital records"],
+    turnaround: "Most recorded documents and court records come back within 1 to 3 business days. Vital records depend on the issuing office.",
+    faqs: [["Can you pull records from other states?", "We cover New Jersey. For other states, ask the desk and we'll arrange it through a partner."]],
+  },
+  "skip-tracing": {
+    steps: [["Send the details", "Give us the name, last known address and anything else you know, plus the purpose."], ["Database search", "We search for current and past addresses and check how recent each one is."], ["Results", "You get the likely current address and the other addresses we found, in plain language."], ["Serve it", "Send it straight to a process server, or take it from there yourself."]],
+    ready: ["Full name and any other names they use", "Last known address", "Date of birth, phone or employer if you have them", "The legal purpose of the search"],
+    turnaround: "Most searches come back within 1 business day.",
+    faqs: [["Will the person know we searched?", "No. Database searches don't contact the person."]],
+  },
+  "medical-records-retrieval": {
+    steps: [["Send the request", "Tell us the provider, the patient and attach the signed authorization or subpoena."], ["Request delivered", "We deliver the request to the records department and get a receipt."], ["Follow-up", "We follow up until the records are ready and pay any copy fees at cost."], ["Records delivered", "The records are picked up and delivered securely to you."]],
+    ready: ["Signed HIPAA authorization or a subpoena", "Provider name and address", "Patient name and date of birth", "Where the records should go"],
+    turnaround: "Providers set their own timelines, often up to a few weeks. We follow up so it doesn't sit.",
+    faqs: [["Do you keep copies of the records?", "No. Records go straight to you and aren't kept after delivery."]],
+  },
+  "i9-verification": {
+    steps: [["Send the hire", "Tell us the employee, your company and where they can meet."], ["Visit scheduled", "We set a time with the employee, often within a day or two."], ["Documents examined", "Our representative examines the original documents in person and completes Section 2."], ["Form back to you", "You get the completed form, and copies if you want them, the same day."]],
+    ready: ["Section 1 completed by the employee", "The employee's original, unexpired documents", "Your instructions for returning the form", "The employee's first day of work"],
+    turnaround: "Most visits happen within 1 to 2 business days. Section 2 is due within 3 business days of the first day of work, so book early.",
+    faqs: [["Do you keep copies of the employee's documents?", "No. We send the form and any copies to you and don't keep them."]],
+  },
+  "vehicle-title-notary": {
+    steps: [["Book or call", "Tell us what's being signed and how many people are signing."], ["Notary arrives", "A commissioned New Jersey notary meets you at home, work or the dealership."], ["IDs checked", "Each signer shows a current photo ID and signs in front of the notary."], ["Done", "The documents are notarized on the spot and ready for the MVC or the other state's DMV."]],
+    ready: ["The title and any forms the receiving office requires, unsigned", "A current photo ID for each signer", "Every signer present", "Letters testamentary or a death certificate if handling a deceased owner's vehicle"],
+    turnaround: "Same-day visits are often available, including evenings.",
+    faqs: [["Can you help after someone has died?", "Yes. We visit families and executors to notarize the documents needed to transfer the vehicle. The MVC decides which documents it needs."]],
+  },
   "business-notary": {
     steps: [["Open an account", "Tell us your business, how often you need a notary and where."], ["Request visits", "Book visits online, by email or by calling the desk."], ["Notary on site", "A notary comes to your office, dealership or customer."], ["Monthly invoice", "Visits roll up into one invoice for your account."]],
     ready: ["Your business name and billing contact", "Typical document types", "Locations where you need a notary"],

@@ -7,8 +7,13 @@ const ITEMS = [
   { key: "process_serve", label: "Process serving", note: "per address, standard service" },
   { key: "apostille", label: "Apostille", note: "per document, plus state fees" },
   { key: "recording", label: "Document recording", note: "per document, plus county fees" },
+  { key: "court_filing", label: "Court filing or document run", note: "per trip, plus court fees" },
+  { key: "records", label: "Records retrieval", note: "per record, plus agency fees" },
+  { key: "skip_trace", label: "Skip trace", note: "per person" },
+  { key: "medical_records", label: "Medical records pickup", note: "per facility, plus copy fees" },
+  { key: "i9", label: "I-9 verification", note: "per employee" },
 ];
-const DEFAULTS = { mobile: 75, loan: 150, hospital: 125, process_serve: 85, apostille: 125, recording: 50 };
+const DEFAULTS = { mobile: 75, loan: 150, hospital: 125, process_serve: 85, apostille: 125, recording: 50, court_filing: 75, records: 65, skip_trace: 75, medical_records: 95, i9: 50 };
 
 // Which starting price each service page shows.
 const BY_SLUG = {
@@ -16,6 +21,8 @@ const BY_SLUG = {
   "child-travel-consent": "mobile", "passport-consent-form": "mobile",
   "loan-signing-agent": "loan", "private-lender-signings": "loan",
   "hospital-notary": "hospital", "process-serving": "process_serve", "apostille-services": "apostille", "document-recording": "recording",
+  "court-filing": "court_filing", "records-retrieval": "records", "skip-tracing": "skip_trace", "medical-records-retrieval": "medical_records",
+  "i9-verification": "i9", "vehicle-title-notary": "mobile",
 };
 
 function list(settings) {

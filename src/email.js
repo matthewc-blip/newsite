@@ -45,7 +45,9 @@ function summaryLines(b, settings) {
   else lines.push(["Signer location", b.signer_location]);
   if (b.service === "rin" && b.mailing_address) lines.push(["Paper docs mailed to", b.mailing_address]);
   const extras = require("./addons").list(b);
-  if (extras.length) lines.push(["Add-ons", require("./addons").describe(extras)]);
+  const chosen = extras.filter((a) => a.kind !== "fee"), fees = extras.filter((a) => a.kind === "fee");
+  if (chosen.length) lines.push(["Add-ons", require("./addons").describe(chosen)]);
+  if (fees.length) lines.push(["Extra fees", require("./addons").describe(fees)]);
   return lines;
 }
 

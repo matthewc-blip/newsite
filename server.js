@@ -9,6 +9,7 @@ const mail = require("./src/email");
 const payments = require("./src/payments");
 const margin = require("./src/margin");
 const addons = require("./src/addons");
+const fees = require("./src/fees");
 const { buildIcs } = require("./src/ics");
 const notary = require("./src/notary");
 const dispatch = require("./src/dispatch");
@@ -96,8 +97,10 @@ async function publicBooking(b, settings) {
     notary: ["assigned", "completed"].includes(b.status) && notary ? notary : null,
     canCancel: ["requested", "confirmed", "assigned"].includes(b.status) && new Date(b.start_utc).getTime() > Date.now(),
     card: payments.cardView(b),
-    addons: addons.list(b).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
+    addons: addons.list(b).filter((a) => a.kind !== "fee").map((a) => ({ label: a.label, qty: a.qty, price: a.price })),
+    fees: fees.ofKind(addons.list(b)).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
     cardRequested: payments.wantsCard(b, settings),
+    lateCancelFee: (() => { const f = ["requested", "confirmed", "assigned"].includes(b.status) ? fees.lateCancel(settings, b) : null; return f ? f.price : null; })(),
   };
 }
 
@@ -109,7 +112,7 @@ app.get("/api/config", async (req, res) => {
     const c = s.services[k];
     services[k] = { label: c.label, enabled: c.enabled, durationMin: c.durationMin, maxDaysAhead: c.maxDaysAhead };
   }
-  res.json({ business: s.business, services, pricing: s.pricing, startingPrices: require("./src/prices").list(s), addons: addons.catalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
+  res.json({ business: s.business, services, pricing: s.pricing, startingPrices: require("./src/prices").list(s), addons: addons.catalog(s), fees: fees.publicCatalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
 });
 
 app.get("/api/health", async (req, res) => {
@@ -149,7 +152,7 @@ function readBookingInput(body, { admin = false } = {}) {
     docs_delivery: str(body.docsDelivery, 60),
     contact_name: str(body.contactName, 120), contact_email: str(body.contactEmail, 160).toLowerCase(), contact_phone: str(body.contactPhone, 40),
     signer_names: str(body.signerNames, 300), company: str(body.company, 160), file_number: str(body.fileNumber, 60), notes: str(body.notes, 2000),
-    addons_in: body.addons,
+    addons_in: body.addons, no_auto_fees: !!body.noAutoFees,
   };
   if (!SERVICES.includes(b.service)) errors.service = "Choose mobile, RON or RIN.";
   if (!b.category) errors.category = "Choose what you need notarized.";
@@ -201,6 +204,9 @@ async function insertBooking(b, settings, { admin, force, source }) {
       est_fee: estimateFee(settings, b.service, b.is_loan, b.signers), source: source || (admin ? "desk" : "web"),
     };
     const extras = addons.pick(b.addons_in, b.service, settings);
+    // Rush, after-hours, weekend and extra-signer fees apply automatically (the desk can remove them).
+    const skipAuto = (source === "client" && settings.billing?.autoFeesForAccounts === false) || (admin && b.no_auto_fees);
+    if (!skipAuto) extras.push(...fees.auto(settings, { ...b, start_utc: startIso }));
     row.addons = JSON.stringify(extras); row.addons_total = addons.total(extras);
     const inserted = await t.one(
       `INSERT INTO bookings (${BOOKING_COLS.join(",")}) VALUES (${BOOKING_COLS.map((_, i) => "$" + (i + 1)).join(",")}) RETURNING *`,
@@ -255,11 +261,17 @@ app.post("/api/bookings/:ref/cancel", rateLimit(10, 10 * 60000), async (req, res
   if (!row) return res.status(404).json({ error: "Booking not found." });
   const settings = await getSettings();
   if (!(await publicBooking(row, settings)).canCancel) return res.status(400).json({ error: "This booking can no longer be canceled online. Call the desk." });
-  const updated = await db.one("UPDATE bookings SET status='canceled', updated_at=now() WHERE id=$1 RETURNING *", [row.id]);
+  // Under 2 hours' notice: the late-cancellation fee goes on the booking (the desk charges or waives it).
+  const late = row.invoice_id ? null : fees.lateCancel(settings, row);
+  const items = late && !fees.ofKind(addons.list(row)).some((a) => a.id === late.id) ? [...addons.list(row), late] : null;
+  const updated = items
+    ? await db.one("UPDATE bookings SET status='canceled', addons=$2, addons_total=$3, updated_at=now() WHERE id=$1 RETURNING *", [row.id, JSON.stringify(items), addons.total(items)])
+    : await db.one("UPDATE bookings SET status='canceled', updated_at=now() WHERE id=$1 RETURNING *", [row.id]);
   const reason = str(req.body.reason, 300);
   await logEvent(row.id, "customer", "Canceled by customer" + (reason ? `: ${reason}` : ""));
+  if (items) await logEvent(row.id, "system", `${late.label}: $${late.price.toFixed(2)} added (canceled under 2 hours before the start). Charge or waive it from the booking.`);
   mail.bookingStatusChanged(updated, settings);
-  mail.deskNotice(`Customer canceled ${row.ref}`, `${row.contact_name} canceled ${row.ref} (${row.category}).${reason ? " Reason: " + reason : ""}`);
+  mail.deskNotice(`Customer canceled ${row.ref}`, `${row.contact_name} canceled ${row.ref} (${row.category}).${reason ? " Reason: " + reason : ""}${items ? `\n${late.label} of $${late.price.toFixed(2)} was added. Charge it or remove it from the booking.` : ""}`);
   res.json({ booking: await publicBooking(updated, settings) });
 });
 
@@ -458,7 +470,7 @@ app.get("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const { token, ...rest } = row;
   const inv = row.invoice_id ? await db.one("SELECT id, number, status, payment_url, provider, error FROM invoices WHERE id = $1", [row.invoice_id]) : null;
   const settings = await getSettings();
-  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee == null ? null : Number(row.notary_fee) + (await witnessCost(row.id)), settings, Number(row.addons_total) || 0), witnesses: await witnessData(row.id), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
+  res.json({ booking: { ...rest, default_notarial: billing.notarialFor({ ...row, notarial_fee: null }, settings) }, invoice: inv, events, cardsOn: payments.cardsOn(settings), margin: margin.check(margin.clientPrice(row), row.notary_fee == null ? null : Number(row.notary_fee) + (await witnessCost(row.id)), settings, Number(row.addons_total) || 0), witnesses: await witnessData(row.id), feeCatalog: fees.catalog(settings), notaryFeeShare: fees.notaryShare(addons.list(row)), manageUrl: `/manage.html?ref=${row.ref}&token=${token}` });
 });
 
 app.post("/api/admin/bookings", requireAdmin, async (req, res) => {
@@ -479,8 +491,20 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const settings = await getSettings();
   const row = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id) || 0]);
   if (!row) return res.status(404).json({ error: "Not found" });
+  // Extra fees (rush, waiting, trip fee…): the desk sends the full list of fees for the job.
+  let feeItems = null;
+  if (req.body.fees !== undefined) {
+    if (row.invoice_id) return res.status(400).json({ error: "This job is already invoiced. Void the invoice to change fees." });
+    try { feeItems = fees.apply(addons.list(row), req.body.fees, settings); }
+    catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  }
+  const feeTotal = feeItems ? addons.total(feeItems) : null;
+  const rowForMargin = feeItems ? { ...row, addons_total: feeTotal } : row;
   // Margin protection: block fee changes that leave less than the minimum margin, unless the desk overrides.
-  const mg = margin.checkPatch(row, req.body, settings, await witnessCost(row.id));
+  let mg = margin.checkPatch(rowForMargin, req.body, settings, await witnessCost(row.id));
+  if (feeItems && mg.unknown && row.notary_fee != null && req.body.notary_fee === undefined && req.body.notary_id === undefined) {
+    mg = margin.check(margin.clientPrice(rowForMargin), Number(row.notary_fee) + (await witnessCost(row.id)), settings, feeTotal);
+  }
   if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message, code: "margin", margin: mg });
   if (!mg.ok) await logEvent(row.id, "desk", `Margin override: ${mg.pct}% ($${mg.kept.toFixed(2)}), below the ${mg.min}% minimum`);
   const sets = {}, notes = [];
@@ -512,6 +536,11 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
     if (f !== null && (isNaN(f) || f < 0)) return res.status(400).json({ error: "Fee must be a number" });
     if (row.invoice_id && f !== row.quoted_fee) return res.status(400).json({ error: "This job is already invoiced. Void the invoice to change fees." });
     if (f !== row.quoted_fee) { sets.quoted_fee = f; notes.push(`Fee quoted: ${f == null ? "cleared" : "$" + f.toFixed(2)}`); }
+  }
+  if (feeItems && JSON.stringify(feeItems) !== JSON.stringify(addons.list(row))) {
+    sets.addons = JSON.stringify(feeItems); sets.addons_total = feeTotal;
+    const f = fees.ofKind(feeItems);
+    notes.push(f.length ? `Extra fees: ${addons.describe(f)}` : "Extra fees removed");
   }
   if (req.body.internal_notes !== undefined) sets.internal_notes = str(req.body.internal_notes, 5000);
   if (req.body.notarial_fee !== undefined) {
@@ -640,6 +669,19 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
       if (!(price >= 0 && price <= 5000)) return res.status(400).json({ error: `Price for ${a.label} must be between $0 and $5,000.` });
       a.price = Math.round(price * 100) / 100;
     }
+  }
+  if (s.fees !== undefined) {
+    const e = fees.validateSettings(s.fees);
+    if (e) return res.status(400).json({ error: e });
+  }
+  if (s.requestFees !== undefined) {
+    const e = fees.validateSettings(s.requestFees);
+    if (e) return res.status(400).json({ error: e.replace("Extra fees", "Request extras") });
+  }
+  if (s.billing && s.billing.lateFeePct !== undefined) {
+    const p = Number(s.billing.lateFeePct);
+    if (!(p >= 0 && p <= 5)) return res.status(400).json({ error: "Late fee must be between 0 and 5% a month." });
+    s.billing.lateFeePct = p;
   }
   if (s.reviews) {
     const u = String(s.reviews.googleUrl || "").trim();

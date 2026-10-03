@@ -10,6 +10,14 @@ const storage = require("./storage");
 const mail = require("./email");
 const margin = require("./margin");
 const { TYPES, ROLE_LABEL, publicCatalog } = require("./request-types");
+const fees = require("./fees");
+const extrasOf = (r) => (Array.isArray(r.extras) ? r.extras : []);
+// What the client pays: the quoted fee plus extras (rush, extra addresses, county fees…).
+const clientTotal = (r, over = {}) => {
+  const fee = over.fee !== undefined ? num(over.fee) : num(r.fee);
+  const x = over.extras_total !== undefined ? Number(over.extras_total) || 0 : Number(r.extras_total) || 0;
+  return fee == null ? null : Math.round((fee + x) * 100) / 100;
+};
 
 const raw = express.raw({ type: () => true, limit: storage.MAX_CLOSING + 1024 });
 const STATUSES = ["new", "quoted", "in_progress", "completed", "canceled"];
@@ -23,7 +31,7 @@ function newRef() { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = "SR-";
 
 // Margin for a request: client fee vs team-member pay plus partner cost.
 function marginFor(r, settings, over = {}) {
-  const fee = over.fee !== undefined ? num(over.fee) : num(r.fee);
+  const fee = clientTotal(r, over);
   const pay = over.assignee_fee !== undefined ? num(over.assignee_fee) : num(r.assignee_fee);
   const vendor = over.vendor_cost !== undefined ? num(over.vendor_cost) : num(r.vendor_cost);
   const assigned = over.assignee_id !== undefined ? !!over.assignee_id : !!r.assignee_id;
@@ -69,7 +77,8 @@ async function detail(id, settings) {
   }
   const assignee = r.assignee_id ? await db.one("SELECT id, name, phone, email, role FROM notaries WHERE id = $1", [r.assignee_id]) : null;
   const inv = r.invoice_id ? await db.one("SELECT id, number, status, provider, error FROM invoices WHERE id = $1", [r.invoice_id]) : null;
-  return { request: view(r), fields: (TYPES[r.type] || {}).fields || [], events, documents: docs, attempts, pool, assignee, invoice: inv, margin: marginFor(r, settings), results: RESULTS };
+  return { request: view(r), fields: (TYPES[r.type] || {}).fields || [], events, documents: docs, attempts, pool, assignee, invoice: inv, margin: marginFor(r, settings), results: RESULTS,
+    extrasCatalog: fees.forType(settings, r.type), extrasShare: fees.notaryShare(extrasOf(r)) };
 }
 
 async function sendDoc(res, doc) {
@@ -87,6 +96,8 @@ async function invoiceRequest(id) {
   if (r.invoice_id) throw err("This request is already invoiced.");
   if (r.status === "canceled") throw err("Canceled requests can't be invoiced.");
   if (num(r.fee) == null) throw err("Set the client fee first.");
+  const extraLines = extrasOf(r).filter((a) => a.qty > 0 && a.price > 0);
+  const total = clientTotal(r);
   const billing = require("./billing");
   const today = dateInTz(new Date(), settings.business.timezone);
   let to = { name: r.company || r.contact_name, email: r.contact_email, termsDays: null, accountId: null };
@@ -99,10 +110,11 @@ async function invoiceRequest(id) {
   const name = `${(TYPES[r.type] || {}).label || r.type} · ${r.ref}${r.client_ref ? ` · File ${r.client_ref}` : ""}`.slice(0, 195);
   const inv = await db.tx(async (t) => {
     const row = await t.one(`INSERT INTO invoices(client_account_id, bill_to_name, bill_to_email, invoice_date, due_date, period_start, period_end, amount, status, provider)
-      VALUES($1,$2,$3,$4,$5,$4,$4,$6,'draft',$7) RETURNING *`, [to.accountId, to.name, to.email, today, due, num(r.fee), billing.PROVIDER]);
+      VALUES($1,$2,$3,$4,$5,$4,$4,$6,'draft',$7) RETURNING *`, [to.accountId, to.name, to.email, today, due, total, billing.PROVIDER]);
     const number = `MCC-${today.replace(/-/g, "").slice(0, 6)}-${String(row.id).padStart(4, "0")}`;
     await t.run("UPDATE invoices SET number = $1 WHERE id = $2", [number, row.id]);
     await t.run("INSERT INTO invoice_items(invoice_id, request_id, name, quantity, unit_price) VALUES($1,$2,$3,1,$4)", [row.id, r.id, name, num(r.fee)]);
+    for (const a of extraLines) await t.run("INSERT INTO invoice_items(invoice_id, request_id, name, quantity, unit_price) VALUES($1,$2,$3,$4,$5)", [row.id, r.id, `${a.label} · ${r.ref}`.slice(0, 195), a.qty, a.price]);
     const claimed = await t.one("UPDATE service_requests SET invoice_id = $1 WHERE id = $2 AND invoice_id IS NULL RETURNING id", [row.id, r.id]);
     if (!claimed) throw err("This request was just invoiced.", 409);
     return { ...row, number };
@@ -131,12 +143,13 @@ async function createRequest(body, c, { accountId = null, userId = null, actor =
   if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) fields.dueDate = "Pick a valid date.";
   if (Object.keys(fields).length) throw err("Check the highlighted fields.", 400, { fields });
   const clientRef = str(body.clientRef, 80) || null;
+  const extras = fees.requestAuto(await getSettings(), type, d);
   let row;
   for (let i = 0; i < 5 && !row; i++) {
     try {
-      row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, client_user_id, details, notes, due_date, client_ref)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-        [newRef(), type, c.name, c.email, c.phone || null, c.company || null, accountId, userId, JSON.stringify(d), str(body.notes, 2000) || null, due || null, clientRef]);
+      row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, client_user_id, details, notes, due_date, client_ref, extras, extras_total)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+        [newRef(), type, c.name, c.email, c.phone || null, c.company || null, accountId, userId, JSON.stringify(d), str(body.notes, 2000) || null, due || null, clientRef, JSON.stringify(extras), fees.total(extras)]);
     } catch (e) { if (e.code !== "23505") throw e; }
   }
   await logReq(row.id, actor, actor === "client" ? `Requested in the client portal by ${c.name}` : "Requested online");
@@ -216,16 +229,26 @@ function register(app, { requireAdmin, requireNotary, loadMe }) {
     if (req.body.internal_notes !== undefined) sets.internal_notes = str(req.body.internal_notes, 5000);
     if (req.body.client_ref !== undefined) { const v = str(req.body.client_ref, 80) || null; if (v !== r.client_ref) { sets.client_ref = v; notes.push(`Client file #: ${v || "cleared"}`); } }
     if (req.body.notify_attempts !== undefined) sets.notify_attempts = req.body.notify_attempts ? 1 : 0;
+    if (req.body.extras !== undefined) {
+      if (r.invoice_id) return res.status(400).json({ error: "Already invoiced. Void the invoice to change extras." });
+      let items;
+      try { items = fees.apply(extrasOf(r), req.body.extras, settings, fees.forType(settings, r.type)); }
+      catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+      if (JSON.stringify(items) !== JSON.stringify(extrasOf(r))) {
+        sets.extras = items; sets.extras_total = fees.total(items);
+        notes.push(items.length ? `Extras: ${require("./addons").describe(items)}` : "Extras removed");
+      }
+    }
     const mg = marginFor(r, settings, sets);
     if (!mg.ok && !req.body.override_margin) return res.status(400).json({ error: mg.message.replace("Pay the notary at most", "Keep team + partner cost at or under"), code: "margin", margin: mg });
     if (!Object.keys(sets).length) return res.json({ ok: true });
     const keys = Object.keys(sets);
-    await db.run(`UPDATE service_requests SET ${keys.map((k, i) => `${k} = $${i + 1}`).join(", ")}, updated_at = now() WHERE id = $${keys.length + 1}`, [...keys.map((k) => (k === "details" ? JSON.stringify(sets[k]) : sets[k])), r.id]);
+    await db.run(`UPDATE service_requests SET ${keys.map((k, i) => `${k} = $${i + 1}`).join(", ")}, updated_at = now() WHERE id = $${keys.length + 1}`, [...keys.map((k) => (k === "details" || k === "extras" ? JSON.stringify(sets[k]) : sets[k])), r.id]);
     for (const n of notes) await logReq(r.id, "desk", n);
     if (!mg.ok) await logReq(r.id, "desk", `Margin override: ${mg.pct}%`);
     if (sets.status && req.body.notify !== false && ["quoted", "completed", "canceled"].includes(sets.status)) {
       const t = TYPES[r.type] || { label: r.type };
-      const msg = { quoted: `We've reviewed your ${t.label.toLowerCase()} request${num(sets.fee ?? r.fee) != null ? ` and the price is $${num(sets.fee ?? r.fee).toFixed(2)}` : ""}. Reply to this email or call ${settings.business.phone} to confirm.`,
+      const msg = { quoted: `We've reviewed your ${t.label.toLowerCase()} request${clientTotal(r, sets) != null ? ` and the price is $${clientTotal(r, sets).toFixed(2)}${Number(sets.extras_total ?? r.extras_total) ? ` (includes ${require("./addons").describe(sets.extras || extrasOf(r))})` : ""}` : ""}. Reply to this email or call ${settings.business.phone} to confirm.`,
         completed: `Your ${t.label.toLowerCase()} request is complete.${r.type === "process_serve" ? (r.client_account_id ? ` Download the affidavit of service in your client portal: ${mail.BASE}/client/#request-${r.id}` : " The affidavit of service will be sent to you.") : ""}`, canceled: `Your ${t.label.toLowerCase()} request was canceled.` }[sets.status];
       mail.send({ to: r.contact_email, subject: `${t.label} ${r.ref}: ${sets.status === "quoted" ? "your quote" : sets.status}`, text: `Hi ${r.contact_name},\n\n${msg}\n\n${settings.business.name} · ${settings.business.phone}` });
     }
@@ -377,7 +400,7 @@ function register(app, { requireAdmin, requireNotary, loadMe }) {
     const d = r.details || {};
     const summary = d.serve_name || d.property || d.project || d.doc_type || d.country || [d.from_lang, d.to_lang].filter(Boolean).join(" → ") || d.volume || "";
     return { id: r.id, ref: r.ref, type: r.type, type_label: t.label, status: r.status, client_ref: r.client_ref, due_date: r.due_date, created_at: r.created_at, completed_at: r.completed_at,
-      summary, fee: r.fee, notes: r.notes, contact_name: r.contact_name, can_cancel: ["new", "quoted"].includes(r.status) && r.assignee_status !== "accepted" };
+      summary, fee: clientTotal(r), extras: extrasOf(r).map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", "), notes: r.notes, contact_name: r.contact_name, can_cancel: ["new", "quoted"].includes(r.status) && r.assignee_status !== "accepted" };
   }
   async function myReq(req, res) {
     const r = await db.one("SELECT * FROM service_requests WHERE id = $1 AND client_account_id = $2", [Number(req.params.id) || 0, req.client.account_id]);

@@ -385,3 +385,9 @@ alter table service_requests add column if not exists upload_token_hash text;
 alter table service_requests add column if not exists upload_token_expires timestamptz;
 alter table service_requests add column if not exists notify_attempts integer default 1;
 create index if not exists idx_service_requests_client on service_requests(client_account_id);
+
+-- ===== Extra fees and late fees (added in v12; safe to re-run) =====
+-- extra fees live in bookings.addons (kind "fee"); requests get the same kind of list
+alter table invoices add column if not exists late_fee_at timestamptz;
+alter table service_requests add column if not exists extras jsonb default '[]'::jsonb;
+alter table service_requests add column if not exists extras_total double precision default 0;

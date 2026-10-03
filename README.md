@@ -191,6 +191,10 @@ Each service page for process serving, document recording, embassy legalization,
 - Upload the papers to serve. The process server logs each attempt (time, result, who was served) and uploads the signed affidavit. A process serve can't be completed without a successful serve and an affidavit.
 - Send the invoice in one click. Team pay shows up in Team payouts like any other job.
 
+## New services (court runs, records, skip tracing, medical records, I-9, vehicle titles)
+
+Request types and service pages for court filing and courthouse runs, records retrieval, skip tracing (database searches for a permissible purpose only, not investigations), medical records pickup (with a signed authorization or subpoena), and I-9 authorized representative visits. Vehicle title paperwork is a booking page for the mobile notary. Starting prices for each are in Settings → Starting prices.
+
 ## Law firms
 - **/notary/law-firms** pitches process serving, notaries and witnesses to firms and has a "Request a firm account" form. Requests land in your Inbox; set the firm up in Clients and invite their team.
 - **Client portal → Serves & Legal:** firm users order any service request, attach papers, follow every attempt, download the affidavit once the request is completed, and cancel before work starts.
@@ -201,6 +205,15 @@ Each service page for process serving, document recording, embassy legalization,
 
 ## Checkout add-ons
 Settings → Checkout add-ons: printing, scanbacks, witnesses, courier and apostille handling are offered when customers book online and when clients order in the portal. Turn each on or off and set its price. Chosen add-ons show on the booking, in the notary's job details ("Also needed"), in confirmation emails, and as separate lines on invoices and card charges. Margin protection counts add-ons as part of the client total.
+
+## Extra fees, late fees and request extras
+
+- **Extra fees** (Settings → Extra fees): rush, after-hours, weekend, holiday, additional signers, extra documents, waiting time, travel, facility coordination, trip and late-cancellation fees. Rush, after-hours, weekend and extra-signer fees are added automatically when a job is booked (online, by the desk or in the client portal); turn that off for business accounts under Billing. The desk adds, changes or removes fees in the booking drawer (Extra fees), including one-off custom fees, until the job is invoiced. Each fee has a notary share % and the drawer shows the suggested extra pay with an "Add to notary pay" button.
+- Fees are stored with the add-ons on the booking, so they show on confirmations, the customer's booking page, the client portal, invoices (one line each), card charges and the margin check. Notaries don't see the fee lines.
+- **Canceled and no-show jobs** can be billed for trip and late-cancellation fees only: add the fee in the drawer, then invoice it or charge the saved card. A customer who cancels online less than 2 hours before the start gets the late-cancellation fee added automatically (the manage page warns them first) and the desk gets an email to charge or waive it.
+- **Late fees**: Billing shows a "Late fee" button on overdue business invoices. It creates a separate invoice for the monthly percentage (Settings → Billing, default 1.5%), at most once every 30 days per invoice. Business invoices state the late fee terms.
+- **Request extras** (Settings → Request extras): rush and same-day serves (added automatically from the priority the client picks), additional addresses and attempts, stakeouts, skip traces, affidavit filing, rush handling, travel and government fees at cost. Edit them in the request drawer; each is its own invoice line and counts in the margin.
+- The public **fees page** (/notary/fees) is built from these settings, so it always matches what you charge. New Jersey caps the fee per notarial act; everything here is a separate service or travel fee, disclosed before the appointment.
 
 ## Margin protection
 Settings → Billing → Minimum margin (default 20%). The desk can't save a notary fee or client fee that leaves MCC less than that share of the client fee; the dashboard shows the margin on every booking and the most you can pay the notary. You can override a single job when you choose to, and the override is recorded in the booking history. Automatic offers are capped so they never exceed the allowed notary fee. Set the minimum to 0 to turn the check off.

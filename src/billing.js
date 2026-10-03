@@ -21,7 +21,14 @@ function notarialFor(b, settings) {
   return TRANSFER.has(b.category) ? caps.transfer ?? null : caps.financing ?? null;
 }
 
+const CANCELED = ["canceled", "no_show"];
+// Trip and late-cancel fees on a canceled or no-show job (the only thing billable on one).
+const cancelLines = (b) => require("./fees").cancelItems(require("./addons").list(b))
+  .filter((a) => a.qty > 0 && a.price > 0)
+  .map((a) => ({ booking_id: b.id, name: `${a.label} · ${b.ref}`.slice(0, 195), quantity: a.qty, unit_price: round2(a.price) }));
+
 function lineItemsFor(b, settings) {
+  if (CANCELED.includes(b.status)) { const c = cancelLines(b); return c.length ? c : null; }
   const price = clientPrice(b);
   if (price == null) return null;
   const tz = settings.business.timezone;
@@ -40,7 +47,7 @@ function lineItemsFor(b, settings) {
 
 async function unbilled() {
   const rows = await db.all(`SELECT b.*, a.company FROM bookings b LEFT JOIN client_accounts a ON a.id = b.client_account_id
-    WHERE b.status = 'completed' AND b.invoice_id IS NULL ORDER BY b.start_utc`);
+    WHERE (b.status = 'completed' OR (b.status IN ('canceled','no_show') AND b.addons @> '[{"onCancel": true}]'::jsonb)) AND b.invoice_id IS NULL ORDER BY b.start_utc`);
   return rows;
 }
 
@@ -68,16 +75,16 @@ async function createInvoice({ accountId, bookingId, through, send = true }) {
     const b = await db.one("SELECT * FROM bookings WHERE id = $1", [bookingId]);
     if (!b) throw Object.assign(new Error("Booking not found."), { status: 404 });
     if (b.invoice_id) throw Object.assign(new Error("This booking is already on an invoice."), { status: 400 });
-    if (b.status === "canceled") throw Object.assign(new Error("Canceled bookings can't be invoiced."), { status: 400 });
+    if (CANCELED.includes(b.status) && !cancelLines(b).length) throw Object.assign(new Error("A canceled or no-show job can only be billed for a trip or late-cancellation fee. Add one under Extra fees first."), { status: 400 });
     jobs = [b];
     accountId = b.client_account_id || null;
   } else {
     const end = through && /^\d{4}-\d{2}-\d{2}$/.test(through) ? through : today;
-    jobs = await db.all(`SELECT * FROM bookings WHERE client_account_id = $1 AND status = 'completed' AND invoice_id IS NULL
+    jobs = await db.all(`SELECT * FROM bookings WHERE client_account_id = $1 AND (status = 'completed' OR (status IN ('canceled','no_show') AND addons @> '[{"onCancel": true}]'::jsonb)) AND invoice_id IS NULL
       AND start_utc < ($2::date + 1)::timestamptz ORDER BY start_utc`, [accountId, end]);
     if (!jobs.length) throw Object.assign(new Error("No completed, unbilled jobs for this client."), { status: 400 });
   }
-  const missing = jobs.filter((b) => clientPrice(b) == null);
+  const missing = jobs.filter((b) => !CANCELED.includes(b.status) && clientPrice(b) == null);
   if (missing.length) throw Object.assign(new Error(`Set a client fee first on: ${missing.map((b) => b.ref).join(", ")}.`), { status: 400 });
 
   const to = await billTo(accountId, jobs[0]);
@@ -201,6 +208,33 @@ async function voidInvoice(id) {
   return getInvoice(id);
 }
 
+// Late fee on an overdue business invoice: a separate invoice for settings.billing.lateFeePct of the
+// unpaid amount, at most once every 30 days per invoice. The desk clicks it; nothing is charged automatically.
+async function lateFee(id) {
+  const settings = await getSettings();
+  const pct = Number(settings.billing?.lateFeePct) || 0;
+  if (!(pct > 0)) throw Object.assign(new Error("Late fees are off. Set a percentage in Settings → Billing."), { status: 400 });
+  const inv = await db.one("SELECT * FROM invoices WHERE id = $1", [id]);
+  if (!inv) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  const today = dateInTz(new Date(), settings.business.timezone);
+  if (inv.status !== "open" || !(String(inv.due_date) < today)) throw Object.assign(new Error("Only open invoices past their due date can get a late fee."), { status: 400 });
+  if (!inv.client_account_id) throw Object.assign(new Error("Late fees apply to business accounts only."), { status: 400 });
+  if (inv.late_fee_at && Date.now() - new Date(inv.late_fee_at).getTime() < 30 * 86400e3) throw Object.assign(new Error("A late fee was already billed on this invoice in the last 30 days."), { status: 400 });
+  const amount = Math.max(1, round2(inv.amount * pct / 100));
+  const created = await db.tx(async (t) => {
+    const lock = await t.one("UPDATE invoices SET late_fee_at = now() WHERE id = $1 AND (late_fee_at IS NULL OR late_fee_at < now() - interval '30 days') RETURNING id", [inv.id]);
+    if (!lock) throw Object.assign(new Error("A late fee was just billed on this invoice."), { status: 409 });
+    const row = await t.one(`INSERT INTO invoices(client_account_id, bill_to_name, bill_to_email, invoice_date, due_date, period_start, period_end, amount, status, provider)
+      VALUES($1,$2,$3,$4,$5,$4,$4,$6,'draft',$7) RETURNING *`, [inv.client_account_id, inv.bill_to_name, inv.bill_to_email, today, addDays(today, 15), amount, PROVIDER]);
+    const number = invoiceNumber(row.id, today);
+    await t.run("UPDATE invoices SET number = $1 WHERE id = $2", [number, row.id]);
+    await t.run("INSERT INTO invoice_items(invoice_id, name, quantity, unit_price) VALUES($1,$2,1,$3)", [row.id, `Late fee (${pct}% a month) on invoice ${inv.number}, due ${inv.due_date}`, amount]);
+    return row;
+  });
+  try { return await sendInvoice(created.id); }
+  catch (e) { console.error("Sending late-fee invoice failed:", e.message); return getInvoice(created.id); }
+}
+
 async function markPaid(id) {
   await db.run("UPDATE invoices SET status = 'paid', paid_at = now() WHERE id = $1 AND status IN ('open','draft')", [id]);
   return getInvoice(id);
@@ -228,7 +262,7 @@ function invoiceHtml(inv, settings) {
   ${inv.items.map((i) => `<tr><td>${esc(i.name)}</td><td class="n">${i.quantity}</td><td class="n">${money(i.quantity * i.unit_price)}</td></tr>`).join("")}
   <tr><td></td><td class="n"><b>Total</b></td><td class="n tot">${money(inv.amount)}</td></tr></tbody></table>
   ${inv.payment_url ? `<p style="margin-top:24px"><a href="${esc(inv.payment_url)}">Pay this invoice online</a></p>` : ""}
-  <p class="muted" style="margin-top:24px">Notarial fees are charged within state limits and listed separately from signing-service fees.</p></body></html>`;
+  <p class="muted" style="margin-top:24px">Notarial fees are charged within state limits and listed separately from signing-service, travel and other fees.${inv.client_account_id && Number(settings.billing?.lateFeePct) > 0 ? ` Balances unpaid after the due date may be charged a late fee of ${Number(settings.billing.lateFeePct)}% a month.` : ""}</p></body></html>`;
 }
 
 function register(app, { requireAdmin, requireClient, loadClient }) {
@@ -243,9 +277,10 @@ function register(app, { requireAdmin, requireClient, loadClient }) {
     const groups = {};
     const individuals = [];
     for (const b of rows) {
-      const price = clientPrice(b);
-      const j = { id: b.id, ref: b.ref, category: b.category, start_utc: b.start_utc, file_number: b.file_number, signer_names: b.signer_names, contact_name: b.contact_name,
-        price, notarial: price == null ? null : Math.min(notarialFor(b, settings) ?? 0, price), state: b.state };
+      const canceled = CANCELED.includes(b.status);
+      const price = canceled ? round2(cancelLines(b).reduce((a, i) => a + i.quantity * i.unit_price, 0)) : clientPrice(b);
+      const j = { canceled, status: b.status, id: b.id, ref: b.ref, category: b.category, start_utc: b.start_utc, file_number: b.file_number, signer_names: b.signer_names, contact_name: b.contact_name,
+        price, extras: canceled ? 0 : Number(b.addons_total) || 0, notarial: price == null || canceled ? null : Math.min(notarialFor(b, settings) ?? 0, price), state: b.state };
       if (b.client_account_id) (groups[b.client_account_id] ||= { account_id: b.client_account_id, company: b.company, jobs: [] }).jobs.push(j);
       else individuals.push(j);
     }
@@ -262,6 +297,7 @@ function register(app, { requireAdmin, requireClient, loadClient }) {
   app.post("/api/admin/billing/invoices/:id/send", requireAdmin, wrap(async (req) => ({ invoice: await sendInvoice(Number(req.params.id) || 0) })));
   app.post("/api/admin/billing/invoices/:id/sync", requireAdmin, wrap(async (req) => ({ invoice: await syncInvoice(Number(req.params.id) || 0) })));
   app.post("/api/admin/billing/invoices/:id/void", requireAdmin, wrap(async (req) => ({ invoice: await voidInvoice(Number(req.params.id) || 0) })));
+  app.post("/api/admin/billing/invoices/:id/late-fee", requireAdmin, wrap(async (req) => ({ invoice: await lateFee(Number(req.params.id) || 0) })));
   app.post("/api/admin/billing/invoices/:id/mark-paid", requireAdmin, wrap(async (req) => ({ invoice: await markPaid(Number(req.params.id) || 0) })));
   app.get("/api/admin/billing/invoices/:id/view", requireAdmin, async (req, res) => {
     const inv = await getInvoice(Number(req.params.id) || 0);

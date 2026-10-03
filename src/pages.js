@@ -2,7 +2,7 @@
 // Rendered with the same layout as the landing pages in seo.js.
 const { layout, business, telHref, base, esc } = require("./seo");
 
-const UPDATED = "October 2, 2026";
+const UPDATED = "October 3, 2026";
 const FOUNDER = { name: "Matthew Coleman", role: "Founder & Principal", photo: "/img/matthew-coleman.jpg" };
 // From Matthew's resume. Only list credentials that are current; add new ones here as they're earned.
 const CREDENTIALS = [
@@ -99,6 +99,9 @@ function register(app) {
             <a class="svc" href="/notary/estate-planning-notary"><span class="code">ESTATE SIGNINGS</span><h3>Notaries and witnesses</h3><p>Wills, trusts, powers of attorney and advance directives, with independent witnesses, at the client's home, office or hospital bed.</p><span class="more">Estate signings →</span></a>
             <a class="svc" href="/notary/apostille-services"><span class="code">INTERNATIONAL</span><h3>Apostilles and legalization</h3><p>Documents notarized and certified for use abroad, including embassy legalization for countries outside the Hague Convention.</p><span class="more">Apostilles →</span></a>
             <a class="svc" href="/notary/document-recording"><span class="code">RECORDING</span><h3>Deeds and releases recorded</h3><p>Submitted to the county with the recorded copy back to you, in all 21 New Jersey counties.</p><span class="more">Recording →</span></a>
+            <a class="svc" href="/notary/court-filing"><span class="code">COURT RUNS</span><h3>Filings and courthouse runs</h3><p>Walk-in filings, hand deliveries and copies from the court file, plus affidavits filed after a serve.</p><span class="more">Court runs →</span></a>
+            <a class="svc" href="/notary/skip-tracing"><span class="code">SKIP TRACE</span><h3>Defendant moved? We find them</h3><p>Database searches for a current address, handed straight to a server. Permissible legal purposes only.</p><span class="more">Skip tracing →</span></a>
+            <a class="svc" href="/notary/medical-records-retrieval"><span class="code">RECORDS</span><h3>Medical and public records</h3><p>Medical records picked up with the signed authorization, and certified deeds, court and vital records pulled for you.</p><span class="more">Records →</span></a>
             <a class="svc" href="/notary/certified-translation"><span class="code">TRANSLATION</span><h3>Certified translation</h3><p>Translations certified by our partners and notarized when the court or agency requires it.</p><span class="more">Translation →</span></a>
             <a class="svc" href="/notary/hospital-notary"><span class="code">URGENT</span><h3>Hospital and same-day visits</h3><p>Bedside notarizations and rush serves, including evenings and weekends.</p><span class="more">Hospital visits →</span></a>
           </div>
@@ -259,6 +262,59 @@ function register(app) {
         ctaTitle: "Ready to send your first file?",
       },
       schema: [{ "@type": "WebPage", name: "Vendor packet", url: url + "/notary/vendors" }],
+    }));
+  });
+
+  /* ---------- Fees (public price list) ---------- */
+  app.get("/notary/fees", async (req, res) => {
+    const { getSettings } = require("./db");
+    const settings = await getSettings();
+    const biz = settings.business;
+    const url = base(req);
+    const prices = require("./prices"), fees = require("./fees");
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Fees", "/notary/fees"]];
+    const start = prices.list(settings);
+    const fx = fees.publicCatalog(settings);
+    const svc = (f) => f.services.length === 3 ? "All" : f.services.map((x) => ({ mobile: "Mobile", ron: "RON", rin: "RIN" }[x])).join(", ");
+    const rq = fees.requestCatalog(settings).filter((f) => f.price > 0);
+    const addons = require("./addons").catalog(settings);
+    const money = (n) => prices.money(n);
+    const lateCancel = fx.find((f) => f.auto === "late_cancel"), trip = fx.find((f) => f.id === "trip");
+    const faqs = [
+      ["Why is the notary fee listed separately?", "New Jersey sets the maximum fee a notary can charge for each notarial act. Our travel, scheduling and signing-service fees are separate charges for coming to you, and every quote and invoice shows them on their own lines."],
+      ["Will I know the price before the appointment?", "Yes. You get the price when we confirm your appointment, including any extra fees that apply. Rush, after-hours and weekend fees are added when you book, so they're in your confirmation."],
+      ["Do businesses get different pricing?", "Title companies, law firms and other businesses with an account can ask about volume pricing. Request a business account and we'll quote it."],
+      ["What if I need to cancel?", `Cancel online or call the desk any time before the appointment.${lateCancel ? ` Cancellations under 2 hours before the start have a ${money(lateCancel.price)} late-cancellation fee.` : ""}${trip ? ` If the notary arrives and the signing can't go ahead, a ${money(trip.price)} trip fee applies.` : ""}`],
+    ];
+    res.send(layout({
+      req, biz, path: "/notary/fees", crumbs,
+      title: "Notary & Process Serving Fees in New Jersey | MCC Solutions",
+      description: "Starting prices for mobile notary visits, loan signings, process serving and document services in New Jersey, plus every extra fee, listed up front.",
+      body: {
+        hero: `<p class="eyebrow">Pricing</p><h1 style="margin-top:10px">Our fees, listed up front</h1><p class="lede" style="margin-top:14px">Starting prices for each service, and every extra fee that can apply. You see the full price before your appointment is confirmed, and every invoice lists each charge on its own line.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call for a quote</a></div>`,
+        main: `<section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">Starting prices</p><h2>Services</h2>
+            ${start.length ? `<table class="kv-table">${start.map((i) => `<tr><th scope="row">${esc(i.label)}</th><td><b>${money(i.price)}</b> <small>${esc(i.note)}</small></td></tr>`).join("")}</table>` : `<p>Call the desk for a quote.</p>`}
+            <p style="color:var(--ink-2);font-size:.92rem">Final prices depend on the location, timing and number of signers. The desk confirms the price before anything is scheduled.</p></div>
+          <div class="stack"><p class="eyebrow">Options</p><h2>Add-ons you can choose</h2>
+            ${addons.length ? `<table class="kv-table">${addons.map((a) => `<tr><th scope="row">${esc(a.label)}</th><td><b>${money(a.price)}</b>${a.note ? ` <small>${esc(a.note)}</small>` : ""}</td></tr>`).join("")}</table>` : "<p>None right now.</p>"}</div>
+        </div></section>
+        <section class="band alt"><div class="wrap">
+          <div class="sec-head"><p class="eyebrow">Extra fees</p><h2>Notary visits and signings</h2><p class="lede">These only apply when they fit the appointment. Fees marked "automatic" are added when you book, so they show up in your confirmation.</p></div>
+          <table class="kv-table fee-table">${fx.map((f) => `<tr><th scope="row">${esc(f.label)}${f.auto ? ' <span class="tag">automatic</span>' : ""}</th><td><b>${money(f.price)}</b>${f.unit ? ` ${esc(f.unit)}` : ""}${f.note ? `<br><small>${esc(f.note)}</small>` : ""}<br><small>${esc(svc(f))}</small></td></tr>`).join("")}</table>
+          ${rq.length ? `<div class="sec-head" style="margin-top:40px"><h2>Process serving and document services</h2></div>
+          <table class="kv-table fee-table">${rq.map((f) => `<tr><th scope="row">${esc(f.label)}</th><td><b>${money(f.price)}</b>${f.unit ? ` ${esc(f.unit)}` : ""}${f.note ? `<br><small>${esc(f.note)}</small>` : ""}</td></tr>`).join("")}</table>
+          <p style="color:var(--ink-2);font-size:.92rem;margin-top:12px">Court, county, agency and copy fees are passed through at cost and shown separately.</p>` : ""}
+        </div></section>
+        <section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">New Jersey notarial fees</p><h2>The state fee is separate</h2><p>New Jersey law caps what a notary may charge for each notarial act. That fee is billed at or below the state limit. Travel, scheduling, printing and the other services on this page are separate charges for coming to you, agreed before the appointment.</p></div>
+          <div class="stack"><p class="eyebrow">Payment</p><h2>How you pay</h2><ul class="checks"><li>Individuals: card saved when you book, charged after the appointment, with an emailed receipt</li><li>Businesses: invoice per job or monthly, by ACH or card</li><li>Every invoice lists the notarial fee, service fee and each extra fee on its own line</li></ul></div>
+        </div></section>
+        <section class="band alt"><div class="wrap"><div class="sec-head"><p class="eyebrow">Questions</p><h2>About our fees</h2></div>
+          <div class="faq-group">${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</div></div></section>`,
+        ctaTitle: "Need a price for a specific job?",
+      },
+      schema: [{ "@type": "WebPage", name: "Fees", url: url + "/notary/fees" }, { "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }],
     }));
   });
 
@@ -534,11 +590,13 @@ function register(app) {
           ])],
           ["Signer requirements and the notary's judgment", p("Every signer must appear as required and present current, acceptable government photo identification. The notary must refuse to notarize if identity can't be verified, if the signer appears not to understand or not to be acting willingly, if the document is incomplete, or if the act would break the law. A refusal on these grounds is not a failure of service, and trip or cancellation fees may apply.")],
           ["Fees and payment", ul([
-            "Fees are quoted before the appointment is confirmed. Notarial fees follow state limits; travel, printing, scanbacks, witnesses, after-hours and other service fees are listed separately.",
+            "Fees are quoted before the appointment is confirmed. Notarial fees follow state limits; travel, printing, scanbacks, witnesses, rush, after-hours, weekend, waiting-time and other service fees are listed separately. Current prices are on our <a href=\"/notary/fees\">fees page</a>.",
+            "Rush, after-hours, weekend and additional-signer fees are added automatically when they apply and appear in your confirmation.",
+            "Business accounts: balances unpaid after the due date may be charged a late fee, stated on the invoice.",
             "Individuals pay when invoiced unless we agree otherwise. Business clients pay on the terms stated on their account or invoice.",
             "Payments are processed by Stripe. Unpaid balances may pause future orders.",
           ])],
-          ["Cancellations, no-shows and changes", p("Cancel or reschedule as early as possible. Cancellations after documents are printed or after the notary has left for the appointment, signer no-shows and refusals to sign may carry a fee, which we state when we confirm the order. Changed or late documents may require reprinting at an added fee.")],
+          ["Cancellations, no-shows and changes", p("Cancel or reschedule as early as possible. Cancellations after documents are printed or after the notary has left for the appointment, signer no-shows and refusals to sign may carry a trip fee, and cancellations less than 2 hours before the start carry a late-cancellation fee, as listed on our fees page. Changed or late documents may require reprinting at an added fee.")],
           ["Your responsibilities", ul([
             "Give accurate appointment, signer and document information.",
             "Send complete, correct documents and return instructions, including prepaid shipping labels when required.",

@@ -39,7 +39,7 @@
       <div class="cancel-box" id="cancelBox" hidden>
         <h3>Need to cancel?</h3>
         <div class="field"><label for="reason">Reason <span class="opt">(optional)</span></label><input id="reason" placeholder="Closing moved to next week"></div>
-        <div id="confirmRow" hidden><p style="color:var(--ink-2);margin-bottom:10px">Cancel booking <b id="cref"></b>? This frees the time for someone else.</p>
+        <div id="confirmRow" hidden><p style="color:var(--ink-2);margin-bottom:10px">Cancel booking <b id="cref"></b>? This frees the time for someone else.</p><p id="lateNote" hidden style="color:var(--warn);margin-bottom:10px"></p>
           <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-danger" id="yes" type="button">Yes, cancel it</button><button class="btn btn-ghost" id="no" type="button">Keep my booking</button></div></div>
         <button class="btn btn-ghost" id="cancel" type="button" style="align-self:flex-start">Cancel booking</button>
       </div>
@@ -71,7 +71,8 @@
     if (b.mailingAddress) rows.push(["Docs mailed to", b.mailingAddress]);
     if (b.notary) rows.push(["Your notary", b.notary.name + (b.notary.phone ? " · " + b.notary.phone : "")]);
     if (b.addons && b.addons.length) rows.push(["Add-ons", b.addons.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
-    if (b.estFee != null) rows.push(["Fee", "$" + (Number(b.estFee) + Number(b.addonsTotal || 0)).toFixed(2) + (b.feeIsQuote ? "" : " estimated") + (b.addonsTotal ? " incl. add-ons" : "")]);
+    if (b.fees && b.fees.length) rows.push(["Extra fees", b.fees.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
+    if (b.estFee != null) rows.push(["Fee", "$" + (Number(b.estFee) + Number(b.addonsTotal || 0)).toFixed(2) + (b.feeIsQuote ? "" : " estimated") + (b.addonsTotal ? ((b.addons && b.addons.length) && (b.fees && b.fees.length) ? " incl. add-ons and extra fees" : (b.fees && b.fees.length) ? " incl. extra fees" : " incl. add-ons") : "")]);
     const dl = $("#details"); dl.innerHTML = "";
     rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
     $("#actions").hidden = b.status === "canceled";
@@ -87,6 +88,8 @@
       cb.hidden = !b.cardRequested;
     }
     $("#cref").textContent = b.ref;
+    const ln = $("#lateNote"); ln.hidden = b.lateCancelFee == null;
+    if (b.lateCancelFee != null) ln.textContent = `Your appointment starts in under 2 hours, so a late-cancellation fee of $${Number(b.lateCancelFee).toFixed(2)} applies.`;
   }
 
   if (!ref || !token) { $("#title").textContent = "Booking link incomplete"; msg("Open the link from your confirmation email, or call the desk."); return; }

@@ -190,7 +190,7 @@
   async function openBooking(id) {
     openId = id;
     await loadNotaries();
-    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn, margin: mg, witnesses: wit }, { documents: bdocs }, cand, cl] = await Promise.all([
+    const [{ booking: b, events, manageUrl, invoice: binv, cardsOn, margin: mg, witnesses: wit, feeCatalog, notaryFeeShare }, { documents: bdocs }, cand, cl] = await Promise.all([
       api("/api/admin/bookings/" + id), api(`/api/admin/bookings/${id}/documents`), api(`/api/admin/bookings/${id}/candidates`), api("/api/admin/clients"),
     ]);
     $("#dSvc").textContent = `${SVC[b.service]} · ${b.ref}`;
@@ -216,7 +216,7 @@
       ${active && b.notary_status !== "accepted" ? `<button class="btn btn-ghost btn-sm" id="dAuto" type="button">${b.auto_dispatch ? "Restart auto-dispatch" : "Auto-dispatch to nearest ready notary"}</button>` : ""}
       <div class="cand">${cand.eligible.length ? `<span><b>Can take it:</b> ${cand.eligible.map((n) => `${esc(n.name)}${n.miles != null ? ` (${n.miles} mi)` : ""}`).join(", ")}</span>` : "<span><b>No eligible notaries right now.</b></span>"}
         ${cand.skipped.length ? `<details><summary style="cursor:pointer;font-size:.86rem;padding:4px 0">Why others are skipped (${cand.skipped.length})</summary>${cand.skipped.map((n) => `<div>${esc(n.name)}: ${esc(n.why.join(", "))}</div>`).join("")}</details>` : ""}</div></div>`;
-    const clientSel = `<div class="inline" style="margin-top:10px"><select id="dClient"><option value="">No client account</option>${cl.accounts.map((a) => `<option value="${a.id}" ${a.id === b.client_account_id ? "selected" : ""}>${esc(a.company)}</option>`).join("")}</select><button class="btn btn-ghost btn-sm" id="dClientSave" type="button">Link</button></div>`;
+    const clientSel = `<div class="inline" style="margin-top:10px"><select id="dClient" aria-label="Client account"><option value="">No client account</option>${cl.accounts.map((a) => `<option value="${a.id}" ${a.id === b.client_account_id ? "selected" : ""}>${esc(a.company)}</option>`).join("")}</select><button class="btn btn-ghost btn-sm" id="dClientSave" type="button">Link</button></div>`;
     const loc = b.service === "mobile" ? [b.address, b.city, b.state, b.zip].filter(Boolean).join(", ") : b.signer_location;
     const kv = (pairs) => `<dl class="kvs">${pairs.filter(([, v]) => v !== "" && v != null).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
     $("#dBody").innerHTML = `
@@ -229,12 +229,12 @@
         [b.service === "mobile" ? "Location" : "Signer at", loc],
         ["In U.S.", b.service === "mobile" ? "" : b.in_us === 0 ? "No" : "Yes"],
         ["Mail docs to", b.mailing_address], ["Loan docs", b.docs_delivery],
-        ["Add-ons", (b.addons || []).map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")],
+        ["Add-ons", (b.addons || []).filter((a) => a.kind !== "fee").map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")],
         ["Notes", b.notes], ["Source", b.source === "desk" ? "Entered by desk" : b.source === "client" ? "Client portal" : "Online booking"],
       ])}</div>
       <div class="dsec"><h4>Contact</h4>${kv([["Name", b.contact_name], ["Phone", b.contact_phone], ["Email", b.contact_email], ["Company", b.company], ["File #", b.file_number]])}${clientSel}</div>
       <div class="dsec"><h4>Notary</h4>${nStatus ? `<p style="margin-bottom:10px">${nStatus}</p>` : ""}
-        <div class="inline"><select id="dNotary"><option value="">Unassigned</option>${opts}</select><input id="dNFee" type="number" min="0" step="1" placeholder="Notary fee $" value="${b.notary_fee ?? ""}" style="max-width:150px"></div>
+        <div class="inline"><select id="dNotary" aria-label="Notary"><option value="">Unassigned</option>${opts}</select><input id="dNFee" type="number" min="0" step="1" placeholder="Notary fee $" value="${b.notary_fee ?? ""}" style="max-width:150px"></div>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="dDirect"> Skip the offer (already confirmed with the notary by phone)</label>
         <div class="inline" style="margin-top:10px"><button class="btn btn-primary btn-sm" id="dAssign" type="button">Send Offer</button>${b.notary_status === "offered" ? '<button class="btn btn-ghost btn-sm" id="dResend" type="button">Resend Offer</button>' : ""}<button class="btn btn-ghost btn-sm" id="dFeeOnly" type="button">Save Fee Only</button></div>
         ${b.return_tracking ? `<p style="margin-top:10px;font-size:.9rem">Return tracking: <b class="mono">${esc(b.return_tracking)}</b></p>` : ""}
@@ -251,7 +251,7 @@
         const avail = pool.filter((p) => !list.some((l) => l.witness_id === p.id && l.status !== "declined"));
         return `<div class="dsec"><h4>Witnesses${want ? ` · ${want} needed` : ""}</h4>
           ${list.length ? `<ul class="log" style="margin-bottom:10px">${list.map((w) => `<li style="grid-template-columns:1fr auto"><span>${esc(w.name)} <span class="pill ${(st[w.status] || [])[0] || "p-info"}">${(st[w.status] || [])[1] || esc(w.status)}</span>${w.fee != null ? ` · $${Number(w.fee).toFixed(2)}` : ""}${w.phone ? ` · ${esc(w.phone)}` : ""}</span>${open && !w.paid_at ? `<button class="linkbtn" data-wrm="${w.id}">Remove</button>` : ""}</li>`).join("")}</ul>` : ""}
-          ${open ? (pool.length ? `<div class="inline"><select id="dWit">${avail.map((p) => `<option value="${p.id}">${p.ready ? "✓" : "⚠"} ${esc(p.name)}${p.home_zip ? " · " + esc(p.home_zip) : ""}${p.ready ? "" : " · onboarding incomplete"}</option>`).join("")}</select>
+          ${open ? (pool.length ? `<div class="inline"><select id="dWit" aria-label="Witness">${avail.map((p) => `<option value="${p.id}">${p.ready ? "✓" : "⚠"} ${esc(p.name)}${p.home_zip ? " · " + esc(p.home_zip) : ""}${p.ready ? "" : " · onboarding incomplete"}</option>`).join("")}</select>
             <input id="dWitFee" type="number" min="0" step="0.01" placeholder="Witness fee $" style="max-width:130px"><button class="btn btn-ghost btn-sm" id="dWitAsk" type="button" ${avail.length ? "" : "disabled"}>Ask witness</button></div>`
             : `<p style="font-size:.86rem;color:var(--muted)">No witnesses on the roster yet. Approve witness applications to add them.</p>`) : ""}
         </div>`;
@@ -265,6 +265,25 @@
         <p style="font-size:.84rem;color:var(--muted);margin-top:6px">Invoices list the notarial portion separately from the signing-service fee. Leave the notarial box empty to use the state default.</p>
         ${binv ? `<p style="margin-top:8px"><span class="pill ${binv.status === "paid" ? "p-ok" : binv.status === "void" ? "p-warn" : "p-info"}">Invoice ${esc(binv.number)} · ${esc(binv.status)}</span> <a href="/api/admin/billing/invoices/${binv.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></p>`
           : b.status === "completed" ? `<button class="btn btn-ghost btn-sm" id="dInvoice" type="button" style="margin-top:8px">${b.client_account_id ? "Invoice this job now" : "Send invoice to customer"}</button>` : ""}</div>
+      ${(() => {
+        const fx = (b.addons || []).filter((a) => a.kind === "fee");
+        const canceled = ["canceled", "no_show"].includes(b.status);
+        const cancelTotal = fx.filter((a) => a.onCancel).reduce((s, a) => s + a.qty * a.price, 0);
+        const locked = !!b.invoice_id;
+        const cat = (feeCatalog || []).filter((f) => !fx.some((a) => a.id === f.id));
+        return `<div class="dsec"><h4>Extra fees${fx.length ? ` · $${fx.reduce((s, a) => s + a.qty * a.price, 0).toFixed(2)}` : ""}</h4>
+          ${fx.length ? `<div class="files" id="fxRows">${fx.map((a, i) => `<div class="frow fx-row" data-fxid="${esc(a.id)}" data-fxlabel="${esc(a.label)}" data-fxshare="${Number(a.share) || 0}" data-fxcancel="${a.onCancel ? 1 : ""}"><span>${esc(a.label)}${a.onCancel ? ' <small>(billable if canceled)</small>' : ""}</span><span class="acts">
+              <input type="number" min="0" max="50" step="1" value="${a.qty}" data-fxqty aria-label="Quantity" style="max-width:64px" ${locked ? "disabled" : ""}>
+              <input type="number" min="0" step="0.01" value="${a.price}" data-fxprice aria-label="Price" style="max-width:90px" ${locked ? "disabled" : ""}>
+              ${locked ? "" : `<button class="linkbtn" data-fxrm="${i}" type="button">Remove</button>`}</span></div>`).join("")}</div>`
+            : '<p style="font-size:.88rem;color:var(--muted)">No extra fees on this job.</p>'}
+          ${locked ? '<p style="font-size:.84rem;color:var(--muted);margin-top:6px">Already invoiced. Void the invoice to change fees.</p>' : `<div class="inline" style="margin-top:10px"><select id="fxAdd" aria-label="Add a fee"><option value="">Add a fee…</option>${cat.map((f) => `<option value="${esc(f.id)}">${esc(f.label)} · $${f.price.toFixed(2)}${f.unit ? " " + esc(f.unit) : ""}</option>`).join("")}<option value="custom">Custom fee…</option></select>
+            <input id="fxQty" type="number" min="1" max="50" value="1" aria-label="Quantity" style="max-width:64px"><input id="fxCLabel" placeholder="Fee name" hidden><input id="fxCPrice" type="number" min="0" step="0.01" placeholder="$" hidden style="max-width:90px">
+            <button class="btn btn-ghost btn-sm" id="fxAddBtn" type="button">Add</button><button class="btn btn-primary btn-sm" id="fxSave" type="button">Save fees</button></div>`}
+          ${notaryFeeShare > 0 ? `<p style="font-size:.86rem;margin-top:8px">Suggested notary share of these fees: <b>$${notaryFeeShare.toFixed(2)}</b>${b.notary_id && !b.notary_paid_at && !locked ? ` <button class="linkbtn" id="fxShare" type="button">Add to notary pay</button>` : ""}</p>` : ""}
+          ${canceled && !binv && cancelTotal > 0 ? `<div class="inline" style="margin-top:8px">${b.client_account_id || !b.stripe_payment_method_id ? `<button class="btn btn-primary btn-sm" id="fxBill" type="button">Invoice $${cancelTotal.toFixed(2)} in trip / cancel fees</button>` : `<button class="btn btn-primary btn-sm" id="fxCharge" type="button">Charge card $${cancelTotal.toFixed(2)} in trip / cancel fees</button>`}</div>` : ""}
+          <p style="font-size:.84rem;color:var(--muted);margin-top:6px">Rush, after-hours, weekend and extra-signer fees are added automatically when a job is booked. Change prices in Settings → Extra fees.</p></div>`;
+      })()}
       ${cardsOn && !b.client_account_id ? `<div class="dsec"><h4>Card payment</h4>${(() => {
         const price = b.quoted_fee ?? b.est_fee;
         if (!b.stripe_payment_method_id) return `<p style="color:var(--muted);font-size:.9rem">No card on file. Individual customers are asked to save one when they book.</p>
@@ -272,13 +291,13 @@
         const card = `<p><span class="pill p-ok">${esc((b.card_brand || "card").replace(/^./, (c) => c.toUpperCase()))} ending ${esc(b.card_last4 || "")}</span> <span style="font-size:.85rem;color:var(--muted)">saved ${esc(full(b.card_saved_at).replace(/, \d{4}/, ""))}</span></p>`;
         if (binv) return card + (binv.provider === "card" && binv.status === "paid" ? `<p style="font-size:.9rem;margin-top:6px">Paid by card · ${esc(binv.number)}</p>` : binv.error ? `<p class="form-msg" style="margin-top:6px">${esc(binv.error)}</p>` : "");
         return card + `<div class="inline" style="margin-top:8px">
-            ${b.status === "completed" && price != null ? `<button class="btn btn-primary btn-sm" id="dCharge" type="button">Charge $${Number(price).toFixed(2)}</button>` : ""}
+            ${b.status === "completed" && price != null ? `<button class="btn btn-primary btn-sm" id="dCharge" type="button">Charge $${(Number(price) + Number(b.addons_total || 0)).toFixed(2)}</button>` : ""}
             <input id="dFeeAmt" type="number" min="0" step="0.01" placeholder="Fee $" style="max-width:110px">
             <input id="dFeeNote" placeholder="${b.status === "no_show" ? "No-show fee" : b.status === "canceled" ? "Cancellation fee" : "Fee description"}">
             <button class="btn btn-ghost btn-sm" id="dChargeFee" type="button">Charge fee</button></div>
           <p style="font-size:.84rem;color:var(--muted);margin-top:6px">${b.status === "completed" ? "" : "The service fee can be charged once the job is completed (automatically, if auto-charge is on). "}Use Charge fee for no-shows, late cancellations or extra trips.</p>`;
       })()}</div>` : ""}
-      <div class="dsec"><h4>Reschedule</h4><div class="inline"><input id="dStart" type="datetime-local" value="${utcToLocalInput(b.start_utc, TZ)}"><button class="btn btn-ghost btn-sm" id="dMove" type="button">Move</button></div></div>
+      <div class="dsec"><h4>Reschedule</h4><div class="inline"><input id="dStart" type="datetime-local" aria-label="New date and time" value="${utcToLocalInput(b.start_utc, TZ)}"><button class="btn btn-ghost btn-sm" id="dMove" type="button">Move</button></div></div>
       <div class="dsec"><h4>Internal notes</h4><textarea id="dNotes" rows="3" placeholder="Only the desk sees this">${esc(b.internal_notes)}</textarea><button class="btn btn-ghost btn-sm" id="dNotesSave" type="button" style="margin-top:8px">Save Notes</button></div>
       <div class="dsec"><h4>Customer link</h4><div class="copyline"><input id="dLink" readonly value="${esc(location.origin + manageUrl)}"><button class="btn btn-ghost btn-sm" id="dCopy" type="button">Copy</button></div></div>
       <div class="dsec"><h4>History</h4><ul class="log">${events.map((e) => `<li><time>${esc(full(e.at).replace(/, \d{4}/, ""))}</time><span>${esc(e.text)}${e.actor ? ` · ${esc(e.actor)}` : ""}</span></li>`).join("")}</ul></div>
@@ -319,6 +338,29 @@
       ev.target.disabled = true;
       chargeRun({ kind: "fee", amount: amt, note: $("#dFeeNote").value }, (r) => `Charged $${r.amount.toFixed(2)} (${r.invoice}).`);
     };
+    // Extra fees editor
+    const fxRead = () => $$(".fx-row", $("#dBody")).map((r) => {
+      const id = r.dataset.fxid, qty = Number($("[data-fxqty]", r).value) || 0, price = $("[data-fxprice]", r).value;
+      return id.startsWith("custom") ? { id: "custom", label: r.dataset.fxlabel, price, qty, share: Number(r.dataset.fxshare) || 0, onCancel: !!r.dataset.fxcancel } : { id, qty, price };
+    });
+    if ($("#fxAdd")) $("#fxAdd").onchange = () => { const c = $("#fxAdd").value === "custom"; $("#fxCLabel").hidden = !c; $("#fxCPrice").hidden = !c; };
+    if ($("#fxAddBtn")) $("#fxAddBtn").onclick = () => {
+      const v = $("#fxAdd").value, qty = Number($("#fxQty").value) || 1;
+      if (!v) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = "Pick a fee to add."; return; }
+      const list = fxRead();
+      list.push(v === "custom" ? { id: "custom", label: $("#fxCLabel").value, price: $("#fxCPrice").value, qty } : { id: v, qty });
+      patch({ fees: list }, "Fee added.");
+    };
+    if ($("#fxSave")) $("#fxSave").onclick = () => patch({ fees: fxRead() }, "Fees saved.");
+    $$("[data-fxrm]", $("#dBody")).forEach((btn) => btn.addEventListener("click", () => { const list = fxRead(); list.splice(Number(btn.dataset.fxrm), 1); patch({ fees: list }, "Fee removed."); }));
+    if ($("#fxShare")) $("#fxShare").onclick = () => patch({ notary_fee: Math.round(((Number(b.notary_fee) || 0) + notaryFeeShare) * 100) / 100 }, `Notary pay raised by $${notaryFeeShare.toFixed(2)}.`);
+    if ($("#fxBill")) $("#fxBill").onclick = async (ev) => {
+      ev.target.disabled = true;
+      try { const { invoice } = await api("/api/admin/billing/invoices", { method: "POST", body: { bookingId: id } }); await openBooking(id);
+        $("#dMsg").className = invoice.error ? "form-msg" : "form-msg ok"; $("#dMsg").textContent = invoice.error ? `Invoice ${invoice.number} saved as a draft. ${invoice.error}` : `Invoice ${invoice.number} sent.`; }
+      catch (e) { ev.target.disabled = false; $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+    };
+    if ($("#fxCharge")) $("#fxCharge").onclick = (ev) => { ev.target.disabled = true; chargeRun({ kind: "service" }, (r) => `Charged $${r.amount.toFixed(2)} (${r.invoice}).`); };
     if ($("#dCardLink")) $("#dCardLink").onclick = async () => {
       try { await api(`/api/admin/bookings/${id}/card-link`, { method: "POST", body: {} }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Emailed the customer a link to add their card."; }
       catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
@@ -529,7 +571,21 @@
           <input id="rDue" type="date" value="${r.due_date || ""}" aria-label="Due date"><button class="btn btn-ghost btn-sm" id="rSave" type="button">Save</button></div>
         ${mg && !mg.unknown ? `<p style="margin-top:8px"><span class="pill ${mg.ok ? "p-ok" : "p-warn"}">Margin $${mg.kept.toFixed(2)} · ${mg.pct}%</span> <span style="font-size:.84rem;color:var(--muted)">${mg.ok ? `minimum ${mg.min}%` : `below your ${mg.min}% minimum (override on file)`}</span></p>` : `<p style="font-size:.84rem;color:var(--muted);margin-top:6px">Set the client fee and the pay or partner cost to see the margin.</p>`}
         ${d.invoice ? `<p style="margin-top:8px"><span class="pill ${d.invoice.status === "paid" ? "p-ok" : "p-info"}">Invoice ${esc(d.invoice.number)} · ${esc(d.invoice.status)}</span> <a href="/api/admin/billing/invoices/${d.invoice.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></p>`
-          : r.fee != null && r.status !== "canceled" ? `<button class="btn btn-ghost btn-sm" id="rInvoice" type="button" style="margin-top:8px">Send invoice</button>` : ""}</div>
+          : r.fee != null && r.status !== "canceled" ? `<button class="btn btn-ghost btn-sm" id="rInvoice" type="button" style="margin-top:8px">Send invoice${Number(r.extras_total) ? ` ($${(Number(r.fee) + Number(r.extras_total)).toFixed(2)})` : ""}</button>` : ""}</div>
+      ${(() => {
+        const xs = r.extras || [], locked = !!r.invoice_id;
+        const cat = (d.extrasCatalog || []).filter((f) => !xs.some((a) => a.id === f.id));
+        return `<div class="dsec"><h4>Extras${xs.length ? ` · $${xs.reduce((t, a) => t + a.qty * a.price, 0).toFixed(2)}` : ""}</h4>
+          ${xs.length ? `<div class="files">${xs.map((a, i) => `<div class="frow rx-row" data-rxid="${esc(a.id)}" data-rxlabel="${esc(a.label)}" data-rxshare="${Number(a.share) || 0}"><span>${esc(a.label)}</span><span class="acts">
+              <input type="number" min="0" max="50" step="1" value="${a.qty}" data-rxqty aria-label="Quantity" style="max-width:64px" ${locked ? "disabled" : ""}>
+              <input type="number" min="0" step="0.01" value="${a.price}" data-rxprice aria-label="Price" style="max-width:90px" ${locked ? "disabled" : ""}>
+              ${locked ? "" : `<button class="linkbtn" data-rxrm="${i}" type="button">Remove</button>`}</span></div>`).join("")}</div>` : '<p style="font-size:.88rem;color:var(--muted)">No extras.</p>'}
+          ${locked ? "" : `<div class="inline" style="margin-top:10px"><select id="rxAdd" aria-label="Add an extra"><option value="">Add an extra…</option>${cat.map((f) => `<option value="${esc(f.id)}">${esc(f.label)} · $${f.price.toFixed(2)}${f.unit ? " " + esc(f.unit) : ""}</option>`).join("")}<option value="custom">Custom…</option></select>
+            <input id="rxQty" type="number" min="1" max="50" value="1" aria-label="Quantity" style="max-width:64px"><input id="rxCLabel" placeholder="Name" hidden><input id="rxCPrice" type="number" min="0" step="0.01" placeholder="$" hidden style="max-width:90px">
+            <button class="btn btn-ghost btn-sm" id="rxAddBtn" type="button">Add</button><button class="btn btn-primary btn-sm" id="rxSave" type="button">Save extras</button></div>`}
+          ${d.extrasShare > 0 ? `<p style="font-size:.86rem;margin-top:8px">Suggested share for the person doing the job: <b>$${d.extrasShare.toFixed(2)}</b></p>` : ""}
+          <p style="font-size:.84rem;color:var(--muted);margin-top:6px">Rush and same-day serves add their fee automatically. Each extra is its own invoice line. Edit prices in Settings → Request extras.</p></div>`;
+      })()}
       ${r.roles.length ? `<div class="dsec"><h4>Assigned to</h4>
         ${d.assignee ? `<p><b>${esc(d.assignee.name)}</b> <span class="pill ${r.assignee_status === "accepted" ? "p-ok" : r.assignee_status === "declined" ? "p-warn" : "p-info"}">${esc(ASG_ST[r.assignee_status] || r.assignee_status || "")}</span>${r.assignee_fee != null ? ` · pay $${Number(r.assignee_fee).toFixed(2)}` : ""}${d.assignee.phone ? ` · ${esc(d.assignee.phone)}` : ""} ${open && !r.assignee_paid_at ? '<button class="linkbtn" id="rUnassign">Remove</button>' : ""}</p>` : ""}
         ${open ? (d.pool.length ? `<div class="inline" style="margin-top:8px"><select id="rWho">${d.pool.map((p) => `<option value="${p.id}">${p.ready ? "✓" : "⚠"} ${esc(p.name)} · ${esc(p.role_label)}${p.home_zip ? " · " + esc(p.home_zip) : ""}${p.ready ? "" : " · onboarding incomplete"}</option>`).join("")}</select>
@@ -561,6 +617,20 @@
     if ($("#rAssign")) $("#rAssign").onclick = () => run((ov) => api(`/api/admin/requests/${id}/assign`, { method: "POST", body: { assignee_id: $("#rWho").value, assignee_fee: $("#rPay").value, override_margin: ov } }), "Request sent. They'll get an email to accept or decline.", true);
     if ($("#rUnassign")) $("#rUnassign").onclick = () => run(() => api(`/api/admin/requests/${id}/assign`, { method: "DELETE" }), "Removed.");
     if ($("#rInvoice")) $("#rInvoice").onclick = () => run(() => api(`/api/admin/requests/${id}/invoice`, { method: "POST", body: {} }), "Invoice created and sent.");
+    const rxRead = () => $$(".rx-row", $("#dBody")).map((row) => {
+      const xid = row.dataset.rxid, qty = Number($("[data-rxqty]", row).value) || 0, price = $("[data-rxprice]", row).value;
+      return xid.startsWith("custom") ? { id: "custom", label: row.dataset.rxlabel, price, qty, share: Number(row.dataset.rxshare) || 0 } : { id: xid, qty, price };
+    });
+    const rxPatch = (list, okText) => run((ov) => api("/api/admin/requests/" + id, { method: "PATCH", body: { extras: list, override_margin: ov } }), okText, true);
+    if ($("#rxAdd")) $("#rxAdd").onchange = () => { const c = $("#rxAdd").value === "custom"; $("#rxCLabel").hidden = !c; $("#rxCPrice").hidden = !c; };
+    if ($("#rxAddBtn")) $("#rxAddBtn").onclick = () => {
+      const v = $("#rxAdd").value, qty = Number($("#rxQty").value) || 1;
+      if (!v) return say("Pick an extra to add.");
+      const list = rxRead(); list.push(v === "custom" ? { id: "custom", label: $("#rxCLabel").value, price: $("#rxCPrice").value, qty } : { id: v, qty });
+      rxPatch(list, "Extra added.");
+    };
+    if ($("#rxSave")) $("#rxSave").onclick = () => rxPatch(rxRead(), "Extras saved.");
+    $$("[data-rxrm]", $("#dBody")).forEach((b) => b.addEventListener("click", () => { const list = rxRead(); list.splice(Number(b.dataset.rxrm), 1); rxPatch(list, "Extra removed."); }));
     $("#rRefSave").onclick = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { client_ref: $("#rClientRef").value } }), "File number saved.");
     if ($("#rNotifyAtt")) $("#rNotifyAtt").onchange = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { notify_attempts: $("#rNotifyAtt").checked } }), $("#rNotifyAtt").checked ? "The client will get attempt emails." : "Attempt emails turned off.");
     $("#rNotesSave").onclick = () => run(() => api("/api/admin/requests/" + id, { method: "PATCH", body: { internal_notes: $("#rNotes").value } }), "Notes saved.");
@@ -619,15 +689,16 @@
     $("#billTiles").innerHTML = [["Outstanding", d.totals.outstanding], ["Overdue", d.totals.overdue], ["Paid last 30 days", d.totals.paid30]]
       .map(([l, v], i) => `<div class="tile${i === 1 && v > 0 ? " alert" : ""}"><b>${usd(v)}</b><span>${l}</span></div>`).join("");
     if (!$("#billThrough").value) $("#billThrough").value = new Date().toISOString().slice(0, 10);
-    const jobLine = (j) => `<li style="grid-template-columns:1fr auto"><span>${esc(j.ref)}${j.file_number ? " · File " + esc(j.file_number) : ""} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(j.price) + (j.notarial ? ` <small style="color:var(--muted)">incl. ${usd(j.notarial)} notarial</small>` : "")}</b></li>`;
+    const jTotal = (j) => (j.price == null ? null : j.price + (j.extras || 0));
+    const jobLine = (j) => `<li style="grid-template-columns:1fr auto"><span>${esc(j.ref)}${j.file_number ? " · File " + esc(j.file_number) : ""} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}${j.canceled ? ' <span class="pill p-warn">Trip / cancel fee</span>' : ""}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(jTotal(j)) + (j.notarial ? ` <small style="color:var(--muted)">incl. ${usd(j.notarial)} notarial</small>` : "") + (j.extras ? ` <small style="color:var(--muted)">incl. ${usd(j.extras)} extras</small>` : "")}</b></li>`;
     const cards = d.clients.map((c) => {
-      const total = c.jobs.reduce((a, j) => a + (j.price || 0), 0), missing = c.jobs.filter((j) => j.price == null).length;
+      const total = c.jobs.reduce((a, j) => a + (jTotal(j) || 0), 0), missing = c.jobs.filter((j) => j.price == null).length;
       return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(c.company)}</h3><b style="font-family:var(--f-display);font-size:1.4rem">${usd(total)}</b></div>
         <p class="meta">${c.jobs.length} completed job${c.jobs.length > 1 ? "s" : ""}</p><ul class="log">${c.jobs.map(jobLine).join("")}</ul>
         ${missing ? `<p class="form-msg">${missing} job${missing > 1 ? "s need" : " needs"} a client fee. Open the booking to set it.</p>` : ""}
         <div class="actions"><button class="btn btn-primary btn-sm" data-billacct="${c.account_id}" ${missing ? "disabled" : ""}>Create &amp; Send Invoice</button><button class="btn btn-ghost btn-sm" data-billdraft="${c.account_id}" ${missing ? "disabled" : ""}>Save as Draft</button></div></div>`;
     });
-    if (d.individuals.length) cards.push(`<div class="card"><h3>Individual customers</h3><p class="meta">One invoice per job, due on receipt</p><ul class="log">${d.individuals.map((j) => `<li style="grid-template-columns:1fr auto auto"><span>${esc(j.contact_name)} · ${esc(j.ref)} · ${esc(j.category)}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(j.price)}</b><button class="linkbtn" style="color:var(--brass-ink)" data-billone="${j.id}" ${j.price == null ? "disabled" : ""}>Invoice</button></li>`).join("")}</ul></div>`);
+    if (d.individuals.length) cards.push(`<div class="card"><h3>Individual customers</h3><p class="meta">One invoice per job, due on receipt</p><ul class="log">${d.individuals.map((j) => `<li style="grid-template-columns:1fr auto auto"><span>${esc(j.contact_name)} · ${esc(j.ref)} · ${esc(j.category)}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(jTotal(j))}${j.canceled ? ' <small style="color:var(--muted)">trip / cancel fee</small>' : ""}</b><button class="linkbtn" style="color:var(--brass-ink)" data-billone="${j.id}" ${j.price == null ? "disabled" : ""}>Invoice</button></li>`).join("")}</ul></div>`);
     $("#unbilled").innerHTML = cards.join("") || '<div class="empty-state" style="grid-column:1/-1">Nothing to bill. Completed jobs show up here until they\'re on an invoice.</div>';
     const run = async (body, btn) => {
       btn.disabled = true;
@@ -647,6 +718,7 @@
         ${i.status === "draft" ? `<button class="btn btn-ghost btn-sm" data-isend="${i.id}">Send</button>` : ""}
         ${i.status === "open" && i.provider === "stripe" ? `<button class="btn btn-ghost btn-sm" data-isync="${i.id}">Check payment</button>` : ""}
         ${i.status === "open" && i.provider === "manual" ? `<button class="btn btn-ghost btn-sm" data-ipaid="${i.id}">Mark paid</button>` : ""}
+        ${i.status === "open" && i.client_account_id && i.due_date < new Date().toISOString().slice(0, 10) ? `<button class="btn btn-ghost btn-sm" data-ilate="${i.id}" title="Bill the monthly late fee as a separate invoice">Late fee</button>` : ""}
         ${["draft", "open"].includes(i.status) ? `<button class="linkbtn" data-ivoid="${i.id}">Void</button>` : ""}</td></tr>`).join("")
       : '<tr><td colspan="7" style="font-weight:400;color:var(--ink-2)">No invoices yet.</td></tr>';
     const act = async (path, okText, btn) => {
@@ -656,6 +728,7 @@
     };
     $$("[data-isend]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.isend}/send`, "Invoice sent.", b)));
     $$("[data-isync]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.isync}/sync`, "Payment status updated.", b)));
+    $$("[data-ilate]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ilate}/late-fee`, "Late fee invoice created.", b)));
     $$("[data-ipaid]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ipaid}/mark-paid`, "Marked paid.", b)));
     $$("[data-ivoid]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ivoid}/void`, "Invoice voided. Its jobs are back in Ready to invoice.", b)));
   }
@@ -742,7 +815,7 @@
   }
 
   /* ---------- settings ---------- */
-  const STARTING = [["mobile", "Mobile notary visit"], ["loan", "Loan signing"], ["hospital", "Hospital or care facility visit"], ["process_serve", "Process serving"], ["apostille", "Apostille (per document)"], ["recording", "Document recording (per document)"]];
+  const STARTING = [["mobile", "Mobile notary visit"], ["loan", "Loan signing"], ["hospital", "Hospital or care facility visit"], ["process_serve", "Process serving"], ["apostille", "Apostille (per document)"], ["recording", "Document recording (per document)"], ["court_filing", "Court filing / run"], ["records", "Records retrieval"], ["skip_trace", "Skip trace"], ["medical_records", "Medical records pickup"], ["i9", "I-9 verification"]];
   function renderSettings() {
     const s = settings;
     const svcCard = (k) => {
@@ -803,6 +876,8 @@
           </div>
           <div class="field"><label>Copy invoices to (emails, comma-separated)</label><input id="biCc" value="${esc((s.billing.ccEmails || []).join(", "))}"></div>
           <div class="field"><label>Minimum margin (% of client fee kept after paying the notary)</label><input type="number" min="0" max="90" step="1" id="biMargin" value="${s.billing.minMarginPct ?? 20}"></div>
+          <div class="field"><label>Late fee on overdue business invoices (% a month, 0 = off)</label><input type="number" min="0" max="5" step="0.1" id="biLate" value="${s.billing.lateFeePct ?? 1.5}"></div>
+          <label class="switch"><input type="checkbox" id="biAutoFeesAcct" ${s.billing.autoFeesForAccounts !== false ? "checked" : ""}> Add rush, after-hours and weekend fees automatically on business-account orders too</label>
           <h4 style="margin-top:14px">Card on file (individual customers)</h4>
           <label class="switch"><input type="checkbox" id="biCards" ${(s.billing.cardAtBooking || "ask") !== "off" ? "checked" : ""}> Ask individuals to save a card when they book (needs Stripe)</label>
           <label class="switch"><input type="checkbox" id="biAutoCharge" ${s.billing.autoChargeCards !== false ? "checked" : ""}> Charge the saved card automatically when a job is marked completed</label>
@@ -812,6 +887,21 @@
           ${(s.addons || []).map((a, i) => `<div class="inline" style="margin-top:8px;align-items:center">
             <label class="switch" style="margin:0;min-width:0;flex:1"><input type="checkbox" data-ad-on="${i}" ${a.enabled !== false ? "checked" : ""}> ${esc(a.label)}</label>
             <input type="number" min="0" step="0.01" data-ad-price="${i}" value="${a.price}" style="max-width:110px" aria-label="${esc(a.label)} price"></div>`).join("")}
+        </div>
+        <div class="set-card"><h3>Extra fees</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">Shown on the public fees page and added to jobs as separate invoice lines. "Auto" fees are added when a job is booked; the rest you add from the booking. Notary share is the % suggested as extra pay.</p>
+          ${(s.fees || []).map((f, i) => `<div class="inline" style="margin-top:8px;align-items:center">
+            <label class="switch" style="margin:0;min-width:0;flex:1"><input type="checkbox" data-fe-on="${i}" ${f.enabled !== false ? "checked" : ""}> ${esc(f.label)}${f.unit ? ` <small>${esc(f.unit)}</small>` : ""}${f.auto ? ' <span class="pill p-info">Auto</span>' : ""}</label>
+            <input type="number" min="0" step="0.01" data-fe-price="${i}" value="${f.price}" style="max-width:96px" aria-label="${esc(f.label)} price">
+            <input type="number" min="0" max="100" step="5" data-fe-share="${i}" value="${f.share ?? 0}" style="max-width:76px" aria-label="${esc(f.label)} notary share %" title="Notary share %"></div>`).join("")}
+          <p style="font-size:.8rem;color:var(--muted);margin-top:6px">Columns: price · notary share %</p>
+        </div>
+        <div class="set-card"><h3>Request extras</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">Extras on process serves and other requests. Rush and same-day serves are added automatically when the client picks them.</p>
+          ${(s.requestFees || []).map((f, i) => `<div class="inline" style="margin-top:8px;align-items:center">
+            <label class="switch" style="margin:0;min-width:0;flex:1"><input type="checkbox" data-rf-on="${i}" ${f.enabled !== false ? "checked" : ""}> ${esc(f.label)}${f.unit ? ` <small>${esc(f.unit)}</small>` : ""}${f.auto ? ' <span class="pill p-info">Auto</span>' : ""}</label>
+            <input type="number" min="0" step="0.01" data-rf-price="${i}" value="${f.price}" style="max-width:96px" aria-label="${esc(f.label)} price">
+            <input type="number" min="0" max="100" step="5" data-rf-share="${i}" value="${f.share ?? 0}" style="max-width:76px" aria-label="${esc(f.label)} team share %" title="Team share %"></div>`).join("")}
         </div>
         <div class="set-card"><h3>Starting prices on the website</h3>
           <p style="font-size:.86rem;color:var(--ink-2)">Shown as "starting at" on the homepage and service pages. Leave one blank to hide it. Each job's actual quote is still yours to set.</p>
@@ -856,7 +946,14 @@
     s.notaryFees = { mobile: { loan: num("#nfLoan"), general: num("#nfGen") }, ron: num("#nfRon"), rin: num("#nfRin") };
     s.billing = { ...s.billing, termsDays: num("#biTerms") ?? 30, individualTermsDays: num("#biInd") ?? 0,
       stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean),
-      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20 };
+      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20,
+      lateFeePct: num("#biLate") ?? 0, autoFeesForAccounts: $("#biAutoFeesAcct").checked };
+    s.requestFees = (s.requestFees || []).map((f, i) => ({ ...f, enabled: $(`[data-rf-on="${i}"]`) ? $(`[data-rf-on="${i}"]`).checked : f.enabled !== false,
+      price: $(`[data-rf-price="${i}"]`) ? Math.max(0, Number($(`[data-rf-price="${i}"]`).value) || 0) : f.price,
+      share: $(`[data-rf-share="${i}"]`) ? Math.max(0, Math.min(100, Number($(`[data-rf-share="${i}"]`).value) || 0)) : f.share }));
+    s.fees = (s.fees || []).map((f, i) => ({ ...f, enabled: $(`[data-fe-on="${i}"]`) ? $(`[data-fe-on="${i}"]`).checked : f.enabled !== false,
+      price: $(`[data-fe-price="${i}"]`) ? Math.max(0, Number($(`[data-fe-price="${i}"]`).value) || 0) : f.price,
+      share: $(`[data-fe-share="${i}"]`) ? Math.max(0, Math.min(100, Number($(`[data-fe-share="${i}"]`).value) || 0)) : f.share }));
     s.addons = (s.addons || []).map((a, i) => ({ ...a, enabled: $(`[data-ad-on="${i}"]`) ? $(`[data-ad-on="${i}"]`).checked : a.enabled !== false, price: $(`[data-ad-price="${i}"]`) ? Math.max(0, Number($(`[data-ad-price="${i}"]`).value) || 0) : a.price }));
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };

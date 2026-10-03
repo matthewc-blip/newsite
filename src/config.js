@@ -79,7 +79,14 @@ const DEFAULT_SETTINGS = {
     cardAtBooking: "ask",       // "ask": individuals are asked to save a card when they book (Stripe); "off": never
     autoChargeCards: true,      // charge the saved card automatically when the job is marked completed
     minMarginPct: 20,           // block notary fees that leave MCC less than this % of the client fee (0 = off)
+    autoFeesForAccounts: true,  // add rush / after-hours / weekend fees automatically on business-account orders too
+    lateFeePct: 1.5,            // monthly late fee on overdue business invoices (0 = off); billed by the desk
   },
+  // Extra fees (rush, after-hours, weekend, waiting, travel, trip fees). Edit in Settings → Extra fees.
+  // share = % of the fee suggested as extra pay for the notary.
+  fees: require("./fees").DEFAULTS,
+  // Extras on service requests (rush serves, extra addresses, skip traces, county fees at cost).
+  requestFees: require("./fees").REQUEST_DEFAULTS,
   // Checkout add-ons offered when booking. Prices are what the client pays; edit them in Settings.
   addons: [
     { id: "print", label: "Document printing", price: 25, max: 1, services: ["mobile"], note: "The notary prints your documents (up to 150 pages)" },

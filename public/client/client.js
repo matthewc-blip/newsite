@@ -84,7 +84,7 @@
     $("#dStatus").innerHTML = pill(STATUS[o.status]) + " " + (o.scanback_status ? pill(SCAN[o.scanback_status]) : "");
     const rows = [["Order", o.ref], ["File #", o.file_number], ["When", when(o.start, o.tz)], ["Service", `${SVC[o.service]} · ${o.signers} signer${o.signers > 1 ? "s" : ""}`],
       [o.service === "mobile" ? "Location" : "Signer at", o.location], ["Signer phone", o.contact_phone], ["Notary", o.notary || (["requested", "confirmed", "assigned"].includes(o.status) ? "Being assigned" : "—")],
-      ["Docs mailed to", o.mailing_address], ["Return tracking", o.return_tracking], ["Instructions", o.notes], ["Add-ons", o.addons], ["Fee", o.quoted_fee != null ? "$" + Number(o.quoted_fee).toFixed(2) : ""]];
+      ["Docs mailed to", o.mailing_address], ["Return tracking", o.return_tracking], ["Instructions", o.notes], ["Add-ons", o.addons], ["Extra fees", o.fees], ["Fee", o.quoted_fee != null ? "$" + (Number(o.quoted_fee) + Number(o.extras_total || 0)).toFixed(2) + (o.extras_total ? " incl. extras" : "") : ""]];
     $("#dKv").innerHTML = rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
     const pk = documents.filter((d) => d.kind !== "scanback"), sc = documents.filter((d) => d.kind === "scanback");
     const fileRow = (d, label) => `<div class="file"><span>${d.purged_at ? esc(d.filename) + ' <small style="color:var(--muted)">(deleted per retention policy)</small>' : `<a href="/api/client/booking-documents/${d.id}" target="_blank" rel="noopener">${esc(d.filename)}</a>`} <small style="color:var(--muted)">${label}</small></span>
@@ -221,7 +221,7 @@
     showTabNoLoad("reqdetail", "requests");
     $("#rTitle").textContent = `${r.summary || r.type_label} · ${r.type_label}`;
     $("#rStatus").innerHTML = pill(RST[r.status] || [r.status, "p-info"]);
-    const rows = [["Request", r.ref], ["Your file #", r.client_ref], ["Service", r.type_label], ...d.details.map((x) => [x.label, x.value]), ["Needed by", r.due_date ? day(r.due_date) : ""], ["Instructions", r.notes], ["Price", r.fee != null ? "$" + Number(r.fee).toFixed(2) : "The desk will confirm the price"]];
+    const rows = [["Request", r.ref], ["Your file #", r.client_ref], ["Service", r.type_label], ...d.details.map((x) => [x.label, x.value]), ["Needed by", r.due_date ? day(r.due_date) : ""], ["Instructions", r.notes], ["Extras", r.extras], ["Price", r.fee != null ? "$" + Number(r.fee).toFixed(2) + (r.extras ? " incl. extras" : "") : "The desk will confirm the price"]];
     $("#rKv").innerHTML = rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
     $("#rFiles").innerHTML = d.documents.length ? d.documents.map((x) => `<div class="file"><span><a href="/api/client/request-documents/${x.id}" target="_blank" rel="noopener">${esc(x.filename)}</a> <small style="color:var(--muted)">${esc(x.label)}</small></span></div>`).join("")
       : '<p style="color:var(--ink-2);font-size:.92rem">No documents yet.</p>';

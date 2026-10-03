@@ -64,9 +64,10 @@ async function charge(bookingId, { kind = "service", amount, note } = {}) {
   if (b.invoice_id) throw err("This job is already billed. Void that invoice first to charge again.");
   let items;
   if (kind === "service") {
-    if (b.status !== "completed") throw err("Mark the job completed before charging the service fee, or charge a fee instead.");
+    const canceled = ["canceled", "no_show"].includes(b.status);
+    if (b.status !== "completed" && !canceled) throw err("Mark the job completed before charging the service fee, or charge a fee instead.");
     items = require("./billing").lineItemsFor(b, settings);
-    if (!items) throw err("Set the client fee on this booking first.");
+    if (!items) throw err(canceled ? "Add a trip or late-cancellation fee under Extra fees first." : "Set the client fee on this booking first.");
   } else {
     const amt = round2(amount);
     if (!(amt > 0) || amt > 5000) throw err("Enter a fee between $0.01 and $5,000.");

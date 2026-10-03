@@ -264,7 +264,27 @@
     const sel = selectedAddons();
     return ((config && config.addons) || []).filter((a) => sel[a.id] && a.services.includes(st.service)).map((a) => ({ ...a, qty: sel[a.id] }));
   }
-  const addonsTotal = () => addonRows().reduce((s, a) => s + a.qty * a.price, 0);
+  // Extra fees that apply automatically (same rules as the server): rush, after-hours, weekend, extra signers.
+  function autoFees() {
+    if (!config || !st.slot) return [];
+    const tz = (config.business && config.business.timezone) || "America/New_York";
+    const start = new Date(st.slot.start);
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", hour: "2-digit", minute: "2-digit", weekday: "short" }).formatToParts(start);
+    const get = (t) => (parts.find((p) => p.type === t) || {}).value;
+    const mins = Number(get("hour")) * 60 + Number(get("minute")), wd = get("weekday");
+    const signers = Number($("#b-signers").value) || 1;
+    const perSigner = (config.pricing[st.service] || {}).perExtraSigner;
+    const out = [];
+    for (const f of (config.fees || [])) {
+      if (!f.auto || !f.services.includes(st.service)) continue;
+      if (f.auto === "rush" && start.getTime() - Date.now() < 4 * 3600e3) out.push({ ...f, qty: 1 });
+      if (f.auto === "after_hours" && (mins < 480 || mins >= 1140)) out.push({ ...f, qty: 1 });
+      if (f.auto === "weekend" && (wd === "Sat" || wd === "Sun")) out.push({ ...f, qty: 1 });
+      if (f.auto === "extra_signer" && (perSigner == null || perSigner === "") && signers > 1) out.push({ ...f, qty: Math.min(f.max, signers - 1) });
+    }
+    return out;
+  }
+  const addonsTotal = () => addonRows().reduce((s, a) => s + a.qty * a.price, 0) + autoFees().reduce((s, a) => s + a.qty * a.price, 0);
 
   function fee() {
     if (!config) return null;
@@ -292,6 +312,8 @@
     if (st.service === "rin" && $("#b-mail").value.trim()) r.push(["Docs mailed to", $("#b-mail").value.trim()]);
     const ad = addonRows();
     if (ad.length) r.push(["Add-ons", ad.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""}`).join(", ")]);
+    const fx = autoFees();
+    if (fx.length) r.push(["Extra fees", fx.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} (${money(a.qty * a.price)})`).join(", ")]);
     return r;
   }
 
@@ -307,8 +329,8 @@
   function summary() {
     fillDl($("#sumList"), rows());
     const f = fee(), extra = addonsTotal();
-    $("#sumFee").textContent = f != null ? `Estimated fee: ${money(f + extra)}${extra ? ` (includes ${money(extra)} in add-ons)` : ""}`
-      : extra ? `Add-ons: ${money(extra)}. The signing fee is confirmed by the desk before your appointment.` : "Fee confirmed by the desk before your appointment.";
+    $("#sumFee").textContent = f != null ? `Estimated fee: ${money(f + extra)}${extra ? ` (includes ${money(extra)} in add-ons and extra fees)` : ""}`
+      : extra ? `Add-ons and extra fees: ${money(extra)}. The signing fee is confirmed by the desk before your appointment.` : "Fee confirmed by the desk before your appointment.";
   }
 
   function review() {
@@ -317,7 +339,8 @@
     if ($("#b-co").value.trim()) list.push(["Company", $("#b-co").value.trim() + ($("#b-file").value.trim() ? ` · File ${$("#b-file").value.trim()}` : "")]);
     if ($("#b-notes").value.trim()) list.push(["Notes", $("#b-notes").value.trim()]);
     const f = fee();
-    list.push(["Fee", f != null ? `${money(f)} estimated` : "Quoted when we confirm"]);
+    const x = addonsTotal();
+    list.push(["Fee", f != null ? `${money(f + x)} estimated${x ? ` (includes ${money(x)} in add-ons and extra fees)` : ""}` : x ? `${money(x)} in add-ons and extra fees, plus the signing fee quoted when we confirm` : "Quoted when we confirm"]);
     fillDl($("#review"), list);
   }
 

@@ -79,6 +79,58 @@ const TYPES = {
       { key: "contact", label: "Access contact (if interior)" },
     ],
   },
+  court_filing: {
+    label: "Court filing & runs", page: "court-filing", roles: ["process_server"],
+    blurb: "Papers filed at the courthouse, documents picked up and delivered, and copies pulled from the court file.",
+    fields: [
+      { key: "court", label: "Court and county (e.g. Superior Court, Union County)", required: true },
+      { key: "case", label: "Case or docket number" },
+      { key: "task", label: "What do you need?", required: true, options: ["File papers in person", "Pick up and deliver documents", "Get copies from the court file", "Other"] },
+      { key: "documents", label: "Documents (what's being filed, delivered or copied)", required: true, wide: true },
+      { key: "pickup_address", label: "Pickup address, if we're collecting originals", wide: true },
+    ],
+  },
+  records_retrieval: {
+    label: "Records retrieval", page: "records-retrieval", roles: ["process_server"],
+    blurb: "Copies of deeds, mortgages, court records, business filings and vital records, pulled and delivered.",
+    fields: [
+      { key: "record", label: "Record type", required: true, options: ["Deed, mortgage or other recorded document", "Court record", "Business or corporate filing", "Vital record (birth, death, marriage)", "Other"] },
+      { key: "where", label: "County, court or agency that holds it", required: true },
+      { key: "identify", label: "Names, property address, book and page, or docket number", required: true, wide: true, textarea: true },
+      { key: "certified", label: "Certified copy needed?", options: ["Yes, certified", "No, a plain copy is fine", "Not sure"] },
+    ],
+  },
+  skip_trace: {
+    label: "Skip tracing", page: "skip-tracing", roles: [],
+    blurb: "A current address for someone you need to serve or reach, from database searches for a permissible purpose.",
+    fields: [
+      { key: "subject", label: "Person's full name", required: true },
+      { key: "last_address", label: "Last known address", required: true, wide: true },
+      { key: "identifiers", label: "Other details (date of birth, phone, employer, relatives)", wide: true, textarea: true },
+      { key: "purpose", label: "Purpose of the search", required: true, options: ["Serving court papers", "Collecting a judgment or debt", "Estate or heir search", "Other legal purpose"] },
+    ],
+  },
+  medical_records: {
+    label: "Medical records pickup", page: "medical-records-retrieval", roles: ["process_server", "notary"],
+    blurb: "Records requested and picked up from hospitals, practices and facilities with the patient's signed authorization.",
+    fields: [
+      { key: "provider", label: "Hospital, practice or facility (name and address)", required: true, wide: true },
+      { key: "patient", label: "Patient name", required: true },
+      { key: "authorization", label: "Signed HIPAA authorization or subpoena?", required: true, options: ["Yes, I'll attach it", "Need help getting it signed (notary visit)", "Subpoena attached"] },
+      { key: "deliver", label: "Deliver to (email or address)" },
+    ],
+  },
+  i9_verification: {
+    label: "I-9 authorized representative", page: "i9-verification", roles: ["notary"],
+    blurb: "A local representative meets your remote hire, examines their documents in person and completes Section 2 of Form I-9.",
+    fields: [
+      { key: "employee", label: "Employee name", required: true },
+      { key: "employer", label: "Employer (company name)", required: true },
+      { key: "location", label: "Where to meet (address or town in New Jersey)", required: true, wide: true },
+      { key: "start_date", label: "Employee's first day of work" },
+      { key: "employee_phone", label: "Employee phone or email" },
+    ],
+  },
 };
 
 const ROLE_LABEL = { notary: "Notary", witness: "Witness", process_server: "Process server" };
