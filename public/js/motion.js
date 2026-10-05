@@ -31,13 +31,24 @@
   }
 
   var start = 200 + typed * 0.7, n = 0, els = [];
-  [".firm-hero .lede", ".firm-hero .ctas", ".firm-hero .strip"].forEach(function (sel) {
+  [".firm-hero .chip", ".firm-hero .lede", ".firm-hero .ctas", ".track", ".firm-hero .strip"].forEach(function (sel) {
     document.querySelectorAll(sel).forEach(function (el) { el.setAttribute("data-reveal", ""); el.style.setProperty("--d", (start + n++ * 90) + "ms"); els.push(el); });
   });
   document.querySelectorAll(".practice").forEach(function (col, c) {
     col.querySelectorAll(".row").forEach(function (el, i) { el.setAttribute("data-reveal", ""); el.style.setProperty("--d", (start + 260 + c * 110 + i * 70) + "ms"); els.push(el); });
   });
   requestAnimationFrame(function () { requestAnimationFrame(function () { els.forEach(function (el) { el.classList.add("in"); }); }); });
+
+  // Sample order tracker plays through its first steps once, then holds.
+  var trk = document.querySelectorAll("#trk li");
+  if (trk.length) {
+    trk.forEach(function (li) { li.classList.remove("done", "now"); });
+    var t0 = start + 700;
+    [[0, "done"], [1, "done"], [2, "now"]].forEach(function (st, i) {
+      setTimeout(function () { trk[st[0]].classList.add(st[1]); }, t0 + i * 650);
+    });
+    setTimeout(function () { trk[2].classList.remove("now"); trk[2].classList.add("done"); trk[3].classList.add("now"); }, t0 + 3 * 650 + 500);
+  }
 
   var hdr = document.querySelector("header.site");
   if (hdr) { var on = function () { hdr.classList.toggle("scrolled", window.scrollY > 8); }; on(); window.addEventListener("scroll", on, { passive: true }); }
