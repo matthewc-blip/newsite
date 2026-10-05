@@ -28,8 +28,8 @@ function register(app) {
     const crumbs = [["MCC Solutions", "/"], ["About", "/about"]];
     res.send(layout({
       req, biz, path: "/about", crumbs,
-      title: "About MCC Solutions | New Jersey Notary & Signing Desk",
-      description: `Meet ${FOUNDER.name}, founder of MCC Solutions in Cranford, NJ: NJ notary, NNA Certified Loan Signing Agent, $100K E&O insured, accounting & finance graduate.`,
+      title: "About MCC Solutions | NJ Notary, Bookkeeping & Web Services",
+      description: `Meet ${FOUNDER.name}, founder of MCC Solutions in Cranford, NJ: notary, loan signing agent, bookkeeper and accounting & finance graduate.`,
       body: {
         hero: `<p class="eyebrow">About MCC Solutions</p><h1 style="margin-top:10px">A signing desk built on one promise: the closing happens on time.</h1>`,
         main: `<section class="band"><div class="wrap split">
