@@ -221,6 +221,16 @@ Settings → Billing → Minimum margin (default 20%). The desk can't save a not
 ## Google review requests
 Settings → Google reviews: paste your Google Business Profile review link and turn it on. A few hours after a job is completed (you choose the delay), the customer gets one email asking for a review. The same email address is asked at most once every 180 days, every email has a one-click opt-out, and only jobs completed in the last 14 days are included, so turning it on never emails old customers.
 
+## Bookkeeping intake (QuickBooks Online, Xero, Excel/Sheets, other, or none)
+
+`/bookkeeping/` collects prospective bookkeeping clients on whatever software they use. The page is hidden (noindex, not in the sitemap) until you turn it on.
+
+- **Settings → Bookkeeping**: "Open" accepts clients and lets search engines index the page. "Show prices" adds the public price table and a live estimate. Prices, included accounts, payroll and per-platform adjustments are editable; the defaults are placeholders, so set your own.
+- **Dashboard → Bookkeeping tab**: each lead shows the estimate, a status (new, contacted, quoted, won, lost), your quote, notes, and an onboarding checklist that changes with the platform. "Send access steps" emails the client how to give you access in their software.
+- Estimates are always visible to the desk, even when public prices are off.
+- Tracked link for mailers: `/go/bk`.
+- Not built: engagement letters and a document-upload portal. Tax return preparation needs a PTIN and is out of scope for this page.
+
 ## State rules and coverage
 
 - **Live states.** Set these in **Settings → States where you dispatch mobile notaries now** (default: NJ). The Coverage page shows those states as Live and every other state as Soon. Customers booking a mobile signing elsewhere see a note that the desk will confirm coverage.

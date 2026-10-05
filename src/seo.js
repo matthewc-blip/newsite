@@ -354,9 +354,11 @@ function register(app) {
     });
   }
 
-  app.get("/sitemap.xml", (req, res) => {
+  app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
     const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
+    if ((await getSettings().catch(() => null))?.bookkeeping?.open) paths.push(["/bookkeeping/", "0.7"]);
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}
@@ -389,6 +391,7 @@ window.mccTrack(a.href.indexOf("tel:")===0?"phone_click":"email_click",{link_url
     pcb: ["/notary/#order", "postcard", "mail", "nj_postcard_booking"],
     li: ["/notary/vendors", "linkedin", "social", "linkedin_outreach"],
     em: ["/notary/vendors", "email", "email", "cold_email"],
+    bk: ["/bookkeeping/", "mailer", "mail", "bookkeeping"],
   };
   app.get("/go/:code", (req, res) => {
     const g = GO[String(req.params.code).toLowerCase()];

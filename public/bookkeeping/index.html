@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Bookkeeping for Small Businesses | MCC Solutions</title>
 <meta name="robots" content="noindex">
-<meta name="description" content="Monthly bookkeeping, catch-up and year-end packages for New Jersey small businesses, from the team behind MCC Solutions. Join the interest list.">
+<meta name="description" content="Monthly bookkeeping, catch-up and year-end packages for New Jersey small businesses, in QuickBooks, Xero or Excel. Tell us about your books and get an estimate.">
 <link rel="canonical" href="https://www.mcc-solutionsnj.com/bookkeeping">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MCC Solutions">
@@ -246,6 +246,36 @@ label{font-size:.85rem;font-weight:600}
 .form-msg.err{color:#f0cf8f}
 .form-msg:empty{display:none}
 .fine{font-size:.8rem;color:var(--muted);max-width:90ch}
+
+/* software, pricing, form extras */
+.sw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media (max-width:1000px){.sw-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.sw-grid{grid-template-columns:1fr}}
+.sw{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.sw .code{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;color:var(--brass);text-transform:uppercase}
+.sw p{color:var(--ink-2);font-size:.93rem}
+.ptable{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ptable caption{text-align:left;font-size:.85rem;color:var(--muted);padding:0 0 10px}
+.ptable th,.ptable td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--rule);font-size:.95rem}
+.ptable th{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:2px solid var(--ink)}
+.ptable td.n,.ptable th.n{text-align:right;white-space:nowrap}
+.ptable tr:last-child td{border-bottom:0}
+.ptable-wrap{overflow-x:auto}
+.extras-note{margin-top:14px;font-size:.9rem;color:var(--ink-2);max-width:80ch}
+.wait select{font:inherit;font-size:.95rem;padding:12px;border-radius:5px;border:1px solid color-mix(in srgb,var(--deep-fg) 30%,transparent);background:color-mix(in srgb,var(--deep-fg) 6%,transparent);color:var(--deep-fg);width:100%}
+.wait select option{color:#14231d;background:#fff}
+.wait input[type=number],.wait input[type=tel]{font:inherit;font-size:.95rem;padding:12px;border-radius:5px;border:1px solid color-mix(in srgb,var(--deep-fg) 30%,transparent);background:color-mix(in srgb,var(--deep-fg) 6%,transparent);color:var(--deep-fg);width:100%}
+.wait [aria-invalid="true"]{border-color:#f0cf8f}
+.wait .err-t{color:#f0cf8f;font-size:.8rem}
+.wait .err-t:empty{display:none}
+.est{grid-column:1/-1;border:1px solid color-mix(in srgb,var(--brass) 60%,transparent);border-radius:8px;padding:16px 18px;background:color-mix(in srgb,var(--brass) 12%,transparent)}
+.est h3{font-size:1rem;margin-bottom:8px}
+.est ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:.92rem}
+.est li{display:flex;justify-content:space-between;gap:12px}
+.est .tot{margin-top:10px;font-weight:700;font-size:1.05rem}
+.est .fine{color:var(--deep-muted);margin-top:8px}
+.checkline{display:flex;align-items:center;gap:10px;font-weight:500}
+.checkline input{accent-color:var(--brass);width:18px;height:18px;margin:0}
 </style>
 <script src="/js/ga.js" async></script>
 </head>
@@ -255,21 +285,22 @@ label{font-size:.85rem;font-weight:600}
   <a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a>
   <nav class="main" aria-label="Main">
     <a href="#included">What's included</a>
+    <a href="#software">Your software</a>
     <a href="#who">Who it's for</a>
     <a href="#how">How it works</a>
     <a href="/notary/">Notary services</a>
   </nav>
-  <a class="btn btn-primary btn-sm hdr-cta" href="#interest">Join the list</a>
+  <a class="btn btn-primary btn-sm hdr-cta" href="#interest">Tell us about your books</a>
 </div></header>
 
 <main>
   <section class="hero"><div class="wrap hero-grid">
     <div>
-      <p class="eyebrow">MCC Solutions · Bookkeeping · Opening later</p>
+      <p class="eyebrow">MCC Solutions · Bookkeeping · <span id="bkState">Opening soon</span></p>
       <h1 style="margin-top:14px">Books that are done every month, <em>not every April.</em></h1>
-      <p class="lede">Monthly bookkeeping for New Jersey small businesses, from the same desk that handles your notary and legal paperwork. Clean books, clear reports, and a year-end package your tax preparer will thank you for.</p>
+      <p class="lede">Monthly bookkeeping for New Jersey small businesses, from the same desk that handles your notary and legal paperwork. We work in QuickBooks, Xero or Excel, so you keep the tools you already use. Clean books, clear reports, and a year-end package your tax preparer will thank you for.</p>
       <div class="ctas">
-        <a class="btn btn-primary" href="#interest">Join the interest list</a>
+        <a class="btn btn-primary" href="#interest">Tell us about your books</a>
         <a class="btn btn-ghost" href="#included">See what's included</a>
       </div>
     </div>
@@ -281,7 +312,7 @@ label{font-size:.85rem;font-weight:600}
         <li class="line"><span class="no">03</span><span class="what"><strong>Reports delivered</strong><span>Profit and loss and balance sheet, in plain language.</span></span><span class="act"><span class="tick" aria-hidden="true">✓</span></span></li>
         <li class="line"><span class="no">04</span><span class="what"><strong>Questions answered</strong><span>A short list of anything we need from you. No guessing.</span></span><span class="act"><span class="tick" aria-hidden="true">✓</span></span></li>
       </ol>
-      <p class="ledger-foot">Opening to a small group of businesses first. Join the list to be considered.</p>
+      <p class="ledger-foot">We take on a limited number of businesses at a time.</p>
     </article>
   </div></section>
 
@@ -289,29 +320,56 @@ label{font-size:.85rem;font-weight:600}
     <div class="sec-head">
       <p class="eyebrow">What's included</p>
       <h2>Three ways we'll help</h2>
-      <p class="lede">Pricing will depend on your transaction volume and accounts. You'll get a quote after a short review of your books.</p>
+      <p class="lede">Pricing depends on your transaction volume, accounts and the software you use. You'll get a written quote after a short review of your books.</p>
     </div>
     <div class="inc">
-      <div><h3>Monthly bookkeeping</h3><p>Ongoing books, closed every month.</p><ul><li>Categorization and reconciliation</li><li>Monthly profit and loss and balance sheet</li><li>QuickBooks Online or Xero</li><li>One point of contact</li></ul></div>
+      <div><h3>Monthly bookkeeping</h3><p>Ongoing books, closed every month.</p><ul><li>Categorization and reconciliation</li><li>Monthly profit and loss and balance sheet</li><li>QuickBooks Online, Xero or Excel</li><li>One point of contact</li></ul></div>
       <div><h3>Catch-up and cleanup</h3><p>Books that fell behind, brought current.</p><ul><li>Months or years of backlog</li><li>Messy categories fixed</li><li>Opening balances confirmed</li><li>Ready to hand off or keep going monthly</li></ul></div>
-      <div><h3>Year-end package</h3><p>Everything your tax preparer asks for, in one place.</p><ul><li>Year-end financial statements</li><li>1099 vendor list</li><li>Fixed asset and loan schedules</li><li>Tax preparation planned for a later phase</li></ul></div>
+      <div><h3>Year-end package</h3><p>Everything your tax preparer asks for, in one place.</p><ul><li>Year-end financial statements</li><li>1099 vendor list</li><li>Fixed asset and loan schedules</li><li>Tax preparation is not part of this service</li></ul></div>
     </div>
+  </div></section>
+
+  <section class="band" id="software"><div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Your software</p>
+      <h2>Use what you already use</h2>
+      <p class="lede">You don't have to switch tools for us. Tell us what you keep your books in and we adapt to it.</p>
+    </div>
+    <div class="sw-grid">
+      <div class="sw"><span class="code">QuickBooks Online</span><h3>QuickBooks</h3><p>We work inside your file as an accountant user. You keep ownership and can remove our access any time.</p></div>
+      <div class="sw"><span class="code">Xero</span><h3>Xero</h3><p>We work inside your organisation as an advisor user. You keep ownership and control who has access.</p></div>
+      <div class="sw"><span class="code">Excel or Google Sheets</span><h3>Spreadsheets</h3><p>Keep your spreadsheet. We maintain it, or give you our standard workbook, and you send statements each month. We can move you to software later.</p></div>
+      <div class="sw"><span class="code">Anything else</span><h3>Another program, or none</h3><p>Wave, FreshBooks, Zoho, Sage: we'll tell you if we can work in it. Starting from paper? We recommend QuickBooks or Xero and set it up in your name.</p></div>
+    </div>
+    <p class="extras-note">We never need your passwords. Access is by invitation or a shared file, and it's yours to remove.</p>
+  </div></section>
+
+  <section class="band alt" id="pricing" hidden><div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Starting prices</p>
+      <h2>What it costs</h2>
+      <p class="lede">These are starting points. You'll get a written quote after we review your books.</p>
+    </div>
+    <div class="ptable-wrap" role="region" aria-label="Starting prices by transaction volume" tabindex="0"><table class="ptable" id="ptable"><caption>Starting prices by transaction volume</caption>
+      <thead><tr><th scope="col">Transactions</th><th scope="col" class="n">Monthly</th><th scope="col" class="n">Catch-up, per month behind</th><th scope="col" class="n">Year-end package</th></tr></thead>
+      <tbody id="ptbody"></tbody></table></div>
+    <p class="extras-note" id="pextras"></p>
   </div></section>
 
   <section class="band" id="who"><div class="wrap">
     <div class="sec-head"><p class="eyebrow">Who it's for</p><h2>Built for the businesses we already work with</h2></div>
     <div class="why">
-      <div><h3>Title agencies &amp; law firms</h3><p>Operating books kept separate and current. Your trust or escrow accounting stays with your existing systems and professionals.</p></div>
+      <div><h3>Title agencies &amp; law firms</h3><p>Operating books kept separate and current. We do not handle trust or escrow account records; those stay with your existing systems and professionals.</p></div>
       <div><h3>Dealers, contractors &amp; trades</h3><p>Job and vendor costs tracked, with 1099s ready at year-end.</p></div>
       <div><h3>Funeral homes &amp; local businesses</h3><p>Steady monthly books so you always know where you stand.</p></div>
     </div>
   </div></section>
 
   <section class="band alt" id="how"><div class="wrap">
-    <div class="sec-head"><p class="eyebrow">How it will work</p><h2>From shoebox to monthly reports</h2></div>
+    <div class="sec-head"><p class="eyebrow">How it works</p><h2>From shoebox to monthly reports</h2></div>
     <div class="why">
-      <div><h3>1. Short review</h3><p>We look at your current books, accounts and volume, then send a fixed monthly quote.</p></div>
-      <div><h3>2. Setup or catch-up</h3><p>We connect your accounts and bring the books current if they've fallen behind.</p></div>
+      <div><h3>1. Tell us about your books</h3><p>Fill in the short form: your software, volume and what you need. We review it and send a written quote.</p></div>
+      <div><h3>2. Give us access</h3><p>We send the steps for your software, usually an invitation. Then we set up, or catch up if the books fell behind.</p></div>
       <div><h3>3. Monthly close</h3><p>Every month: reconciled books, reports in your inbox, and a short list of questions.</p></div>
     </div>
   </div></section>
@@ -328,25 +386,40 @@ label{font-size:.85rem;font-weight:600}
   <section class="band alt" id="interest"><div class="wrap">
     <div class="wait">
       <div>
-        <p class="eyebrow">Interest list</p>
-        <h2 style="margin-top:10px">Be first in line</h2>
-        <p style="margin-top:12px">We're opening bookkeeping to a small group of businesses first. Leave your details and we'll reach out when there's a spot. No other mail.</p>
+        <p class="eyebrow">Get started</p>
+        <h2 style="margin-top:10px">Tell us about your books</h2>
+        <p style="margin-top:12px" id="formLead">Five minutes, no obligation. We review your answers and reply by email with next steps and a written quote.</p>
+        <p style="margin-top:12px">Not sure about something? Pick the closest answer and add a note. We'll sort it out together.</p>
       </div>
-      <form id="waitForm" novalidate>
-        <fieldset class="picks full" id="picks">
-          <legend>I'm interested in</legend>
-          <label><input type="checkbox" name="services" value="bookkeeping" checked> Bookkeeping</label>
-          <label><input type="checkbox" name="services" value="tax"> Tax preparation (later)</label>
+      <form id="bkForm" novalidate>
+        <div class="field"><label for="b-name">Your name</label><input type="text" id="b-name" autocomplete="name" required><span class="err-t" id="e-name"></span></div>
+        <div class="field"><label for="b-email">Email</label><input type="email" id="b-email" autocomplete="email" required><span class="err-t" id="e-email"></span></div>
+        <div class="field"><label for="b-company">Business name</label><input type="text" id="b-company" autocomplete="organization" required><span class="err-t" id="e-company"></span></div>
+        <div class="field"><label for="b-phone">Phone <span style="font-weight:400;opacity:.8">(optional)</span></label><input type="tel" id="b-phone" autocomplete="tel"><span class="err-t" id="e-phone"></span></div>
+        <div class="field"><label for="b-entity">Business type <span style="font-weight:400;opacity:.8">(optional)</span></label><select id="b-entity"><option value="">Choose one</option><option>Sole proprietor</option><option>LLC</option><option>S corporation</option><option>C corporation</option><option>Partnership</option><option>Nonprofit</option><option>Other</option></select></div>
+        <div class="field"><label for="b-industry">Industry <span style="font-weight:400;opacity:.8">(optional)</span></label><input type="text" id="b-industry" placeholder="Contractor, attorney, funeral home…"></div>
+        <div class="field"><label for="b-platform">What do your books live in today?</label><select id="b-platform" required><option value="">Choose one</option><option value="qbo">QuickBooks Online</option><option value="xero">Xero</option><option value="sheets">Excel or Google Sheets</option><option value="other">Another program</option><option value="none">Nothing yet (paper or bank statements)</option></select><span class="err-t" id="e-platform"></span></div>
+        <div class="field" id="otherWrap" hidden><label for="b-pnote">Which program?</label><input type="text" id="b-pnote" placeholder="Wave, FreshBooks, Zoho…"></div>
+        <div class="field"><label for="b-tier">Transactions per month</label><select id="b-tier" required><option value="">Choose one</option><option value="t1">Up to 100</option><option value="t2">100 to 300</option><option value="t3">300 to 600</option><option value="t4">Over 600</option></select><span class="err-t" id="e-tier"></span></div>
+        <div class="field"><label for="b-accounts">Bank, card and loan accounts</label><input type="number" id="b-accounts" min="1" max="20" value="2"></div>
+        <div class="field"><label for="b-backlog">Where are the books today?</label><select id="b-backlog"><option value="none">Current</option><option value="1-3">1 to 3 months behind</option><option value="4-12">4 to 12 months behind</option><option value="12+">More than a year behind</option></select></div>
+        <div class="field"><label for="b-start">When do you want to start?</label><select id="b-start"><option value="asap">As soon as possible</option><option value="month" selected>Within a month</option><option value="exploring">Just exploring</option></select></div>
+        <div class="field full"><label class="checkline"><input type="checkbox" id="b-payroll"> We run payroll that needs reconciling</label></div>
+        <fieldset class="picks full" id="b-needs"><legend>What do you need?</legend>
+          <label><input type="checkbox" name="needs" value="monthly"> Monthly bookkeeping</label>
+          <label><input type="checkbox" name="needs" value="cleanup"> Catch-up and cleanup</label>
+          <label><input type="checkbox" name="needs" value="yearend"> Year-end package</label>
+          <label><input type="checkbox" name="needs" value="other"> Something else</label>
+          <span class="err-t" id="e-needs" style="flex-basis:100%"></span>
         </fieldset>
-        <div class="field"><label for="w-name">Name</label><input type="text" id="w-name" autocomplete="name"></div>
-        <div class="field"><label for="w-email">Email</label><input type="email" id="w-email" autocomplete="email" required></div>
-        <div class="field full"><label for="w-co">Business name <span style="font-weight:400;opacity:.8">(optional)</span></label><input type="text" id="w-co" autocomplete="organization"></div>
-        <div class="field full"><label for="w-note">Anything we should know? <span style="font-weight:400;opacity:.8">(optional)</span></label><textarea id="w-note" placeholder="Industry, software you use, how far behind the books are…"></textarea></div>
-        <div class="hp" aria-hidden="true"><label for="w-website">Website</label><input type="text" id="w-website" tabindex="-1" autocomplete="off"></div>
-        <div class="full" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn btn-primary" type="submit">Join the list</button><p class="form-msg" id="waitMsg" role="status"></p></div>
+        <div class="field full"><label for="b-tax">Do you have a tax preparer?</label><select id="b-tax"><option value="">Choose one</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Not sure</option></select></div>
+        <div class="field full"><label for="b-note">Anything we should know? <span style="font-weight:400;opacity:.8">(optional)</span></label><textarea id="b-note" placeholder="How the books are kept now, what's been hard, deadlines…"></textarea></div>
+        <div class="est" id="est" role="status" aria-live="polite" hidden></div>
+        <div class="hp" aria-hidden="true"><label for="b-website">Website</label><input type="text" id="b-website" tabindex="-1" autocomplete="off"></div>
+        <div class="full" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn btn-primary" type="submit" id="bSubmit">Send</button><p class="form-msg" id="bMsg" role="status"></p></div>
       </form>
     </div>
-    <p class="fine" style="margin-top:22px">MCC Solutions is not a CPA firm, and nothing on this page is tax, legal or investment advice. Bookkeeping services are not yet offered. Tax preparation will be offered only after the required IRS registrations are in place.</p>
+    <p class="fine" style="margin-top:22px">MCC Solutions is not a CPA firm, and nothing on this page is tax, legal or investment advice. Bookkeeping is record-keeping and reporting; it does not include tax return preparation, tax representation, trust or escrow account records, or audit or attest services. Prices shown are starting estimates, not quotes.</p>
   </div></section>
 </main>
 
@@ -360,24 +433,92 @@ label{font-size:.85rem;font-weight:600}
 <script>
 (function () {
   document.getElementById("yr").textContent = new Date().getFullYear();
-  const form = document.getElementById("waitForm"), msg = document.getElementById("waitMsg");
+  const $ = (id) => document.getElementById(id);
+  const form = $("bkForm"), msg = $("bMsg");
   const say = (t, kind) => { msg.textContent = t; msg.className = "form-msg " + kind; };
+  const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+  let showPrices = false;
+
+  // Page state from settings: wording when open, and the price table when prices are switched on.
+  fetch("/api/config").then((r) => r.json()).then((c) => {
+    const b = c.bookkeeping || {};
+    if (b.open) { $("bkState").textContent = "Now accepting a limited number of clients"; }
+    showPrices = !!b.showPrices;
+    if (showPrices && b.prices) {
+      $("ptbody").innerHTML = b.prices.tiers.map((t) => `<tr><th scope="row" style="font-family:inherit;font-size:.95rem;text-transform:none;letter-spacing:0;color:inherit;font-weight:600;border-bottom:1px solid var(--rule)">${t.label}</th>
+        <td class="n">${t.monthly == null ? "Custom quote" : "from " + money(t.monthly)}</td><td class="n">${t.cleanup == null ? "Custom quote" : "from " + money(t.cleanup)}</td><td class="n">${t.yearEnd == null ? "Custom quote" : "from " + money(t.yearEnd)}</td></tr>`).join("");
+      const ex = [];
+      if (b.prices.extraAccount) ex.push(`${money(b.prices.extraAccount)} a month for each account beyond ${b.prices.includedAccounts}`);
+      if (b.prices.payroll) ex.push(`${money(b.prices.payroll)} a month when payroll needs reconciling`);
+      const pl = b.prices.platforms || {};
+      if (pl.sheets && pl.sheets.monthly) ex.push(`${money(pl.sheets.monthly)} a month to work in a spreadsheet instead of accounting software`);
+      if (pl.none && pl.none.setup) ex.push(`${money(pl.none.setup)} one-time to set up software if you're starting from paper`);
+      $("pextras").textContent = ex.length ? "Also: " + ex.join("; ") + "." : "";
+      $("pricing").hidden = false;
+    }
+  }).catch(() => {});
+
+  const val = () => ({
+    name: $("b-name").value, email: $("b-email").value, company: $("b-company").value, phone: $("b-phone").value, entity: $("b-entity").value, industry: $("b-industry").value,
+    platform: $("b-platform").value, platformNote: $("b-pnote").value, tier: $("b-tier").value, accounts: $("b-accounts").value, payroll: $("b-payroll").checked,
+    backlog: $("b-backlog").value, start: $("b-start").value, taxPreparer: $("b-tax").value, note: $("b-note").value,
+    needs: [...form.querySelectorAll('input[name="needs"]:checked')].map((i) => i.value), website: $("b-website").value,
+  });
+
+  $("b-platform").addEventListener("change", () => { $("otherWrap").hidden = $("b-platform").value !== "other"; });
+
+  // Live estimate, only when the desk has switched prices on
+  let t;
+  async function preview() {
+    if (!showPrices) return;
+    const v = val();
+    if (!v.tier || !v.needs.length) { $("est").hidden = true; return; }
+    try {
+      const r = await fetch("/api/bookkeeping/estimate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v) });
+      const j = await r.json();
+      if (j.hidden || !j.estimate) { $("est").hidden = true; return; }
+      const e = j.estimate;
+      const rows = e.lines.map((l) => `<li><span>${l.label}</span><span>${money(l.amount)}${l.per === "month" ? " / mo" : ""}</span></li>`).join("");
+      const tot = [];
+      if (e.monthly != null) tot.push(`About ${money(e.monthly)} a month`);
+      if (e.cleanup != null) tot.push(`catch-up about ${money(e.cleanup)}`);
+      if (e.yearEnd != null) tot.push(`year-end about ${money(e.yearEnd)}`);
+      if (e.setup) tot.push(`setup ${money(e.setup)}`);
+      $("est").innerHTML = `<h3>Your starting estimate</h3><ul>${rows}</ul><p class="tot">${tot.join(" · ") || "We'll prepare a custom quote."}${e.custom && tot.length ? " · plus a custom quote for the rest" : ""}</p><p class="fine" style="color:var(--deep-muted)">An estimate, not a quote. We confirm scope and price in writing after reviewing your books.</p>`;
+      $("est").hidden = false;
+    } catch { $("est").hidden = true; }
+  }
+  form.addEventListener("input", () => { clearTimeout(t); t = setTimeout(preview, 300); });
+  form.addEventListener("change", () => { clearTimeout(t); t = setTimeout(preview, 100); });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("w-email");
-    const services = [...form.querySelectorAll('input[name="services"]:checked')].map((i) => i.value);
-    email.removeAttribute("aria-invalid");
-    if (!services.length) return say("Choose at least one service.", "err");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.value.trim())) { email.setAttribute("aria-invalid", "true"); email.focus(); return say("Enter a valid email address.", "err"); }
-    const btn = form.querySelector("button[type=submit]"); btn.disabled = true;
+    ["name", "email", "company", "phone", "platform", "tier", "needs"].forEach((k) => { $("e-" + k).textContent = ""; const el = $("b-" + k); if (el) el.removeAttribute("aria-invalid"); });
+    const v = val(), errs = {};
+    if (!v.name.trim()) errs.name = "Enter your name.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email.trim())) errs.email = "Enter a valid email.";
+    if (!v.company.trim()) errs.company = "Enter your business name.";
+    if (v.phone && v.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number, or leave it blank.";
+    if (!v.platform) errs.platform = "Choose what you use today, or Nothing yet.";
+    if (!v.tier) errs.tier = "Choose how many transactions a month.";
+    if (!v.needs.length) errs.needs = "Choose at least one thing you need.";
+    const keys = Object.keys(errs);
+    if (keys.length) {
+      keys.forEach((k) => { $("e-" + k).textContent = errs[k]; const el = $("b-" + k); if (el) el.setAttribute("aria-invalid", "true"); });
+      const first = $("b-" + keys[0]) || form.querySelector('input[name="needs"]'); if (first) first.focus();
+      return say("Check the highlighted fields.", "err");
+    }
+    const btn = $("bSubmit"); btn.disabled = true; say("Sending…", "");
     try {
-      const r = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: document.getElementById("w-name").value, email: email.value, company: document.getElementById("w-co").value, note: document.getElementById("w-note").value, services, website: document.getElementById("w-website").value }) });
+      const r = await fetch("/api/bookkeeping/intake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || "Couldn't save that. Try again.");
-      form.reset(); form.querySelector('input[value="bookkeeping"]').checked = true;
-      if (window.mccTrack) window.mccTrack("bookkeeping_interest", { form: "bookkeeping" });
-      say("You're on the list. We'll reach out when a spot opens.", "ok");
+      if (!r.ok) {
+        if (j.fields) Object.keys(j.fields).forEach((k) => { const el = $("e-" + k); if (el) el.textContent = j.fields[k]; });
+        throw new Error(j.error || "Couldn't send that. Try again or call us.");
+      }
+      form.reset(); $("otherWrap").hidden = true; $("est").hidden = true;
+      if (window.mccTrack) window.mccTrack("bookkeeping_intake", { form: "bookkeeping", platform: v.platform });
+      say("Thanks. We got your details and will reply by email with next steps.", "ok");
     } catch (err) { say(err.message, "err"); }
     btn.disabled = false;
   });

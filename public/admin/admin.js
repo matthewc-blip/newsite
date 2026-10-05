@@ -88,6 +88,7 @@
     if (t === "board") refresh();
     if (t === "notaries") loadNotaries().then(renderNotaries);
     if (t === "applications") loadApps();
+    if (t === "bookkeeping") loadBk();
     if (t === "messages") loadMsgs();
     if (t === "settings") renderSettings();
     if (t === "payouts") loadPayouts();
@@ -124,6 +125,7 @@
     ba.hidden = !s.newApplications; ba.textContent = s.newApplications;
     bm.hidden = !s.openMessages; bm.textContent = s.openMessages;
     const br = $("#badgeReq"); br.hidden = !s.newRequests; br.textContent = s.newRequests;
+    const bk = $("#badgeBk"); bk.hidden = !s.newBookkeeping; bk.textContent = s.newBookkeeping;
   }
 
   function setView(v) {
@@ -801,6 +803,60 @@
     }));
   }
 
+  /* ---------- bookkeeping ---------- */
+  const BK_STATUS = { new: "New", contacted: "Contacted", quoted: "Quoted", onboarding: "Onboarding", active: "Active", declined: "Declined", lost: "Lost" };
+  const BK_PILL = { new: "p-warn", contacted: "p-info", quoted: "p-info", onboarding: "p-info", active: "p-ok", declined: "p-info", lost: "p-info" };
+  async function loadBk() {
+    const { leads } = await api("/api/admin/bookkeeping");
+    const bkSet = settings.bookkeeping || {};
+    $("#bkState").textContent = `Page ${bkSet.open ? "open (searchable)" : "unlisted"} · prices ${bkSet.showPrices ? "shown" : "hidden"} · change in Settings → Bookkeeping`;
+    const box = $("#bkCards");
+    if (!leads.length) { box.innerHTML = `<div class="empty-state" style="grid-column:1/-1">No bookkeeping leads yet. They arrive from the form on your Bookkeeping page (mcc-solutionsnj.com/bookkeeping), which stays unlisted until you open it in Settings.</div>`; return; }
+    box.innerHTML = leads.map((l) => {
+      const d = l.data;
+      const groups = [...new Set(l.checklist.map((c) => c.group))];
+      const done = l.checklist.filter((c) => c.done).length;
+      return `<div class="card" style="grid-column:1/-1" data-bk="${l.id}">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>${esc(d.company)}${d.entity ? ` <small>${esc(d.entity)}</small>` : ""}</h3><span class="pill ${BK_PILL[l.status] || "p-info"}">${esc(BK_STATUS[l.status] || l.status)}</span></div>
+        <p class="meta">${esc(d.name)} · <a href="mailto:${esc(d.email)}">${esc(d.email)}</a>${d.phone ? ` · ${esc(d.phone)}` : ""} · ${esc(full(l.createdAt))}</p>
+        <dl class="kvs"><dt>Software</dt><dd>${esc(l.platformLabel)}${d.platformNote ? ` (${esc(d.platformNote)})` : ""}</dd><dt>Volume</dt><dd>${esc(l.tierLabel)} · ${d.accounts} account${d.accounts > 1 ? "s" : ""}${d.payroll ? " · payroll" : ""}</dd>
+        <dt>Books</dt><dd>${esc(l.backlogLabel)}</dd><dt>Needs</dt><dd>${esc(l.needsLabels.join(", "))}</dd><dt>Start</dt><dd>${esc({ asap: "As soon as possible", month: "Within a month", exploring: "Just exploring" }[d.start] || d.start)}</dd>
+        <dt>Estimate</dt><dd>${esc(l.estimateText || "—")}</dd>${d.industry ? `<dt>Industry</dt><dd>${esc(d.industry)}</dd>` : ""}${d.taxPreparer ? `<dt>Tax preparer</dt><dd>${esc({ yes: "Yes", no: "No", unsure: "Not sure" }[d.taxPreparer])}</dd>` : ""}${d.note ? `<dt>Their note</dt><dd>${esc(d.note)}</dd>` : ""}</dl>
+        <div class="inline" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:10px">
+          <div class="field" style="min-width:150px"><label for="bks-${l.id}">Status</label><select id="bks-${l.id}">${Object.entries(BK_STATUS).map(([k, v]) => `<option value="${k}" ${k === l.status ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+          <div class="field" style="max-width:170px"><label for="bkq-${l.id}">Monthly quote ($)</label><input type="number" min="0" step="1" id="bkq-${l.id}" value="${l.quoteMonthly ?? ""}" placeholder="${l.estimate && l.estimate.monthly != null ? Math.round(l.estimate.monthly) : "Custom"}"></div>
+        </div>
+        <div class="field" style="margin-top:10px"><label for="bkn-${l.id}">Notes</label><textarea id="bkn-${l.id}" rows="2">${esc(l.notes)}</textarea></div>
+        <div class="dsec" style="margin-top:12px"><h4>Onboarding checklist <small>${done} of ${l.checklist.length}</small></h4>
+          ${groups.map((g) => `<p class="meta" style="margin:8px 0 4px">${esc(g)}</p>${l.checklist.filter((c) => c.group === g).map((c) => `<label class="switch" style="margin:2px 0;display:flex;gap:8px"><input type="checkbox" data-bk-check="${esc(c.key)}" ${c.done ? "checked" : ""}> ${esc(c.label)}</label>`).join("")}`).join("")}
+        </div>
+        <div class="actions"><button class="btn btn-primary btn-sm" data-bk-save="${l.id}">Save</button><button class="btn btn-ghost btn-sm" data-bk-mail="${l.id}">Email ${esc(l.platformLabel)} access steps</button><span class="form-msg" data-bk-msg="${l.id}" role="status"></span></div>
+      </div>`;
+    }).join("");
+    $$("[data-bk-check]", box).forEach((c) => c.addEventListener("change", async () => {
+      const id = c.closest("[data-bk]").dataset.bk;
+      try { await api("/api/admin/bookkeeping/" + id, { method: "PATCH", body: { done: { [c.dataset.bkCheck]: c.checked } } }); } catch (e) { c.checked = !c.checked; alert(e.message); }
+    }));
+    $$("[data-bk-save]", box).forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.bkSave, m = $(`[data-bk-msg="${id}"]`, box);
+      try {
+        const q = $("#bkq-" + id).value;
+        await api("/api/admin/bookkeeping/" + id, { method: "PATCH", body: { status: $("#bks-" + id).value, quoteMonthly: q === "" ? null : Number(q), notes: $("#bkn-" + id).value } });
+        m.className = "form-msg ok"; m.textContent = "Saved."; loadStats();
+      } catch (e) { m.className = "form-msg"; m.textContent = e.message; }
+    }));
+    $$("[data-bk-mail]", box).forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.bkMail, m = $(`[data-bk-msg="${id}"]`, box);
+      if (!confirm("Email this client the steps for giving you access in their software?")) return;
+      b.disabled = true;
+      try {
+        const r = await api("/api/admin/bookkeeping/" + id + "/access-email", { method: "POST" });
+        m.className = "form-msg ok"; m.textContent = r.emailEnabled ? "Sent." : "Email isn't set up yet, so nothing was sent. Add SMTP settings first.";
+        loadBk(); loadStats();
+      } catch (e) { m.className = "form-msg"; m.textContent = e.message; b.disabled = false; }
+    }));
+  }
+
   /* ---------- messages ---------- */
   async function loadMsgs() {
     const { messages } = await api("/api/admin/messages");
@@ -816,8 +872,11 @@
 
   /* ---------- settings ---------- */
   const STARTING = [["mobile", "Mobile notary visit"], ["loan", "Loan signing"], ["hospital", "Hospital or care facility visit"], ["process_serve", "Process serving"], ["apostille", "Apostille (per document)"], ["recording", "Document recording (per document)"], ["court_filing", "Court filing / run"], ["records", "Records retrieval"], ["skip_trace", "Skip trace"], ["medical_records", "Medical records pickup"], ["i9", "I-9 verification"]];
+  const BK_TIERS = { t1: "Up to 100 transactions", t2: "100 to 300", t3: "300 to 600", t4: "Over 600" };
+  const BK_PLATFORMS = { qbo: "QuickBooks Online", xero: "Xero", sheets: "Excel or Google Sheets", other: "Another program", none: "Nothing yet" };
   function renderSettings() {
     const s = settings;
+    const bk = s.bookkeeping || {};
     const svcCard = (k) => {
       const c = s.services[k];
       const hours = [0, 1, 2, 3, 4, 5, 6].map((d) => {
@@ -903,6 +962,22 @@
             <input type="number" min="0" step="0.01" data-rf-price="${i}" value="${f.price}" style="max-width:96px" aria-label="${esc(f.label)} price">
             <input type="number" min="0" max="100" step="5" data-rf-share="${i}" value="${f.share ?? 0}" style="max-width:76px" aria-label="${esc(f.label)} team share %" title="Team share %"></div>`).join("")}
         </div>
+        <div class="set-card"><h3>Bookkeeping</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">The Bookkeeping page is unlisted until you open it. Prices are what the starting estimate is built from; leave a price blank for "custom quote". You always see the estimate on each lead, even with prices hidden on the page.</p>
+          <label class="switch" style="margin-top:8px"><input type="checkbox" id="bkOpen" ${bk.open ? "checked" : ""}> Open the page (search engines may list it; it says you're accepting clients)</label>
+          <label class="switch" style="margin-top:6px"><input type="checkbox" id="bkShow" ${bk.showPrices ? "checked" : ""}> Show starting prices and a live estimate on the page</label>
+          <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Per month, per month behind (catch-up), and year-end package</p>
+          ${Object.entries(BK_TIERS).map(([id, label]) => `<div class="inline" style="margin-top:6px;align-items:center"><span style="flex:1;min-width:0;font-size:.9rem">${esc(label)}</span>
+            ${["monthly", "cleanup", "yearEnd"].map((k) => `<input type="number" min="0" step="1" data-bkp="${id}.${k}" value="${bk.prices && bk.prices[id] && bk.prices[id][k] != null ? bk.prices[id][k] : ""}" placeholder="Quote" style="max-width:84px" aria-label="${esc(label)} ${k === "yearEnd" ? "year-end" : k === "cleanup" ? "catch-up per month" : "monthly"} price">`).join("")}</div>`).join("")}
+          <div class="inline" style="margin-top:12px;align-items:center;flex-wrap:wrap;gap:10px">
+            <label for="bkInc" style="font-size:.9rem">Accounts included</label><input type="number" min="1" max="20" id="bkInc" value="${bk.includedAccounts ?? 2}" style="max-width:70px">
+            <label for="bkExtra" style="font-size:.9rem">Each extra / mo</label><input type="number" min="0" step="1" id="bkExtra" value="${bk.extraAccount ?? 0}" style="max-width:80px">
+            <label for="bkPay" style="font-size:.9rem">Payroll / mo</label><input type="number" min="0" step="1" id="bkPay" value="${bk.payroll ?? 0}" style="max-width:80px"></div>
+          <p style="font-size:.8rem;color:var(--muted);margin-top:12px">By software: added per month, and one-time setup</p>
+          ${Object.entries(BK_PLATFORMS).map(([id, label]) => `<div class="inline" style="margin-top:6px;align-items:center"><span style="flex:1;min-width:0;font-size:.9rem">${esc(label)}</span>
+            <input type="number" min="0" step="1" data-bkpl="${id}.monthly" value="${bk.platforms && bk.platforms[id] ? bk.platforms[id].monthly : 0}" style="max-width:84px" aria-label="${esc(label)} monthly adjustment">
+            <input type="number" min="0" step="1" data-bkpl="${id}.setup" value="${bk.platforms && bk.platforms[id] ? bk.platforms[id].setup : 0}" style="max-width:84px" aria-label="${esc(label)} one-time setup"></div>`).join("")}
+        </div>
         <div class="set-card"><h3>Starting prices on the website</h3>
           <p style="font-size:.86rem;color:var(--ink-2)">Shown as "starting at" on the homepage and service pages. Leave one blank to hide it. Each job's actual quote is still yours to set.</p>
           ${STARTING.map(([k, label]) => `<div class="inline" style="margin-top:8px;align-items:center"><label for="sp-${k}" style="flex:1;min-width:0">${esc(label)}</label>
@@ -955,6 +1030,11 @@
       price: $(`[data-fe-price="${i}"]`) ? Math.max(0, Number($(`[data-fe-price="${i}"]`).value) || 0) : f.price,
       share: $(`[data-fe-share="${i}"]`) ? Math.max(0, Math.min(100, Number($(`[data-fe-share="${i}"]`).value) || 0)) : f.share }));
     s.addons = (s.addons || []).map((a, i) => ({ ...a, enabled: $(`[data-ad-on="${i}"]`) ? $(`[data-ad-on="${i}"]`).checked : a.enabled !== false, price: $(`[data-ad-price="${i}"]`) ? Math.max(0, Number($(`[data-ad-price="${i}"]`).value) || 0) : a.price }));
+    const bkp = {}, bkpl = {};
+    $$("[data-bkp]").forEach((i) => { const [id, k] = i.dataset.bkp.split("."); (bkp[id] = bkp[id] || {})[k] = i.value === "" ? null : Number(i.value); });
+    $$("[data-bkpl]").forEach((i) => { const [id, k] = i.dataset.bkpl.split("."); (bkpl[id] = bkpl[id] || {})[k] = i.value === "" ? 0 : Number(i.value); });
+    s.bookkeeping = { ...(s.bookkeeping || {}), open: $("#bkOpen").checked, showPrices: $("#bkShow").checked, prices: bkp, platforms: bkpl,
+      includedAccounts: num("#bkInc") ?? 2, extraAccount: num("#bkExtra") ?? 0, payroll: num("#bkPay") ?? 0 };
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);

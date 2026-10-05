@@ -87,6 +87,8 @@ const DEFAULT_SETTINGS = {
   fees: require("./fees").DEFAULTS,
   // Extras on service requests (rush serves, extra addresses, skip traces, county fees at cost).
   requestFees: require("./fees").REQUEST_DEFAULTS,
+  // Bookkeeping service: open/closed, whether the page shows prices, and what the estimate is built from.
+  bookkeeping: require("./bookkeeping-defaults"),
   // Checkout add-ons offered when booking. Prices are what the client pays; edit them in Settings.
   addons: [
     { id: "print", label: "Document printing", price: 25, max: 1, services: ["mobile"], note: "The notary prints your documents (up to 150 pages)" },

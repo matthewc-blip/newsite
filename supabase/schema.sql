@@ -391,3 +391,20 @@ create index if not exists idx_service_requests_client on service_requests(clien
 alter table invoices add column if not exists late_fee_at timestamptz;
 alter table service_requests add column if not exists extras jsonb default '[]'::jsonb;
 alter table service_requests add column if not exists extras_total double precision default 0;
+
+-- ===== Bookkeeping leads (added in v13; safe to re-run) =====
+-- intake from the bookkeeping page: answers (platform, volume, needs), the estimate at the time, pipeline status,
+-- the desk's quote and notes, and which onboarding checklist items are done
+create table if not exists bookkeeping_leads (
+  id integer generated always as identity primary key,
+  data jsonb not null,
+  estimate jsonb,
+  status text default 'new',
+  quote_monthly double precision,
+  notes text default '',
+  done jsonb default '{}'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_bookkeeping_status on bookkeeping_leads(status);
+alter table bookkeeping_leads enable row level security;

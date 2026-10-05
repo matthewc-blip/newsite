@@ -33,6 +33,7 @@
       <button data-tab="payouts">Payouts</button>
       <button data-tab="clients">Clients</button>
       <button data-tab="billing">Billing</button>
+      <button data-tab="bookkeeping">Bookkeeping <span class="badge" id="badgeBk" hidden></span></button>
       <button data-tab="applications">Applications <span class="badge" id="badgeApps" hidden></span></button>
       <button data-tab="messages">Messages <span class="badge" id="badgeMsgs" hidden></span></button>
       <button data-tab="settings">Settings</button>
@@ -126,6 +127,12 @@
       <div class="form-foot"><button class="btn btn-ghost" type="button" id="clCancel">Cancel</button><button class="btn btn-primary" type="submit">Save Client</button></div>
     </form>
     <div class="cards" id="clientCards"></div>
+  </section>
+
+  <!-- BOOKKEEPING -->
+  <section class="tab" data-tab="bookkeeping" hidden>
+    <div class="toolbar"><h2 class="tab-title">Bookkeeping leads</h2><span id="bkState" style="font-size:.88rem;color:var(--muted)"></span></div>
+    <div class="cards" id="bkCards"></div>
   </section>
 
   <!-- APPLICATIONS -->

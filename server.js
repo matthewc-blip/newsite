@@ -16,6 +16,7 @@ const dispatch = require("./src/dispatch");
 const documents = require("./src/documents");
 const clients = require("./src/clients");
 const billing = require("./src/billing");
+const bookkeeping = require("./src/bookkeeping");
 const { str, emailOk, phoneOk, httpError, rateLimit, sign, verify, cookie, STATE_CODES } = require("./src/util");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -39,9 +40,23 @@ app.use((req, res, next) => {
   if (host !== PUBLIC_HOST && (host === "www." + PUBLIC_HOST || "www." + host === PUBLIC_HOST)) return res.redirect(301, PUBLIC_ORIGIN + req.originalUrl);
   next();
 });
+// The bookkeeping page is unlisted (noindex) until it is opened in Settings → Bookkeeping, then search engines may index it.
+app.get(["/bookkeeping", "/bookkeeping/"], async (req, res, next) => {
+  if (req.path === "/bookkeeping") {
+    const q = req.originalUrl.indexOf("?");
+    return res.redirect(301, "/bookkeeping/" + (q >= 0 ? req.originalUrl.slice(q) : ""));
+  }
+  const settings = await getSettings().catch(() => null);
+  require("fs").readFile(path.join(__dirname, "public", "bookkeeping", "index.html"), "utf8", (err, html) => {
+    if (err) return next();
+    if (PUBLIC_ORIGIN && PUBLIC_ORIGIN !== "https://www.mcc-solutionsnj.com") html = html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN);
+    if (settings?.bookkeeping?.open) html = html.replace('<meta name="robots" content="noindex">\n', "");
+    res.type("html").send(html);
+  });
+});
 // The homepage and notary page are static files written with www.mcc-solutionsnj.com links; serve them
 // with PUBLIC_URL instead so every page points search engines at the same address.
-const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html", "/bookkeeping/": "bookkeeping/index.html" };
+const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html" };
 app.get(Object.keys(STATIC_CANON), (req, res, next) => {
   // Express matches /notary and /notary/ alike; send the no-slash form to the folder URL like the static server does.
   if (!STATIC_CANON[req.path] && STATIC_CANON[req.path + "/"]) {
@@ -112,7 +127,7 @@ app.get("/api/config", async (req, res) => {
     const c = s.services[k];
     services[k] = { label: c.label, enabled: c.enabled, durationMin: c.durationMin, maxDaysAhead: c.maxDaysAhead };
   }
-  res.json({ business: s.business, services, pricing: s.pricing, startingPrices: require("./src/prices").list(s), addons: addons.catalog(s), fees: fees.publicCatalog(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
+  res.json({ business: s.business, services, pricing: s.pricing, startingPrices: require("./src/prices").list(s), addons: addons.catalog(s), fees: fees.publicCatalog(s), bookkeeping: bookkeeping.publicConfig(s), rinStates: s.rinStates, liveStates: s.coverage?.liveStates || [], today: dateInTz(new Date(), s.business.timezone) });
 });
 
 app.get("/api/health", async (req, res) => {
@@ -415,6 +430,7 @@ app.get("/api/admin/stats", requireAdmin, async (req, res) => {
     (SELECT COUNT(*) FROM bookings WHERE start_utc >= $1 AND start_utc < $3 AND status <> 'canceled')::int AS next7,
     (SELECT COUNT(*) FROM applications WHERE status = 'new')::int AS "newApplications",
     (SELECT COUNT(*) FROM messages WHERE handled = 0)::int AS "openMessages",
+    (SELECT COUNT(*) FROM bookkeeping_leads WHERE status = 'new')::int AS "newBookkeeping",
     (SELECT COUNT(*) FROM bookings WHERE notary_status = 'offered' AND status IN ('requested','confirmed','assigned') AND start_utc >= $4)::int AS "openOffers",
     ((SELECT coalesce(sum(notary_fee),0) FROM bookings WHERE status = 'completed' AND notary_paid_at IS NULL)
       + (SELECT coalesce(sum(w.fee),0) FROM booking_witnesses w JOIN bookings b ON b.id = w.booking_id WHERE w.status = 'accepted' AND b.status = 'completed' AND w.paid_at IS NULL)
@@ -683,6 +699,10 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     if (!(p >= 0 && p <= 5)) return res.status(400).json({ error: "Late fee must be between 0 and 5% a month." });
     s.billing.lateFeePct = p;
   }
+  if (s.bookkeeping !== undefined) {
+    const e = bookkeeping.validateSettings(s.bookkeeping);
+    if (e) return res.status(400).json({ error: e });
+  }
   if (s.reviews) {
     const u = String(s.reviews.googleUrl || "").trim();
     if (u && !/^https:\/\/[^\s]+$/.test(u)) return res.status(400).json({ error: "The Google review link must start with https://" });
@@ -698,6 +718,7 @@ documents.register(app, { requireAdmin, requireNotary: notary.requireNotary, loa
 clients.register(app, { requireAdmin, insertBooking, readBookingInput });
 billing.register(app, { requireAdmin, requireClient: clients.requireClient, loadClient: clients.loadClient });
 require("./src/reviews").register(app, { requireAdmin });
+bookkeeping.register(app, { requireAdmin });
 require("./src/requests").register(app, { requireAdmin, requireNotary: notary.requireNotary, loadMe: notary.loadMe });
 
 app.get("/api/admin/bookings/:id/candidates", requireAdmin, async (req, res) => {
