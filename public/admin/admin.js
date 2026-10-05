@@ -819,7 +819,7 @@
       return `<div class="card" style="grid-column:1/-1" data-bk="${l.id}">
         <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>${esc(d.company)}${d.entity ? ` <small>${esc(d.entity)}</small>` : ""}</h3><span class="pill ${BK_PILL[l.status] || "p-info"}">${esc(BK_STATUS[l.status] || l.status)}</span></div>
         <p class="meta">${esc(d.name)} · <a href="mailto:${esc(d.email)}">${esc(d.email)}</a>${d.phone ? ` · ${esc(d.phone)}` : ""} · ${esc(full(l.createdAt))}</p>
-        <dl class="kvs"><dt>Software</dt><dd>${esc(l.platformLabel)}${d.platformNote ? ` (${esc(d.platformNote)})` : ""}</dd><dt>Volume</dt><dd>${esc(l.tierLabel)} · ${d.accounts} account${d.accounts > 1 ? "s" : ""}${d.payroll ? " · payroll" : ""}</dd>
+        <dl class="kvs"><dt>Software</dt><dd>${esc(l.platformLabel)}${d.platformNote ? ` (${esc(d.platformNote)})` : ""}</dd><dt>Volume</dt><dd>${esc(l.tierLabel)} · ${d.accounts} account${d.accounts > 1 ? "s" : ""}${d.payroll ? " · payroll" : ""}${d.employees ? ` · ${d.employees} employees` : ""}</dd>
         <dt>Books</dt><dd>${esc(l.backlogLabel)}</dd><dt>Needs</dt><dd>${esc(l.needsLabels.join(", "))}</dd><dt>Start</dt><dd>${esc({ asap: "As soon as possible", month: "Within a month", exploring: "Just exploring" }[d.start] || d.start)}</dd>
         <dt>Estimate</dt><dd>${esc(l.estimateText || "—")}</dd>${d.industry ? `<dt>Industry</dt><dd>${esc(d.industry)}</dd>` : ""}${d.taxPreparer ? `<dt>Tax preparer</dt><dd>${esc({ yes: "Yes", no: "No", unsure: "Not sure" }[d.taxPreparer])}</dd>` : ""}${d.note ? `<dt>Their note</dt><dd>${esc(d.note)}</dd>` : ""}</dl>
         <div class="inline" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:10px">
@@ -973,6 +973,11 @@
             <label for="bkInc" style="font-size:.9rem">Accounts included</label><input type="number" min="1" max="20" id="bkInc" value="${bk.includedAccounts ?? 2}" style="max-width:70px">
             <label for="bkExtra" style="font-size:.9rem">Each extra / mo</label><input type="number" min="0" step="1" id="bkExtra" value="${bk.extraAccount ?? 0}" style="max-width:80px">
             <label for="bkPay" style="font-size:.9rem">Payroll / mo</label><input type="number" min="0" step="1" id="bkPay" value="${bk.payroll ?? 0}" style="max-width:80px"></div>
+          <div class="inline" style="margin-top:12px;align-items:center;flex-wrap:wrap;gap:10px">
+            <label for="bkPayB" style="font-size:.9rem">Payroll service / mo</label><input type="number" min="0" step="1" id="bkPayB" value="${bk.extras?.payrollBase ?? 150}" style="max-width:80px">
+            <label for="bkPayE" style="font-size:.9rem">Per employee / mo</label><input type="number" min="0" step="1" id="bkPayE" value="${bk.extras?.payrollPerEmployee ?? 12}" style="max-width:80px">
+            <label for="bkFil" style="font-size:.9rem">Filings / mo</label><input type="number" min="0" step="1" id="bkFil" value="${bk.extras?.filingsMonthly ?? 75}" style="max-width:80px">
+            <label for="bkForm" style="font-size:.9rem">Business setup (once)</label><input type="number" min="0" step="1" id="bkForm" value="${bk.extras?.formation ?? 350}" style="max-width:90px"></div>
           <p style="font-size:.8rem;color:var(--muted);margin-top:12px">By software: added per month, and one-time setup</p>
           ${Object.entries(BK_PLATFORMS).map(([id, label]) => `<div class="inline" style="margin-top:6px;align-items:center"><span style="flex:1;min-width:0;font-size:.9rem">${esc(label)}</span>
             <input type="number" min="0" step="1" data-bkpl="${id}.monthly" value="${bk.platforms && bk.platforms[id] ? bk.platforms[id].monthly : 0}" style="max-width:84px" aria-label="${esc(label)} monthly adjustment">
@@ -1034,7 +1039,8 @@
     $$("[data-bkp]").forEach((i) => { const [id, k] = i.dataset.bkp.split("."); (bkp[id] = bkp[id] || {})[k] = i.value === "" ? null : Number(i.value); });
     $$("[data-bkpl]").forEach((i) => { const [id, k] = i.dataset.bkpl.split("."); (bkpl[id] = bkpl[id] || {})[k] = i.value === "" ? 0 : Number(i.value); });
     s.bookkeeping = { ...(s.bookkeeping || {}), open: $("#bkOpen").checked, showPrices: $("#bkShow").checked, prices: bkp, platforms: bkpl,
-      includedAccounts: num("#bkInc") ?? 2, extraAccount: num("#bkExtra") ?? 0, payroll: num("#bkPay") ?? 0 };
+      includedAccounts: num("#bkInc") ?? 2, extraAccount: num("#bkExtra") ?? 0, payroll: num("#bkPay") ?? 0,
+      extras: { payrollBase: num("#bkPayB") ?? 0, payrollPerEmployee: num("#bkPayE") ?? 0, filingsMonthly: num("#bkFil") ?? 0, formation: num("#bkForm") ?? 0 } };
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);

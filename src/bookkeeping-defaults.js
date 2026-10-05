@@ -13,6 +13,12 @@ module.exports = {
   includedAccounts: 2,  // bank, card and loan accounts included in the base price
   extraAccount: 35,     // per account beyond that, per month
   payroll: 100,         // per month when payroll needs reconciling
+  extras: {             // other services sold with the books
+    payrollBase: 150,       // per month, payroll processing and NJ payroll filings
+    payrollPerEmployee: 12, // per month for each employee on payroll
+    filingsMonthly: 75,     // per month, sales tax and annual-report/renewal filing calendar (government fees extra)
+    formation: 350,         // one time, business formation: LLC or corporation, EIN, NJ registration (state fees extra)
+  },
   platforms: {          // monthly adjustment and one-time setup by platform
     qbo: { monthly: 0, setup: 0 },
     xero: { monthly: 0, setup: 0 },

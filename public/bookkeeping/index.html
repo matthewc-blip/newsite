@@ -404,11 +404,15 @@ label{font-size:.85rem;font-weight:600}
         <div class="field"><label for="b-accounts">Bank, card and loan accounts</label><input type="number" id="b-accounts" min="1" max="20" value="2"></div>
         <div class="field"><label for="b-backlog">Where are the books today?</label><select id="b-backlog"><option value="none">Current</option><option value="1-3">1 to 3 months behind</option><option value="4-12">4 to 12 months behind</option><option value="12+">More than a year behind</option></select></div>
         <div class="field"><label for="b-start">When do you want to start?</label><select id="b-start"><option value="asap">As soon as possible</option><option value="month" selected>Within a month</option><option value="exploring">Just exploring</option></select></div>
+        <div class="field"><label for="b-employees">Employees on payroll <span style="font-weight:400;opacity:.8">(if any)</span></label><input type="number" id="b-employees" min="0" max="500" value="0"></div>
         <div class="field full"><label class="checkline"><input type="checkbox" id="b-payroll"> We run payroll that needs reconciling</label></div>
         <fieldset class="picks full" id="b-needs"><legend>What do you need?</legend>
           <label><input type="checkbox" name="needs" value="monthly"> Monthly bookkeeping</label>
           <label><input type="checkbox" name="needs" value="cleanup"> Catch-up and cleanup</label>
           <label><input type="checkbox" name="needs" value="yearend"> Year-end package</label>
+          <label><input type="checkbox" name="needs" value="payrollsvc"> Payroll processing</label>
+          <label><input type="checkbox" name="needs" value="filings"> Sales tax and annual filings</label>
+          <label><input type="checkbox" name="needs" value="formation"> New business setup</label>
           <label><input type="checkbox" name="needs" value="other"> Something else</label>
           <span class="err-t" id="e-needs" style="flex-basis:100%"></span>
         </fieldset>
@@ -450,6 +454,10 @@ label{font-size:.85rem;font-weight:600}
       const ex = [];
       if (b.prices.extraAccount) ex.push(`${money(b.prices.extraAccount)} a month for each account beyond ${b.prices.includedAccounts}`);
       if (b.prices.payroll) ex.push(`${money(b.prices.payroll)} a month when payroll needs reconciling`);
+      const x = b.prices.extras || {};
+      if (x.payrollBase) ex.push(`payroll processing from ${money(x.payrollBase)} a month plus ${money(x.payrollPerEmployee || 0)} per employee`);
+      if (x.filingsMonthly) ex.push(`sales tax and annual filings ${money(x.filingsMonthly)} a month (government fees extra)`);
+      if (x.formation) ex.push(`new business setup ${money(x.formation)} one time (state fees extra)`);
       const pl = b.prices.platforms || {};
       if (pl.sheets && pl.sheets.monthly) ex.push(`${money(pl.sheets.monthly)} a month to work in a spreadsheet instead of accounting software`);
       if (pl.none && pl.none.setup) ex.push(`${money(pl.none.setup)} one-time to set up software if you're starting from paper`);
@@ -460,7 +468,7 @@ label{font-size:.85rem;font-weight:600}
 
   const val = () => ({
     name: $("b-name").value, email: $("b-email").value, company: $("b-company").value, phone: $("b-phone").value, entity: $("b-entity").value, industry: $("b-industry").value,
-    platform: $("b-platform").value, platformNote: $("b-pnote").value, tier: $("b-tier").value, accounts: $("b-accounts").value, payroll: $("b-payroll").checked,
+    platform: $("b-platform").value, platformNote: $("b-pnote").value, tier: $("b-tier").value, accounts: $("b-accounts").value, employees: $("b-employees").value, payroll: $("b-payroll").checked,
     backlog: $("b-backlog").value, start: $("b-start").value, taxPreparer: $("b-tax").value, note: $("b-note").value,
     needs: [...form.querySelectorAll('input[name="needs"]:checked')].map((i) => i.value), website: $("b-website").value,
   });
@@ -484,6 +492,7 @@ label{font-size:.85rem;font-weight:600}
       if (e.cleanup != null) tot.push(`catch-up about ${money(e.cleanup)}`);
       if (e.yearEnd != null) tot.push(`year-end about ${money(e.yearEnd)}`);
       if (e.setup) tot.push(`setup ${money(e.setup)}`);
+      if (e.oneTime) tot.push(`business setup ${money(e.oneTime)}`);
       $("est").innerHTML = `<h3>Your starting estimate</h3><ul>${rows}</ul><p class="tot">${tot.join(" · ") || "We'll prepare a custom quote."}${e.custom && tot.length ? " · plus a custom quote for the rest" : ""}</p><p class="fine" style="color:var(--deep-muted)">An estimate, not a quote. We confirm scope and price in writing after reviewing your books.</p>`;
       $("est").hidden = false;
     } catch { $("est").hidden = true; }

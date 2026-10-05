@@ -16,7 +16,7 @@ const TIERS = [
   { id: "t4", label: "Over 600 transactions a month" },
 ];
 const BACKLOG = { none: { label: "Books are current", months: 0 }, "1-3": { label: "1 to 3 months behind", months: 2 }, "4-12": { label: "4 to 12 months behind", months: 8 }, "12+": { label: "More than a year behind", months: null } };
-const NEEDS = { monthly: "Monthly bookkeeping", cleanup: "Catch-up and cleanup", yearend: "Year-end package", other: "Something else" };
+const NEEDS = { monthly: "Monthly bookkeeping", cleanup: "Catch-up and cleanup", yearend: "Year-end package", payrollsvc: "Payroll processing and NJ payroll filings", filings: "Sales tax, annual reports and other filings", formation: "New business setup (LLC or corporation, EIN, NJ registration)", other: "Something else" };
 const ENTITIES = ["Sole proprietor", "LLC", "S corporation", "C corporation", "Partnership", "Nonprofit", "Other"];
 const STARTS = { asap: "As soon as possible", month: "Within a month", exploring: "Just exploring" };
 const STATUSES = ["new", "contacted", "quoted", "onboarding", "active", "declined", "lost"];
@@ -90,7 +90,7 @@ const COMMON_STEPS = [
 ];
 
 const DEFAULTS = require("./bookkeeping-defaults");
-const cfg = (settings) => ({ ...DEFAULTS, ...(settings.bookkeeping || {}), prices: { ...DEFAULTS.prices, ...(settings.bookkeeping?.prices || {}) }, platforms: { ...DEFAULTS.platforms, ...(settings.bookkeeping?.platforms || {}) } });
+const cfg = (settings) => ({ ...DEFAULTS, ...(settings.bookkeeping || {}), prices: { ...DEFAULTS.prices, ...(settings.bookkeeping?.prices || {}) }, platforms: { ...DEFAULTS.platforms, ...(settings.bookkeeping?.platforms || {}) }, extras: { ...DEFAULTS.extras, ...(settings.bookkeeping?.extras || {}) } });
 
 function validateSettings(b) {
   if (!b || typeof b !== "object") return "Bookkeeping settings are invalid.";
@@ -107,6 +107,7 @@ function validateSettings(b) {
     for (const k of ["monthly", "cleanup", "yearEnd"]) { const r = money(p[k], `${t.label} ${k}`, true); if (bad(r)) return r; p[k] = r; }
   }
   for (const k of ["extraAccount", "payroll"]) { if (b[k] === undefined) continue; const r = money(b[k], k, false); if (bad(r)) return r; b[k] = r; }
+  if (b.extras) for (const k of ["payrollBase", "payrollPerEmployee", "filingsMonthly", "formation"]) { if (b.extras[k] === undefined) continue; const r = money(b.extras[k], k, false); if (bad(r)) return r; b.extras[k] = r; }
   if (b.includedAccounts !== undefined) { const n = parseInt(b.includedAccounts, 10); if (!(n >= 1 && n <= 20)) return "Included accounts must be between 1 and 20."; b.includedAccounts = n; }
   for (const id of Object.keys(b.platforms || {})) {
     if (!PLATFORMS[id]) { delete b.platforms[id]; continue; }
@@ -123,7 +124,7 @@ function clean(d, partial) {
     entity: ENTITIES.includes(d.entity) ? d.entity : "", industry: str(d.industry, 120),
     platform: PLATFORMS[d.platform] ? d.platform : "", platformNote: str(d.platformNote, 120),
     tier: TIERS.some((t) => t.id === d.tier) ? d.tier : "", accounts: Math.max(1, Math.min(20, parseInt(d.accounts, 10) || 1)),
-    payroll: !!d.payroll, backlog: BACKLOG[d.backlog] ? d.backlog : "none",
+    payroll: !!d.payroll, employees: Math.max(0, Math.min(500, parseInt(d.employees, 10) || 0)), backlog: BACKLOG[d.backlog] ? d.backlog : "none",
     needs: (Array.isArray(d.needs) ? d.needs : []).filter((n) => NEEDS[n]), start: STARTS[d.start] ? d.start : "month",
     taxPreparer: ["yes", "no", "unsure"].includes(d.taxPreparer) ? d.taxPreparer : "", note: str(d.note, 2000),
   };
@@ -153,11 +154,21 @@ function estimate(settings, d) {
       let m = p.monthly; line(TIERS.find((t) => t.id === d.tier).label, p.monthly, "month");
       const extra = Math.max(0, (d.accounts || 1) - b.includedAccounts);
       if (extra && b.extraAccount) { m += extra * b.extraAccount; line(`${extra} extra account${extra > 1 ? "s" : ""}`, extra * b.extraAccount, "month"); }
-      if (d.payroll && b.payroll) { m += b.payroll; line("Payroll reconciliation", b.payroll, "month"); }
+      if (d.payroll && b.payroll && !needs.has("payrollsvc")) { m += b.payroll; line("Payroll reconciliation", b.payroll, "month"); }
       if (pl.monthly) { m += pl.monthly; line(`Working in ${PLATFORMS[d.platform].label}`, pl.monthly, "month"); }
       out.monthly = round2(m);
     }
   }
+  // Other services sold with the books
+  const ex = b.extras;
+  let rec = 0;
+  if (needs.has("payrollsvc") && (ex.payrollBase || ex.payrollPerEmployee)) {
+    const amt = (ex.payrollBase || 0) + (ex.payrollPerEmployee || 0) * (d.employees || 0);
+    rec += amt; line(`Payroll processing and NJ filings${d.employees ? `, ${d.employees} employee${d.employees > 1 ? "s" : ""}` : ""}`, amt, "month");
+  }
+  if (needs.has("filings") && ex.filingsMonthly) { rec += ex.filingsMonthly; line("Sales tax, annual reports and filings", ex.filingsMonthly, "month"); }
+  if (rec && (out.monthly != null || !needs.has("monthly"))) out.monthly = round2((out.monthly || 0) + rec);
+  if (needs.has("formation") && ex.formation) { out.oneTime = round2(ex.formation); line("New business setup", ex.formation, "once"); }
   if (needs.has("cleanup") && d.backlog !== "none") {
     const months = BACKLOG[d.backlog]?.months;
     if (months == null || p.cleanup == null) out.custom = true;
@@ -175,6 +186,10 @@ const checklist = (lead) => {
   const pl = PLATFORMS[lead.data.platform] || PLATFORMS.other;
   const items = [...COMMON_STEPS.map(([k, l]) => ({ key: "c." + k, label: l, group: "Every client" })), ...pl.steps.map(([k, l]) => ({ key: "p." + k, label: l, group: pl.label }))];
   if (lead.data.payroll) items.splice(3, 0, { key: "c.payroll", label: "Payroll provider and reports confirmed", group: "Every client" });
+  const n = lead.data.needs || [];
+  if (n.includes("payrollsvc")) items.push({ key: "c.payrollsvc", label: "Payroll provider chosen; NJ withholding and unemployment account numbers collected; pay schedule agreed", group: "Every client" });
+  if (n.includes("filings")) items.push({ key: "c.filings", label: "Filing calendar built (sales tax, annual report, renewals); state portal access arranged", group: "Every client" });
+  if (n.includes("formation")) items.push({ key: "c.formation", label: "Entity type confirmed with client's attorney or CPA; formation documents and EIN filed", group: "Every client" });
   return items.map((i) => ({ ...i, done: !!(lead.done || {})[i.key] }));
 };
 
@@ -183,7 +198,7 @@ function publicConfig(settings) {
   return {
     open: !!b.open, showPrices: !!b.showPrices,
     platforms: Object.fromEntries(Object.entries(PLATFORMS).map(([k, v]) => [k, { label: v.label, short: v.short }])),
-    prices: b.showPrices ? { tiers: TIERS.map((t) => ({ id: t.id, label: t.label, ...b.prices[t.id] })), includedAccounts: b.includedAccounts, extraAccount: b.extraAccount, payroll: b.payroll, platforms: b.platforms } : null,
+    prices: b.showPrices ? { tiers: TIERS.map((t) => ({ id: t.id, label: t.label, ...b.prices[t.id] })), includedAccounts: b.includedAccounts, extraAccount: b.extraAccount, payroll: b.payroll, platforms: b.platforms, extras: b.extras } : null,
   };
 }
 
@@ -195,6 +210,7 @@ function describeEstimate(e) {
   if (e.cleanup != null) parts.push(`catch-up about ${money(e.cleanup)}`);
   if (e.yearEnd != null) parts.push(`year-end about ${money(e.yearEnd)}`);
   if (e.setup) parts.push(`setup ${money(e.setup)}`);
+  if (e.oneTime) parts.push(`business setup ${money(e.oneTime)}`);
   return (parts.join(", ") || "custom quote") + (e.custom && parts.length ? " (plus a custom quote for the rest)" : "");
 }
 
