@@ -14,96 +14,12 @@
 <meta property="og:url" content="https://www.mcc-solutionsnj.com/websites/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/newsreader-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css">
-<style>
-/* Layout: the hero is a ruled service ledger (one line per core service with its starting price); notary ways in ink; legal & document services grid; who we serve; proof; contact */
-:root{
-  --paper:#f4f6f3; --surface:#ffffff; --ink:#14231d; --ink-2:#3d4f47; --muted:#5b6a63; --line:#d6ded9; --rule:#c9d8cf;
-  --deep:#10261e; --deep-fg:#e9f0eb; --deep-muted:#9fb5aa;
-  --brass:#8c6017; --on-brass:#ffffff; --brass-soft:#f3e7cf; --brass-ink:#6e4b10;
-  --ok:#276b43; --ok-soft:#dcefe3; --warn:#835a00; --warn-soft:#f6ecd0;
-  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --wrap:1160px; --r:6px;
-}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
-  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
-  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
-  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
-  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
-  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
-  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}
-
-*{box-sizing:border-box}
-[id]{scroll-margin-top:84px}
-[hidden]{display:none!important}
-html,body{margin:0}
-body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
-a{color:inherit}
-:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
-.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:20px}
-h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.01em;word-spacing:.06em}
-h1{font-size:clamp(2.4rem,5.6vw,4.3rem);font-weight:800}
-h2{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:750}
-h3{font-size:1.25rem;font-weight:700;font-stretch:95%}
-p{margin:0}
-.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
-.lede{font-size:1.15rem;color:var(--ink-2);max-width:60ch}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 .95rem/1 var(--f-body);padding:13px 20px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
-.btn-primary{background:var(--brass);color:var(--on-brass)}
-.btn-primary:hover{filter:brightness(1.08)}
-.btn-ghost{border-color:var(--line);background:var(--surface);color:var(--ink)}
-.btn-ghost:hover{border-color:var(--ink-2)}
-.btn-sm{padding:9px 13px;font-size:.88rem}
-
-/* header */
-header.site{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-header.site .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-.seal{width:40px;height:40px;border-radius:50%;background:var(--brass);color:var(--on-brass);display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-stretch:70%;font-size:.95rem;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--brass)}
-.brand-name{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.35rem;line-height:1}
-nav.main{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
-nav.main a{text-decoration:none;font-size:.92rem;font-weight:500;padding:8px 11px;border-radius:4px;color:var(--ink-2)}
-nav.main a:hover{background:var(--surface);color:var(--ink)}
-@media (max-width:760px){nav.main{display:none}.hdr-cta{margin-left:auto}}
-@media (max-width:380px){.brand-name{font-size:1.1rem}}
-
-/* contact */
-.contact{display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
-.contact-lines{display:flex;flex-wrap:wrap;gap:12px 36px}
-.contact-lines div{display:flex;flex-direction:column}
-.contact-lines small{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.contact-lines b{font-family:var(--f-display);font-stretch:85%;font-size:1.4rem;user-select:all}
-
-footer{background:var(--deep);color:var(--deep-muted);padding-block:48px 28px;font-size:.9rem}
-footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px}
-@media (max-width:760px){footer .cols{grid-template-columns:1fr}}
-footer h4{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--deep-fg);font-weight:500;margin:0 0 12px}
-footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
-footer a{text-decoration:none}
-footer a:hover{color:var(--brass)}
-footer .brand-name{color:var(--deep-fg)}
-footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)}
-.legal{border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent);margin-top:36px;padding-top:18px;font-size:.78rem;display:flex;flex-direction:column;gap:8px;max-width:90ch}
-
-
-/* gold on dark green */
-.band.dark,footer,.strip{--brass:#d8a24a;--on-brass:#10261e;--brass-ink:#f0cf8f}
-
-.hero{padding-block:56px 40px}
-.hero h1 em{font-style:normal;color:var(--brass)}
-.hero .lede{margin-top:16px}
-.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
-section.band{padding-block:64px}
-.band.alt{background:var(--surface);border-block:1px solid var(--line)}
-.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:28px;max-width:740px}
-.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
+<link rel="stylesheet" href="/css/firm.css">
+<style>.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
 .cols3>div{padding:20px 24px 6px 0;min-width:0}
 .cols3 p{color:var(--ink-2);margin-top:8px;font-size:.95rem}
 .cols3 ul{margin:10px 0 0;padding-left:18px;color:var(--ink-2);font-size:.93rem;display:flex;flex-direction:column;gap:4px}
@@ -149,6 +65,12 @@ header.site{transition:box-shadow .25s}
 header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
 .tile{transition:border-color .2s,transform .25s cubic-bezier(.2,.6,.2,1),box-shadow .25s}
 .tile:hover{box-shadow:0 18px 32px -22px rgba(16,38,30,.55)}
+
+.cols3 h3{font-size:1.35rem}
+.steps b{font-family:var(--f-display);font-weight:560;font-size:1.2rem}
+.steps li{border-radius:var(--r)}
+form.card{border-radius:var(--r)}
+.picks label{border-radius:var(--r)}
 </style>
 <script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("motion")</script>
 <script src="/js/ga.js" async></script>
@@ -167,15 +89,15 @@ header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
   <a class="btn btn-primary btn-sm hdr-cta" href="#quote">Get a quote</a>
 </div></header>
 <main>
-  <section class="hero"><div class="wrap">
-    <p class="eyebrow">Websites &amp; local SEO</p>
-    <h1 style="margin-top:12px;max-width:18ch" data-type>A website that gets found, <em>and gets you calls.</em></h1>
+  <section class="firm-hero"><div class="wrap">
+    <h1 data-type>A website that gets found, and gets you calls.</h1>
     <p class="lede">Clear, fast websites and local search work for small businesses. We run our own booking, dispatch and client site end to end, and we build yours the same way: simple to use, easy to find, and yours to keep.</p>
     <div class="ctas"><a class="btn btn-primary" href="#quote">Get a quote</a><a class="btn btn-ghost" href="#what">What we do</a></div>
+    <div class="strip" aria-label="How we work"><span>Fixed written quote</span><span>You own your domain and accounts</span><span>No ranking promises, just solid work</span></div>
   </div></section>
 
   <section class="band alt" id="what"><div class="wrap">
-    <div class="sec-head"><p class="eyebrow">What we do</p><h2>Three ways we can help</h2></div>
+    <div class="sec-head"><h2>Three ways we can help</h2></div>
     <div class="cols3">
       <div><h3>New website</h3><p>A small, clear site built around what your customers ask for first.</p><ul><li>Mobile-first, fast, accessible</li><li>Contact and booking forms that work</li><li>You own the domain and hosting</li></ul></div>
       <div><h3>Local SEO</h3><p>So people searching for what you do nearby can find you.</p><ul><li>Google Business Profile setup or cleanup</li><li>Service and town pages, titles, schema</li><li>Sitemap and Search Console set up</li></ul></div>
@@ -184,7 +106,7 @@ header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
   </div></section>
 
   <section class="band"><div class="wrap">
-    <div class="sec-head"><p class="eyebrow">How it works</p><h2>Four steps, no surprises</h2></div>
+    <div class="sec-head"><h2>Four steps, no surprises</h2></div>
     <ol class="steps">
       <li><b>Short call</b><span>Tell us about the business and what you want the site to do.</span></li>
       <li><b>Written quote</b><span>A fixed price and timeline before any work starts.</span></li>
@@ -195,7 +117,7 @@ header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
   </div></section>
 
   <section class="band alt" id="quote"><div class="wrap">
-    <div class="sec-head"><p class="eyebrow">Get a quote</p><h2>Tell us what you need</h2></div>
+    <div class="sec-head"><h2>Tell us what you need</h2></div>
     <form class="card" id="webForm" novalidate>
       <div class="field"><label for="w-name">Your name</label><input type="text" id="w-name" name="name" autocomplete="name" required aria-describedby="e-name"><span class="err" id="e-name"></span></div>
       <div class="field"><label for="w-email">Email</label><input type="email" id="w-email" name="email" autocomplete="email" required aria-describedby="e-email"><span class="err" id="e-email"></span></div>
