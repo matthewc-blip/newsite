@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="/css/fonts.css">
 <link rel="stylesheet" href="/css/firm.css">
 <style>
-/* hero: headline + live order tracker */
+/* hero: headline + animated stage */
 .hero2{display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center}
 .hero2>*{min-width:0}
 @media (max-width:980px){.hero2{grid-template-columns:1fr;gap:40px}}
@@ -31,23 +31,82 @@
 .chip.closed .dot{background:#d8a24a}
 html.motion .chip:not(.closed) .dot{animation:pulse 2.4s ease-out infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--signal) 55%,transparent)}70%,100%{box-shadow:0 0 0 9px transparent}}
-.track{background:color-mix(in srgb,var(--deep-fg) 5%,var(--deep));border:1px solid color-mix(in srgb,var(--deep-fg) 18%,transparent);border-radius:10px;padding:22px 22px 18px;box-shadow:0 40px 80px -40px rgba(0,0,0,.7)}
-.track-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font:500 .78rem/1 var(--f-mono);color:var(--deep-fg);padding-bottom:14px;border-bottom:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent)}
-.track-head .tag{color:#d8a24a;border:1px solid color-mix(in srgb,#d8a24a 45%,transparent);border-radius:3px;padding:3px 7px;font-size:.68rem}
-.track dl{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin:16px 0 18px}
-.track dt{font:500 .68rem/1 var(--f-mono);letter-spacing:.06em;color:var(--deep-muted);margin-bottom:5px}
-.track dd{margin:0;font-size:.92rem;color:var(--deep-fg)}
-.track ol{list-style:none;margin:0;padding:0;border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent)}
-.track li{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid color-mix(in srgb,var(--deep-fg) 9%,transparent);font-size:.9rem;color:var(--deep-muted);transition:color .4s}
-.track li .m{width:14px;height:14px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--deep-fg) 32%,transparent);display:grid;place-items:center;transition:background .4s,border-color .4s}
-.track li time{font:500 .74rem/1 var(--f-mono);color:var(--deep-muted);opacity:0;transition:opacity .4s}
-.track li.done{color:var(--deep-fg)}
-.track li.done .m{background:var(--signal);border-color:var(--signal)}
-.track li.done .m::after{content:"";width:4px;height:7px;border:solid #06140d;border-width:0 1.6px 1.6px 0;transform:rotate(45deg) translate(-.5px,-1px)}
-.track li.now{color:var(--deep-fg)}
-.track li.now .m{border-color:#d8a24a;background:color-mix(in srgb,#d8a24a 30%,transparent)}
-.track li.done time,.track li.now time{opacity:1}
-.track-foot{margin-top:14px;font-size:.78rem;color:var(--deep-muted)}
+/* hero stage: three looping scenes (notary stamp, books cleaned up, search result climbing) */
+.stage{background:color-mix(in srgb,var(--deep-fg) 5%,var(--deep));border:1px solid color-mix(in srgb,var(--deep-fg) 18%,transparent);border-radius:10px;padding:20px 22px 18px;box-shadow:0 40px 80px -40px rgba(0,0,0,.7)}
+.st-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font:500 .78rem/1 var(--f-mono);color:var(--deep-fg);padding-bottom:14px;border-bottom:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent)}
+.st-head .tag{color:#d8a24a;border:1px solid color-mix(in srgb,#d8a24a 45%,transparent);border-radius:3px;padding:3px 7px;font-size:.68rem}
+.st-body{position:relative;height:330px;margin-top:14px}
+.sc{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .45s,visibility .45s}
+.stage[data-s="1"] #sc1,.stage[data-s="2"] #sc2,.stage[data-s="3"] #sc3{opacity:1;visibility:visible}
+.st-foot{display:flex;align-items:center;gap:8px;margin-top:6px}
+.st-dots{display:flex;gap:6px}
+.st-dots button{font:500 .72rem/1 var(--f-mono);letter-spacing:.04em;color:var(--deep-muted);background:transparent;border:1px solid color-mix(in srgb,var(--deep-fg) 22%,transparent);border-radius:999px;padding:8px 11px;cursor:pointer}
+.st-dots button:hover{color:var(--deep-fg)}
+.st-dots button[aria-pressed="true"]{color:#10261e;background:#d8a24a;border-color:#d8a24a}
+.st-pp{margin-left:auto;font:500 .72rem/1 var(--f-mono);color:var(--deep-muted);background:transparent;border:1px solid color-mix(in srgb,var(--deep-fg) 22%,transparent);border-radius:999px;padding:8px 11px;cursor:pointer}
+.st-pp:hover{color:var(--deep-fg)}
+.st-cap{margin-top:12px;font-size:.85rem;color:var(--deep-muted);min-height:2.7em}
+@media (max-width:420px){.st-dots button{padding:8px 9px}}
+
+/* scene 1: stamp */
+.doc{position:absolute;left:50%;top:6px;width:min(300px,86%);height:300px;transform:translateX(-50%);background:#f3eedd;border-radius:4px;padding:22px 24px;color:#1b2a23;box-shadow:0 18px 40px -18px rgba(0,0,0,.8)}
+.doc b{display:block;font:600 .7rem/1 var(--f-mono);letter-spacing:.1em;color:#3b4d45}
+.doc i{display:block;height:7px;border-radius:4px;background:#d9d3bd;margin-top:11px}
+.doc .sig{position:absolute;left:24px;bottom:44px;width:150px;border-top:1px solid #8a8570;padding-top:5px;font:500 .62rem/1 var(--f-mono);color:#5a6a62;letter-spacing:.06em}
+.doc .sig svg{position:absolute;left:4px;bottom:12px;width:130px;height:34px;overflow:visible}
+.doc .sig path{fill:none;stroke:#1b2a23;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nstamp{position:absolute;right:14px;bottom:20px;width:112px;height:112px;transform:rotate(-12deg)}
+.nstamp svg{width:100%;height:100%}
+.okb{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);font:600 .74rem/1 var(--f-mono);letter-spacing:.08em;color:#06140d;background:var(--signal);border-radius:999px;padding:8px 14px;white-space:nowrap}
+
+/* scene 2: books */
+.ledger{position:absolute;inset:0;display:flex;flex-direction:column;gap:7px;padding-top:6px}
+.lr{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:0 14px;height:42px;border:1px solid color-mix(in srgb,var(--deep-fg) 16%,transparent);border-radius:6px;background:color-mix(in srgb,var(--deep-fg) 7%,var(--deep));font-size:.86rem;color:var(--deep-fg)}
+.lr .amt{font:500 .8rem/1 var(--f-mono);color:var(--deep-fg);min-width:78px;text-align:right}
+.lr .cat{position:relative;display:inline-grid;font:500 .68rem/1 var(--f-mono);letter-spacing:.04em;min-width:78px;text-align:center}
+.lr .cat span{grid-area:1/1;padding:5px 8px;border-radius:999px}
+.lr .c{background:color-mix(in srgb,var(--signal) 18%,transparent);color:var(--signal);border:1px solid color-mix(in srgb,var(--signal) 40%,transparent)}
+.lr .q{opacity:0;background:color-mix(in srgb,#d86a4a 20%,transparent);color:#f2a591;border:1px solid color-mix(in srgb,#d86a4a 50%,transparent)}
+.lsum{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:6px;background:color-mix(in srgb,var(--signal) 14%,var(--deep));border:1px solid color-mix(in srgb,var(--signal) 45%,transparent);font:500 .78rem/1.2 var(--f-mono);color:var(--deep-fg)}
+.lsum em{font-style:normal;color:var(--signal)}
+
+/* scene 3: search */
+.sbar{height:42px;border-radius:999px;border:1px solid color-mix(in srgb,var(--deep-fg) 24%,transparent);background:color-mix(in srgb,var(--deep-fg) 8%,var(--deep));display:flex;align-items:center;gap:10px;padding:0 16px;font-size:.9rem;color:var(--deep-fg)}
+.sbar svg{width:15px;height:15px;stroke:var(--deep-muted);fill:none;stroke-width:2;stroke-linecap:round}
+.res{position:absolute;left:0;right:0;top:54px;bottom:0}
+.rr{position:absolute;left:0;right:0;top:0;height:60px;padding:9px 14px;border:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent);border-radius:6px;background:color-mix(in srgb,var(--deep-fg) 5%,var(--deep));display:flex;flex-direction:column;gap:6px;justify-content:center;transform:translateY(var(--t))}
+.rr .u{font:500 .7rem/1 var(--f-mono);color:var(--deep-muted)}
+.rr .l{height:7px;border-radius:4px;background:color-mix(in srgb,var(--deep-fg) 22%,transparent);width:78%}
+.rr .l2{height:6px;width:55%;background:color-mix(in srgb,var(--deep-fg) 12%,transparent)}
+.rr .t{font-weight:600;font-size:.92rem;color:var(--deep-fg);line-height:1.1}
+.rr.us{border-color:#d8a24a;background:color-mix(in srgb,#d8a24a 12%,var(--deep));z-index:2}
+.rr .pos{position:absolute;right:12px;top:10px;display:grid;font:600 .72rem/1 var(--f-mono);color:#10261e}
+.rr .pos span{grid-area:1/1;background:#d8a24a;border-radius:3px;padding:4px 7px;text-align:center}
+.rr .pos .p4{opacity:0}
+
+/* motion: every scene's base state above is the finished picture; these play it from the start */
+html.motion .stage[data-s="1"] .doc i{animation:fadein .5s both}
+html.motion .stage[data-s="1"] .doc .sig path{stroke-dasharray:260;animation:draw 1.1s ease-out .5s both}
+html.motion .stage[data-s="1"] .nstamp{animation:thump 2.6s cubic-bezier(.3,1.5,.5,1) 0s both}
+html.motion .stage[data-s="1"] .okb{animation:fadein .5s ease-out 2.2s both}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+@keyframes thump{0%,45%{opacity:0;transform:translateY(-70px) scale(1.7) rotate(-12deg)}58%{opacity:1;transform:translateY(0) scale(.94) rotate(-12deg)}66%,100%{opacity:1;transform:translateY(0) scale(1) rotate(-12deg)}}
+html.motion .stage[data-s="2"] .lr{animation:tidy 1s cubic-bezier(.3,.8,.25,1) calc(1.2s + var(--i)*.22s) both}
+html.motion .stage[data-s="2"] .lr .q{animation:qout 1.4s linear calc(1.2s + var(--i)*.22s) both}
+html.motion .stage[data-s="2"] .lr .c{animation:cin 1.4s linear calc(1.2s + var(--i)*.22s) both}
+html.motion .stage[data-s="2"] .lsum{animation:fadein .6s ease-out 3.2s both}
+@keyframes tidy{from{transform:translate(var(--x),var(--y)) rotate(var(--r));border-color:#d86a4a}to{transform:none}}
+@keyframes qout{0%,35%{opacity:1}60%,100%{opacity:0}}
+@keyframes cin{0%,35%{opacity:0}60%,100%{opacity:1}}
+html.motion .stage[data-s="3"] .rr{animation:climb 1.1s cubic-bezier(.4,0,.2,1) 1.4s both}
+html.motion .stage[data-s="3"] .rr.us{animation-name:climbus;box-shadow:0 0 0 0 transparent}
+html.motion .stage[data-s="3"] .rr.us .p1{animation:fadein .3s 2.1s both}
+html.motion .stage[data-s="3"] .rr.us .p4{animation:fadeout .3s 2.1s both}
+@keyframes climb{from{transform:translateY(var(--f))}to{transform:translateY(var(--t))}}
+@keyframes climbus{from{transform:translateY(var(--f))}to{transform:translateY(var(--t));}}
+@keyframes fadeout{from{opacity:1}to{opacity:0}}
+.stage.paused *{animation-play-state:paused!important}
 .firm-hero .strip{margin-top:48px}
 
 /* services: three practice areas as ruled rows */
@@ -189,18 +248,29 @@ html.motion .js-sx .sx-slide:not([hidden]){animation:sxin .5s cubic-bezier(.2,.6
         <p class="lede">Notary and signings, legal support, and the books behind your business. Choose a service and we'll confirm price and timing before anything is booked.</p>
         <div class="ctas"><a class="btn btn-primary" href="#services">Choose a service</a><a class="btn btn-ghost" href="tel:+19084446373" data-biz="phone">Call the desk</a></div>
       </div>
-      <aside class="track" aria-label="Sample order tracker">
-        <div class="track-head"><span>ORDER MCC-24817</span><span class="tag">SAMPLE ORDER</span></div>
-        <dl><div><dt>TYPE</dt><dd>Refinance · Conventional</dd></div><div><dt>SIGNERS</dt><dd>2 borrowers</dd></div><div><dt>LOCATION</dt><dd>Edison, NJ</dd></div><div><dt>RETURN</dt><dd>FedEx label provided</dd></div></dl>
-        <ol id="trk">
-          <li class="done"><span class="m"></span><span>Order received and confirmed</span><time>2:04 PM</time></li>
-          <li class="done"><span class="m"></span><span>Notary assigned · NNA certified</span><time>2:19 PM</time></li>
-          <li class="now"><span class="m"></span><span>Documents sent to notary</span><time>4:41 PM</time></li>
-          <li><span class="m"></span><span>Signing complete</span><time>6:30 PM</time></li>
-          <li><span class="m"></span><span>Scanbacks uploaded and checked</span><time>7:05 PM</time></li>
-          <li><span class="m"></span><span>Originals shipped · tracking sent</span><time>7:40 PM</time></li>
-        </ol>
-        <p class="track-foot">Every order gets a status trail like this, emailed to your team at each step.</p>
+      <aside class="stage" id="stage" data-s="1" aria-label="Animated overview: a notary stamp, messy books cleaned up, and a search result moving to the top">
+        <div class="st-head"><span id="stLabel">01 · NOTARIZE</span><span class="tag">ILLUSTRATION</span></div>
+        <div class="st-body">
+          <div class="sc" id="sc1" aria-hidden="false">
+            <div class="doc"><b>AFFIDAVIT</b><i style="width:92%"></i><i></i><i style="width:84%"></i><i style="width:96%"></i><i style="width:60%"></i>
+              <div class="sig"><svg viewBox="0 0 130 34" aria-hidden="true"><path d="M4 26C12 6 20 4 22 14c2 10-6 18 0 14 8-6 12-18 18-10 4 6 8 8 14 0 6-8 8 4 16 2 6-1 12-6 20-6"/></svg>SIGNER</div>
+              <div class="nstamp"><svg viewBox="0 0 120 120" aria-hidden="true"><defs><path id="ring" d="M60 60m-42 0a42 42 0 1 1 84 0a42 42 0 1 1-84 0"/></defs><circle cx="60" cy="60" r="56" fill="none" stroke="#1b4d38" stroke-width="3.5"/><circle cx="60" cy="60" r="33" fill="none" stroke="#1b4d38" stroke-width="1.8"/><text font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" letter-spacing="2.4" fill="#1b4d38"><textPath href="#ring" startOffset="2%">NOTARY PUBLIC · NEW JERSEY · </textPath></text><text x="60" y="68" text-anchor="middle" font-family="Archivo,Arial,sans-serif" font-size="22" font-weight="800" fill="#1b4d38">MCC</text></svg></div>
+            </div>
+            <span class="okb">NOTARIZED</span>
+          </div>
+          <div class="sc" id="sc2" aria-hidden="true">
+            <div class="ledger"><div class="lr" style="--i:0;--x:-14px;--y:6px;--r:-2deg"><span>Office rent</span><span class="cat"><span class="q">?</span><span class="c">Rent</span></span><span class="amt">$2,400.00</span></div><div class="lr" style="--i:1;--x:12px;--y:-6px;--r:2deg"><span>Software</span><span class="cat"><span class="q">?</span><span class="c">Software</span></span><span class="amt">$89.00</span></div><div class="lr" style="--i:2;--x:-10px;--y:8px;--r:-1.5deg"><span>Payroll run</span><span class="cat"><span class="q">?</span><span class="c">Payroll</span></span><span class="amt">$6,215.40</span></div><div class="lr" style="--i:3;--x:16px;--y:-5px;--r:2.5deg"><span>Supplies</span><span class="cat"><span class="q">?</span><span class="c">Supplies</span></span><span class="amt">$143.17</span></div><div class="lr" style="--i:4;--x:-12px;--y:6px;--r:-2deg"><span>Sales tax</span><span class="cat"><span class="q">?</span><span class="c">Sales tax</span></span><span class="amt">$1,022.60</span></div><div class="lsum"><span>Accounts reconciled</span><em>Books closed</em></div></div>
+          </div>
+          <div class="sc" id="sc3" aria-hidden="true">
+            <div class="sbar"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>plumber near me</div>
+            <div class="res"><div class="rr" style="--t:68px;--f:0px"><span class="u">northside-plumbing.example</span><span class="l"></span><span class="l l2"></span></div><div class="rr" style="--t:136px;--f:68px"><span class="u">citywide-services.example</span><span class="l"></span><span class="l l2"></span></div><div class="rr" style="--t:204px;--f:136px"><span class="u">quickfix-home.example</span><span class="l"></span><span class="l l2"></span></div><div class="rr us" style="--t:0px;--f:204px"><span class="u">yourbusiness.example</span><span class="t">Your Business - Plumber in Union County</span><span class="l l2"></span><span class="pos" aria-hidden="true"><span class="p4">#4</span><span class="p1">#1</span></span></div></div>
+          </div>
+        </div>
+        <div class="st-foot">
+          <div class="st-dots" role="group" aria-label="Choose a scene"><button type="button" aria-pressed="true" data-go="1">Notary</button><button type="button" aria-pressed="false" data-go="2">Books</button><button type="button" aria-pressed="false" data-go="3">Search</button></div>
+          <button type="button" class="st-pp" id="stpp" hidden>Pause</button>
+        </div>
+        <p class="st-cap" id="stCap" aria-live="off">Documents signed, stamped and sealed by a commissioned NJ notary.</p>
       </aside>
     </div>
     <div class="strip" aria-label="Credentials">
@@ -402,6 +472,29 @@ html.motion .js-sx .sx-slide:not([hidden]){animation:sxin .5s cubic-bezier(.2,.6
       });
     }
   }).catch(() => {});
+})();
+</script>
+<script>
+(function(){
+  var st=document.getElementById("stage"); if(!st) return;
+  var L=["01 · NOTARIZE","02 · CLEAN UP THE BOOKS","03 · RISE IN SEARCH"],
+      C=["Documents signed, stamped and sealed by a commissioned NJ notary.","Messy transactions categorized and reconciled, with reports each month.","Websites and local SEO built to help you show up higher in search."],
+      D=[4800,6000,5800], cur=1, timer=null, paused=false, motion=document.documentElement.classList.contains("motion"),
+      btns=st.querySelectorAll("[data-go]"), pp=document.getElementById("stpp");
+  function show(n){
+    cur=n; st.setAttribute("data-s",n);
+    for(var i=1;i<=3;i++) document.getElementById("sc"+i).setAttribute("aria-hidden",i===n?"false":"true");
+    btns.forEach(function(b){b.setAttribute("aria-pressed",String(+b.getAttribute("data-go")===n));});
+    document.getElementById("stLabel").textContent=L[n-1]; document.getElementById("stCap").textContent=C[n-1];
+  }
+  function sched(){clearTimeout(timer); if(!motion||paused||document.hidden) return; timer=setTimeout(function(){show(cur%3+1); sched();},D[cur-1]);}
+  btns.forEach(function(b){b.addEventListener("click",function(){var n=+b.getAttribute("data-go"); if(n===cur){st.setAttribute("data-s","0"); void st.offsetWidth;} show(n); sched();});});
+  if(motion){
+    pp.hidden=false; st.setAttribute("data-s","0"); cur=1;
+    pp.addEventListener("click",function(){paused=!paused; st.classList.toggle("paused",paused); pp.textContent=paused?"Play":"Pause"; sched();});
+    document.addEventListener("visibilitychange",sched);
+    setTimeout(function(){ if(st.getAttribute("data-s")==="0"){show(1); sched();} },1800);
+  }
 })();
 </script>
 <script src="/js/motion.js" defer></script>

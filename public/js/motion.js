@@ -31,7 +31,7 @@
   }
 
   var start = 200 + typed * 0.7, n = 0, els = [];
-  [".firm-hero .chip", ".firm-hero .lede", ".firm-hero .ctas", ".track", ".firm-hero .strip"].forEach(function (sel) {
+  [".firm-hero .chip", ".firm-hero .lede", ".firm-hero .ctas", ".stage", ".firm-hero .strip"].forEach(function (sel) {
     document.querySelectorAll(sel).forEach(function (el) { el.setAttribute("data-reveal", ""); el.style.setProperty("--d", (start + n++ * 90) + "ms"); els.push(el); });
   });
   document.querySelectorAll(".practice").forEach(function (col, c) {
