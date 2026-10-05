@@ -68,6 +68,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/newsreader-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css">
@@ -203,9 +204,9 @@ function register(app) {
     res.send(layout({
       req, biz, path: NJ_HUB, crumbs,
       title: "Mobile Notary & Loan Signing Agents in New Jersey | MCC",
-      description: "Mobile notaries and certified loan signing agents in all 21 New Jersey counties. Home, office and hospital visits, plus remote online notarization.",
+      description: "Mobile notaries and certified loan signing agents across New Jersey. Home, office and hospital visits, plus remote online notarization.",
       body: {
-        hero: `<h1>Mobile notary and loan signing agents in all 21 New Jersey counties</h1><p class="lede" style="margin-top:14px">MCC Solutions dispatches commissioned New Jersey notaries and certified signing agents statewide, from Bergen to Cape May. Same-day visits are most available in central and North Jersey; 24 hours' notice gives the best match anywhere in the state.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
+        hero: `<h1>Mobile notary and loan signing agents across New Jersey</h1><p class="lede" style="margin-top:14px">MCC Solutions is based in Cranford and dispatches commissioned New Jersey notaries and certified signing agents. Coverage is strongest in Union and Middlesex counties; for anywhere else in the state, give us 24 hours' notice and we'll confirm availability before you book.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">Counties</p><h2>Find your county</h2></div>
           <div class="grid g3">${regions.map((r) => `<div><h3 style="margin-bottom:10px">${r}</h3>${countyLinks(COUNTIES.filter((c) => c.region === r))}</div>`).join("")}</div>

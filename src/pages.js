@@ -98,7 +98,7 @@ function register(app) {
             <a class="svc" href="/notary/process-serving"><span class="code">PROCESS SERVING</span><h3>Serves with a paper trail</h3><p>Personal and substitute service as the court rules allow. Attempts at different times of day, each one logged and emailed to you, then a signed affidavit of service.</p><span class="more">Process serving →</span></a>
             <a class="svc" href="/notary/estate-planning-notary"><span class="code">ESTATE SIGNINGS</span><h3>Notaries and witnesses</h3><p>Wills, trusts, powers of attorney and advance directives, with independent witnesses, at the client's home, office or hospital bed.</p><span class="more">Estate signings →</span></a>
             <a class="svc" href="/notary/apostille-services"><span class="code">INTERNATIONAL</span><h3>Apostilles and legalization</h3><p>Documents notarized and certified for use abroad, including embassy legalization for countries outside the Hague Convention.</p><span class="more">Apostilles →</span></a>
-            <a class="svc" href="/notary/document-recording"><span class="code">RECORDING</span><h3>Deeds and releases recorded</h3><p>Submitted to the county with the recorded copy back to you, in all 21 New Jersey counties.</p><span class="more">Recording →</span></a>
+            <a class="svc" href="/notary/document-recording"><span class="code">RECORDING</span><h3>Deeds and releases recorded</h3><p>Submitted to the county with the recorded copy back to you.</p><span class="more">Recording →</span></a>
             <a class="svc" href="/notary/court-filing"><span class="code">COURT RUNS</span><h3>Filings and courthouse runs</h3><p>Walk-in filings, hand deliveries and copies from the court file, plus affidavits filed after a serve.</p><span class="more">Court runs →</span></a>
             <a class="svc" href="/notary/skip-tracing"><span class="code">SKIP TRACE</span><h3>Defendant moved? We find them</h3><p>Database searches for a current address, handed straight to a server. Permissible legal purposes only.</p><span class="more">Skip tracing →</span></a>
             <a class="svc" href="/notary/medical-records-retrieval"><span class="code">RECORDS</span><h3>Medical and public records</h3><p>Medical records picked up with the signed authorization, and certified deeds, court and vital records pulled for you.</p><span class="more">Records →</span></a>
@@ -186,7 +186,7 @@ function register(app) {
       ["Company", "MCC Solutions LLC · Cranford, NJ (Union County)"],
       ["Principal", "Matthew Coleman · NJ Notary Public · NNA Certified Loan Signing Agent · $100,000 E&amp;O · Background screened"],
       ["Services", "Loan signings (purchase, refinance, HELOC, reverse, seller), general mobile notary, hospital and facility visits, Remote Online Notarization, Remote Ink-Signed Notarization, process serving, document recording, apostilles, witnesses"],
-      ["Coverage", "New Jersey, all 21 counties"],
+      ["Coverage", "New Jersey, based in Cranford (Union County)"],
       ["Desk hours", "Mon–Fri 7 AM–9 PM ET · Sat 9 AM–5 PM ET"],
       ["Ordering", "Client portal, email or phone"],
       ["Order desk", `<a href="${telHref(biz.phone)}">${esc(biz.phone)}</a> · ${esc(biz.email)}`],
