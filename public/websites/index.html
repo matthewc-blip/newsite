@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Website Design &amp; Local SEO for Small Businesses | MCC Solutions</title>
+<meta name="description" content="Clear, fast websites and local SEO for New Jersey small businesses: Google Business Profile, service pages, Search Console and ongoing fixes. Fixed quote after a short call.">
+<link rel="canonical" href="https://www.mcc-solutionsnj.com/websites/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MCC Solutions">
+<meta property="og:title" content="Website Design &amp; Local SEO for Small Businesses | MCC Solutions">
+<meta property="og:description" content="Clear, fast websites and local SEO for New Jersey small businesses. Fixed quote after a short call.">
+<meta property="og:image" content="https://www.mcc-solutionsnj.com/img/og.png">
+<meta property="og:url" content="https://www.mcc-solutionsnj.com/websites/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
+<style>
+/* Layout: the hero is a ruled service ledger (one line per core service with its starting price); notary ways in ink; legal & document services grid; who we serve; proof; contact */
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#14231d; --ink-2:#3d4f47; --muted:#5b6a63; --line:#d6ded9; --rule:#c9d8cf;
+  --deep:#10261e; --deep-fg:#e9f0eb; --deep-muted:#9fb5aa;
+  --brass:#8c6017; --on-brass:#ffffff; --brass-soft:#f3e7cf; --brass-ink:#6e4b10;
+  --ok:#276b43; --ok-soft:#dcefe3; --warn:#835a00; --warn-soft:#f6ecd0;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --wrap:1160px; --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
+  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
+  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0e1613; --surface:#15201c; --ink:#e6ede9; --ink-2:#bccac3; --muted:#8a9b93; --line:#283732; --rule:#24352e;
+  --deep:#0a1310; --deep-fg:#e6ede9; --deep-muted:#8fa79b;
+  --brass:#d8a24a; --on-brass:#10261e; --brass-soft:#3a2d16; --brass-ink:#f0cf8f;
+  --ok:#6cc290; --ok-soft:#173326; --warn:#e2b54d; --warn-soft:#352a12; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:3px}
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.01em;word-spacing:.06em}
+h1{font-size:clamp(2.4rem,5.6vw,4.3rem);font-weight:800}
+h2{font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:750}
+h3{font-size:1.25rem;font-weight:700;font-stretch:95%}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.lede{font-size:1.15rem;color:var(--ink-2);max-width:60ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 .95rem/1 var(--f-body);padding:13px 20px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--brass);color:var(--on-brass)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{border-color:var(--line);background:var(--surface);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink-2)}
+.btn-sm{padding:9px 13px;font-size:.88rem}
+
+/* header */
+header.site{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;align-items:center;gap:16px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.seal{width:40px;height:40px;border-radius:50%;background:var(--brass);color:var(--on-brass);display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-stretch:70%;font-size:.95rem;box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--brass)}
+.brand-name{font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.35rem;line-height:1}
+nav.main{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav.main a{text-decoration:none;font-size:.92rem;font-weight:500;padding:8px 11px;border-radius:4px;color:var(--ink-2)}
+nav.main a:hover{background:var(--surface);color:var(--ink)}
+@media (max-width:760px){nav.main{display:none}.hdr-cta{margin-left:auto}}
+@media (max-width:380px){.brand-name{font-size:1.1rem}}
+
+/* contact */
+.contact{display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}
+.contact-lines{display:flex;flex-wrap:wrap;gap:12px 36px}
+.contact-lines div{display:flex;flex-direction:column}
+.contact-lines small{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.contact-lines b{font-family:var(--f-display);font-stretch:85%;font-size:1.4rem;user-select:all}
+
+footer{background:var(--deep);color:var(--deep-muted);padding-block:48px 28px;font-size:.9rem}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px}
+@media (max-width:760px){footer .cols{grid-template-columns:1fr}}
+footer h4{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--deep-fg);font-weight:500;margin:0 0 12px}
+footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+footer a{text-decoration:none}
+footer a:hover{color:var(--brass)}
+footer .brand-name{color:var(--deep-fg)}
+footer .seal{box-shadow:inset 0 0 0 3px var(--deep),inset 0 0 0 4px var(--brass)}
+.legal{border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent);margin-top:36px;padding-top:18px;font-size:.78rem;display:flex;flex-direction:column;gap:8px;max-width:90ch}
+
+
+/* gold on dark green */
+.band.dark,footer,.strip{--brass:#d8a24a;--on-brass:#10261e;--brass-ink:#f0cf8f}
+
+.hero{padding-block:56px 40px}
+.hero h1 em{font-style:normal;color:var(--brass)}
+.hero .lede{margin-top:16px}
+.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+section.band{padding-block:64px}
+.band.alt{background:var(--surface);border-block:1px solid var(--line)}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:28px;max-width:740px}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
+.cols3>div{padding:20px 24px 6px 0;min-width:0}
+.cols3 p{color:var(--ink-2);margin-top:8px;font-size:.95rem}
+.cols3 ul{margin:10px 0 0;padding-left:18px;color:var(--ink-2);font-size:.93rem;display:flex;flex-direction:column;gap:4px}
+@media (max-width:800px){.cols3{grid-template-columns:1fr}.cols3>div{padding-right:0}}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:s}
+.steps li{counter-increment:s;padding:18px;background:var(--paper);border:1px solid var(--line);border-radius:8px}
+.steps li::before{content:"0" counter(s);font-family:var(--f-mono);font-size:.78rem;color:var(--brass-ink)}
+.steps b{display:block;font-family:var(--f-display);font-stretch:85%;font-size:1.15rem;margin:4px 0}
+.steps span{color:var(--ink-2);font-size:.92rem}
+@media (max-width:900px){.steps{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.steps{grid-template-columns:1fr}}
+.fine{font-size:.85rem;color:var(--muted);max-width:70ch;margin-top:22px}
+form.card{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px;padding:26px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+form.card .full{grid-column:1/-1}
+@media (max-width:560px){form.card{grid-template-columns:1fr;padding:20px}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+label,legend{font-size:.88rem;font-weight:600}
+input[type=text],input[type=email],textarea{font:inherit;font-size:.95rem;padding:12px;border-radius:5px;border:1px solid var(--line);background:var(--paper);color:var(--ink);width:100%}
+textarea{min-height:110px;resize:vertical}
+input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--warn)}
+.err{font-size:.82rem;color:var(--warn)}
+.err:empty{display:none}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.picks label{display:flex;align-items:center;gap:8px;font-weight:500;padding:9px 13px;border-radius:999px;border:1px solid var(--line);cursor:pointer;background:var(--paper)}
+.picks input{accent-color:var(--brass);margin:0}
+.picks label:has(input:checked){border-color:var(--brass);background:var(--brass-soft)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.form-msg{font-size:.92rem}
+.form-msg.ok{color:var(--ok)}.form-msg.bad{color:var(--warn)}
+.form-msg:empty{display:none}
+</style>
+<script src="/js/ga.js" async></script>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a>
+  <nav class="main" aria-label="Main">
+    <a href="/notary/mobile-notary">Notary</a>
+    <a href="/notary/process-serving">Process Serving</a>
+    <a href="/bookkeeping/">Bookkeeping</a>
+    <a href="/websites/">Websites &amp; SEO</a>
+    <a href="/about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <a class="btn btn-primary btn-sm hdr-cta" href="/notary/#order">Book a Notary</a>
+</div></header>
+<main>
+  <section class="hero"><div class="wrap">
+    <p class="eyebrow">Websites &amp; local SEO</p>
+    <h1 style="margin-top:12px;max-width:18ch">A website that gets found, <em>and gets you calls.</em></h1>
+    <p class="lede">Clear, fast websites and local search work for small businesses. We run our own booking, dispatch and client site end to end, and we build yours the same way: simple to use, easy to find, and yours to keep.</p>
+    <div class="ctas"><a class="btn btn-primary" href="#quote">Get a quote</a><a class="btn btn-ghost" href="#what">What we do</a></div>
+  </div></section>
+
+  <section class="band alt" id="what"><div class="wrap">
+    <div class="sec-head"><p class="eyebrow">What we do</p><h2>Three ways we can help</h2></div>
+    <div class="cols3">
+      <div><h3>New website</h3><p>A small, clear site built around what your customers ask for first.</p><ul><li>Mobile-first, fast, accessible</li><li>Contact and booking forms that work</li><li>You own the domain and hosting</li></ul></div>
+      <div><h3>Local SEO</h3><p>So people searching for what you do nearby can find you.</p><ul><li>Google Business Profile setup or cleanup</li><li>Service and town pages, titles, schema</li><li>Sitemap and Search Console set up</li></ul></div>
+      <div><h3>Fixes &amp; upkeep</h3><p>Already have a site that's slow, broken or out of date?</p><ul><li>Speed, forms and broken pages</li><li>Content and price updates</li><li>Monthly check-ups if you want them</li></ul></div>
+    </div>
+  </div></section>
+
+  <section class="band"><div class="wrap">
+    <div class="sec-head"><p class="eyebrow">How it works</p><h2>Four steps, no surprises</h2></div>
+    <ol class="steps">
+      <li><b>Short call</b><span>Tell us about the business and what you want the site to do.</span></li>
+      <li><b>Written quote</b><span>A fixed price and timeline before any work starts.</span></li>
+      <li><b>Build &amp; review</b><span>You see it, we adjust it, you approve it.</span></li>
+      <li><b>Launch &amp; hand-off</b><span>Your accounts stay in your name, with a walkthrough.</span></li>
+    </ol>
+    <p class="fine">SEO takes time, and nobody can honestly promise a ranking or a position on Google. We focus on the things that are in our control: a correct, fast, well-structured site and a complete Google Business Profile. Pricing is quoted per project after a short call.</p>
+  </div></section>
+
+  <section class="band alt" id="quote"><div class="wrap">
+    <div class="sec-head"><p class="eyebrow">Get a quote</p><h2>Tell us what you need</h2></div>
+    <form class="card" id="webForm" novalidate>
+      <div class="field"><label for="w-name">Your name</label><input type="text" id="w-name" name="name" autocomplete="name" required aria-describedby="e-name"><span class="err" id="e-name"></span></div>
+      <div class="field"><label for="w-email">Email</label><input type="email" id="w-email" name="email" autocomplete="email" required aria-describedby="e-email"><span class="err" id="e-email"></span></div>
+      <div class="field"><label for="w-biz">Business name</label><input type="text" id="w-biz" name="biz" autocomplete="organization"></div>
+      <div class="field"><label for="w-site">Current website (if any)</label><input type="text" id="w-site" name="current_site" placeholder="example.com" autocomplete="off"></div>
+      <fieldset class="full"><legend>What do you need?</legend>
+        <div class="picks">
+          <label><input type="checkbox" name="needs" value="New website"> New website</label>
+          <label><input type="checkbox" name="needs" value="Local SEO"> Local SEO</label>
+          <label><input type="checkbox" name="needs" value="Fix or refresh my site"> Fix or refresh my site</label>
+          <label><input type="checkbox" name="needs" value="Not sure"> Not sure yet</label>
+        </div></fieldset>
+      <div class="field full"><label for="w-msg">Anything else we should know?</label><textarea id="w-msg" name="message" aria-describedby="e-msg"></textarea><span class="err" id="e-msg"></span></div>
+      <div class="hp" aria-hidden="true"><label for="w-hp">Leave this empty</label><input type="text" id="w-hp" name="website" tabindex="-1" autocomplete="off"></div>
+      <div class="full" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><button class="btn btn-primary" type="submit" id="wSubmit">Send</button><span class="form-msg" id="wMsg" role="status" aria-live="polite"></span></div>
+    </form>
+  </div></section>
+
+  <section class="band" id="contact" style="padding-block:52px"><div class="wrap contact">
+    <div class="contact-lines">
+      <div><small>Phone</small><b><a href="tel:+19084446373" data-biz="phone">(908) 444-6373</a></b></div>
+      <div><small>Email</small><b><a href="mailto:booking@mcc-solutionsnj.com" data-biz="email">booking@mcc-solutionsnj.com</a></b></div>
+      <div><small>Hours (ET)</small><b style="font-size:1.05rem;font-family:var(--f-body)">Mon–Fri 7–9 · Sat 9–5</b></div>
+    </div>
+    <a class="btn btn-primary" href="/notary/#order">Book a Notary</a>
+  </div></section>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div style="display:flex;flex-direction:column;gap:12px"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary, loan signing and legal support services across New Jersey, dispatched from one desk.</p></div>
+    <div><h4>Notary</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/loan-signing-agent">Loan signings</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/hospital-notary">Hospital visits</a></li><li><a href="/notary/remote-online-notarization">Remote Online Notarization</a></li><li><a href="/notary/new-jersey">New Jersey counties</a></li></ul></div>
+    <div><h4>Services</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="/notary/new-jersey#services">All services</a></li><li><a href="/bookkeeping/">Bookkeeping</a></li><li><a href="/websites/">Websites &amp; SEO</a></li><li><a href="/notary/fees">Fees</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
+  </div>
+  <div class="legal">
+    <p>Notaries and signing agents cannot give legal advice or explain the legal effect of documents. MCC Solutions is not a law firm.</p>
+    <p><a href="/about">About</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+    <p>© <span id="yr">2026</span> MCC Solutions. All rights reserved.</p>
+  </div>
+</div></footer>
+
+<script>
+(function () {
+  document.getElementById("yr").textContent = new Date().getFullYear();
+  var f = document.getElementById("webForm"), msg = document.getElementById("wMsg");
+  var clear = function () { ["name","email"].forEach(function (k) { document.getElementById("e-" + k).textContent = ""; document.getElementById("w-" + k).removeAttribute("aria-invalid"); }); };
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault(); clear(); msg.className = "form-msg"; msg.textContent = "";
+    var v = function (id) { return document.getElementById(id).value.trim(); };
+    var bad = false;
+    if (!v("w-name")) { document.getElementById("e-name").textContent = "Enter your name."; document.getElementById("w-name").setAttribute("aria-invalid", "true"); bad = true; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v("w-email"))) { document.getElementById("e-email").textContent = "Enter a valid email."; document.getElementById("w-email").setAttribute("aria-invalid", "true"); bad = true; }
+    if (bad) { (f.querySelector('[aria-invalid="true"]') || f).focus(); return; }
+    var needs = Array.prototype.map.call(f.querySelectorAll('input[name="needs"]:checked'), function (e) { return e.value; });
+    var body = [
+      "Business: " + (v("w-biz") || "-"), "Current site: " + (v("w-site") || "-"),
+      "Needs: " + (needs.join(", ") || "-"), "", v("w-msg") || "(no message)"
+    ].join("\n");
+    var btn = document.getElementById("wSubmit"); btn.disabled = true;
+    fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v("w-name"), email: v("w-email"), topic: "Website & SEO", message: body, website: v("w-hp") }) })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        btn.disabled = false;
+        if (x.ok) { f.reset(); msg.className = "form-msg ok"; msg.textContent = "Thanks. We'll reply by email, usually within one business day."; }
+        else { msg.className = "form-msg bad"; msg.textContent = (x.d && x.d.error) || "Something went wrong. Please call the desk."; }
+      }).catch(function () { btn.disabled = false; msg.className = "form-msg bad"; msg.textContent = "Couldn't send. Please call the desk."; });
+  });
+  fetch("/api/config").then(function (r) { return r.ok ? r.json() : null; }).then(function (c) {
+    if (!c) return;
+    var digits = String(c.business.phone || "").replace(/\D/g, "").replace(/^1/, "");
+    document.querySelectorAll('[data-biz="phone"]').forEach(function (e) { e.textContent = c.business.phone; if (digits.length === 10) e.href = "tel:+1" + digits; });
+    document.querySelectorAll('[data-biz="email"]').forEach(function (e) { e.textContent = c.business.email; e.href = "mailto:" + c.business.email; });
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>
