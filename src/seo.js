@@ -5,6 +5,7 @@ const { COUNTIES, SERVICES } = require("./seo-data");
 const prices = require("./prices");
 const { EXTRA } = require("./seo-extra");
 const { GUIDES, guidePath, guidesFor } = require("./guides");
+const { DOCS, docPath, DOCS_HUB, DOC_CATEGORIES } = require("./doc-pages");
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const bySlug = Object.fromEntries(COUNTIES.map((c) => [c.slug, c]));
@@ -109,7 +110,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
   <div class="fgrid">
     <div class="fbrand"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary, legal support and bookkeeping for New Jersey, run from one desk in Cranford.</p>
       <ul class="fcontact"><li><a href="${telHref(biz.phone)}">${phone}</a></li><li><a href="mailto:${esc(biz.email)}">${email}</a></li><li>Mon–Fri 7 AM–9 PM · Sat 9 AM–5 PM ET</li></ul></div>
-    <div><h4>Notary &amp; signings</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/loan-signing-agent">Loan signing</a></li><li><a href="/notary/hospital-notary">Hospital &amp; care visits</a></li><li><a href="/notary/remote-online-notarization">Remote online notarization</a></li><li><a href="/notary/remote-ink-signed-notarization">Remote ink-signed (RIN)</a></li></ul></div>
+    <div><h4>Notary &amp; signings</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/documents">Documents we notarize</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/loan-signing-agent">Loan signing</a></li><li><a href="/notary/hospital-notary">Hospital &amp; care visits</a></li><li><a href="/notary/remote-online-notarization">Remote online notarization</a></li><li><a href="/notary/remote-ink-signed-notarization">Remote ink-signed (RIN)</a></li></ul></div>
     <div><h4>Legal support</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="${NJ_HUB}#services">All services</a></li></ul></div>
     <div><h4>Business services</h4><ul><li><a href="/bookkeeping/">Bookkeeping</a></li><li><a href="/bookkeeping/#interest">Payroll &amp; filings</a></li><li><a href="/websites/">Websites &amp; local SEO</a></li><li><a href="/notary/law-firms">For law firms</a></li><li><a href="/notary/fees">Fees</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
     <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="${NJ_HUB}">New Jersey coverage</a></li><li><a href="/notary/vendors">Vendor packet</a></li><li><a href="/notary/#notaries">Join as a notary</a></li><li><a href="/notary/become-a-process-server">Become a process server</a></li><li><a href="/notary/become-a-witness">Become a witness</a></li><li><a href="/notary/training">Notary training</a></li></ul></div>
@@ -356,9 +357,59 @@ function register(app) {
     });
   }
 
+
+  /* ---------- documents we notarize ---------- */
+  app.get(DOCS_HUB, async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Documents we notarize", DOCS_HUB]];
+    res.send(layout({
+      req, biz, path: DOCS_HUB, crumbs,
+      title: "Documents We Notarize in New Jersey: Deeds, Affidavits, Trusts & More | MCC",
+      description: "Plain-language pages for the documents New Jersey notaries are asked to handle: deeds, affidavits, living wills, trusts, contracts, bills of sale, apostilles and more.",
+      body: {
+        hero: `<p class="eyebrow">Documents</p><h1 style="margin-top:10px">Documents we notarize in New Jersey</h1><p class="lede" style="margin-top:14px">Find your document, see what to bring, and book a mobile or online notary. General information, not legal advice.</p>`,
+        main: `<section class="band"><div class="wrap">${DOC_CATEGORIES.map((c) => `<h2 style="margin:36px 0 16px;font-size:1.5rem">${esc(c)}</h2><div class="grid g3">${DOCS.filter((d) => d.category === c).map((d) => `<a class="svc" href="${docPath(d)}"><h3>${esc(d.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</h3><p>${esc(d.description)}</p><span class="more">What to know →</span></a>`).join("")}</div>`).join("")}
+          <p style="margin-top:34px;color:var(--ink-2)">Don't see your document? Most documents that need a signature witnessed can be notarized. <a href="${NJ_HUB}#services" style="color:var(--brass-ink);font-weight:600">See all our services</a> or call the desk.</p></div></section>`,
+        ctaTitle: "Not sure what you need? Call the desk.",
+      },
+      schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Documents we notarize", url: url + DOCS_HUB, hasPart: DOCS.map((d) => ({ "@type": "WebPage", name: d.title, url: url + docPath(d) })) }],
+    }));
+  });
+  for (const d of DOCS) {
+    app.get(docPath(d), async (req, res) => {
+      const biz = await business();
+      const url = base(req);
+      const path = docPath(d);
+      const crumbs = [["MCC Solutions", "/"], ["Documents we notarize", DOCS_HUB], [d.title, path]];
+      const svcs = d.services.map((sl) => SERVICES.find((x) => x.slug === sl)).filter(Boolean);
+      const rel = (d.related || []).map((sl) => DOCS.find((x) => x.slug === sl)).filter(Boolean);
+      const updated = new Date(d.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+      res.send(layout({
+        req, biz, path, crumbs, title: `${d.title.replace(" in New Jersey", " in NJ").replace("New Jersey", "NJ")} | MCC`, description: d.description,
+        body: {
+          hero: `<p class="eyebrow">${esc(d.category)} · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(d.title)}</h1><p class="lede" style="margin-top:14px">${esc(d.intro)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call ${esc(biz.phone)}</a></div>`,
+          main: `<section class="band"><div class="wrap guide-layout">
+            <article class="legal-doc guide">${d.sections.map(([h, paras]) => `<h2>${esc(h)}</h2>${paras.map((t) => `<p>${esc(t)}</p>`).join("")}`).join("")}
+              <h2>Common questions</h2>${faqHtml(d.faqs)}
+              <p class="guide-note">This page is general information, not legal advice. A notary can't draft documents or advise you on their contents. Ask your attorney or the office requesting the document what you need.</p>
+            </article>
+            <aside class="guide-aside"><div class="stack"><p class="eyebrow">How we can help</p>${svcs.map((x) => `<a class="svc" href="${servicePath(x)}"><h3>${esc(x.name)}</h3><p>${esc(x.description)}</p><span class="more">${esc(x.short)} →</span></a>`).join("")}${rel.length ? `<p class="eyebrow" style="margin-top:8px">Related documents</p>${rel.map((x) => `<a class="svc" href="${docPath(x)}"><h3>${esc(x.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</h3><span class="more">What to know →</span></a>`).join("")}` : ""}<a class="btn btn-ghost" href="${DOCS_HUB}">All documents</a></div></aside>
+          </div></section>`,
+          ctaTitle: "Need it notarized? Send it to the desk.",
+        },
+        schema: [
+          { "@type": "WebPage", name: d.title, description: d.description, url: url + path, dateModified: d.updated, isPartOf: { "@type": "WebSite", name: "MCC Solutions", url: url + "/" }, publisher: { "@type": "Organization", name: "MCC Solutions", url: url + "/" } },
+          faqSchema(d.faqs),
+          crumbSchema(url, crumbs),
+        ],
+      }));
+    });
+  }
+
   app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
     if ((await getSettings().catch(() => null))?.bookkeeping?.open) paths.push(["/bookkeeping/", "0.7"]);
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
