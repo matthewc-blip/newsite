@@ -276,7 +276,22 @@ label{font-size:.85rem;font-weight:600}
 .est .fine{color:var(--deep-muted);margin-top:8px}
 .checkline{display:flex;align-items:center;gap:10px;font-weight:500}
 .checkline input{accent-color:var(--brass);width:18px;height:18px;margin:0}
+/* motion (only when html.motion is set by the inline snippet in <head>; absent for reduced-motion visitors) */
+html.motion{scroll-behavior:smooth}
+html.motion [data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .7s cubic-bezier(.2,.6,.2,1) var(--d,0ms),transform .7s cubic-bezier(.2,.6,.2,1) var(--d,0ms)}
+html.motion [data-reveal].in{opacity:1;transform:none}
+html.motion .tc{opacity:0}
+html.motion .tc.on{opacity:1}
+html.motion h1.typing::after,html.motion h1.typed::after{content:"";display:inline-block;width:.07em;height:.9em;margin-left:.08em;vertical-align:-.08em;background:var(--brass)}
+html.motion h1.typing::after{animation:blink .8s steps(1) infinite}
+html.motion h1.typed::after{opacity:0;transition:opacity .6s}
+@keyframes blink{50%{opacity:0}}
+header.site{transition:box-shadow .25s}
+header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
+.tile{transition:border-color .2s,transform .25s cubic-bezier(.2,.6,.2,1),box-shadow .25s}
+.tile:hover{box-shadow:0 18px 32px -22px rgba(16,38,30,.55)}
 </style>
+<script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("motion")</script>
 <script src="/js/ga.js" async></script>
 </head>
 <body>
@@ -297,7 +312,7 @@ label{font-size:.85rem;font-weight:600}
   <section class="hero"><div class="wrap hero-grid">
     <div>
       <p class="eyebrow">MCC Solutions · Bookkeeping · <span id="bkState">Opening soon</span></p>
-      <h1 style="margin-top:14px">Books that are done every month, <em>not every April.</em></h1>
+      <h1 style="margin-top:14px" data-type>Books that are done every month, <em>not every April.</em></h1>
       <p class="lede">Monthly bookkeeping for New Jersey small businesses, from the same desk that handles your notary and legal paperwork. We work in QuickBooks, Xero or Excel, so you keep the tools you already use. Clean books, clear reports, and a year-end package your tax preparer will thank you for.</p>
       <div class="ctas">
         <a class="btn btn-primary" href="#interest">Tell us about your books</a>
@@ -533,5 +548,6 @@ label{font-size:.85rem;font-weight:600}
   });
 })();
 </script>
+<script src="/js/motion.js" defer></script>
 </body>
 </html>

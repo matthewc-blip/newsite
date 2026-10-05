@@ -135,7 +135,22 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 .form-msg{font-size:.92rem}
 .form-msg.ok{color:var(--ok)}.form-msg.bad{color:var(--warn)}
 .form-msg:empty{display:none}
+/* motion (only when html.motion is set by the inline snippet in <head>; absent for reduced-motion visitors) */
+html.motion{scroll-behavior:smooth}
+html.motion [data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .7s cubic-bezier(.2,.6,.2,1) var(--d,0ms),transform .7s cubic-bezier(.2,.6,.2,1) var(--d,0ms)}
+html.motion [data-reveal].in{opacity:1;transform:none}
+html.motion .tc{opacity:0}
+html.motion .tc.on{opacity:1}
+html.motion h1.typing::after,html.motion h1.typed::after{content:"";display:inline-block;width:.07em;height:.9em;margin-left:.08em;vertical-align:-.08em;background:var(--brass)}
+html.motion h1.typing::after{animation:blink .8s steps(1) infinite}
+html.motion h1.typed::after{opacity:0;transition:opacity .6s}
+@keyframes blink{50%{opacity:0}}
+header.site{transition:box-shadow .25s}
+header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
+.tile{transition:border-color .2s,transform .25s cubic-bezier(.2,.6,.2,1),box-shadow .25s}
+.tile:hover{box-shadow:0 18px 32px -22px rgba(16,38,30,.55)}
 </style>
+<script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("motion")</script>
 <script src="/js/ga.js" async></script>
 </head>
 <body>
@@ -154,7 +169,7 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 <main>
   <section class="hero"><div class="wrap">
     <p class="eyebrow">Websites &amp; local SEO</p>
-    <h1 style="margin-top:12px;max-width:18ch">A website that gets found, <em>and gets you calls.</em></h1>
+    <h1 style="margin-top:12px;max-width:18ch" data-type>A website that gets found, <em>and gets you calls.</em></h1>
     <p class="lede">Clear, fast websites and local search work for small businesses. We run our own booking, dispatch and client site end to end, and we build yours the same way: simple to use, easy to find, and yours to keep.</p>
     <div class="ctas"><a class="btn btn-primary" href="#quote">Get a quote</a><a class="btn btn-ghost" href="#what">What we do</a></div>
   </div></section>
@@ -256,5 +271,6 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
   }).catch(function () {});
 })();
 </script>
+<script src="/js/motion.js" defer></script>
 </body>
 </html>
