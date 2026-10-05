@@ -106,16 +106,18 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
   </div></section>
 </main>
 <footer><div class="wrap">
-  <div class="cols">
-    <div class="stack"><a class="brand" href="/notary/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary and loan signing dispatch. In-person, RON and RIN signings coordinated from one desk.</p></div>
-    <div><h4>Services</h4><ul>${SERVICES.slice(0, 7).map((s) => `<li><a href="${servicePath(s)}">${esc(s.short)}</a></li>`).join("")}<li><a href="${NJ_HUB}#services" style="color:var(--brass)">All services →</a></li></ul></div>
-    <div><h4>New Jersey</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
-    <div><h4>Desk</h4><ul><li class="mono"><a href="${telHref(biz.phone)}">${phone}</a></li><li class="mono">${email}</li><li>Mon–Fri 7AM–9PM ET</li><li>Sat 9AM–5PM ET</li><li><a href="/notary/#order" style="color:var(--brass)">Order a signing →</a></li></ul></div>
+  <div class="fgrid">
+    <div class="fbrand"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary, legal support and bookkeeping for New Jersey, run from one desk in Cranford.</p>
+      <ul class="fcontact"><li><a href="${telHref(biz.phone)}">${phone}</a></li><li><a href="mailto:${esc(biz.email)}">${email}</a></li><li>Mon–Fri 7 AM–9 PM · Sat 9 AM–5 PM ET</li></ul></div>
+    <div><h4>Notary &amp; signings</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/loan-signing-agent">Loan signing</a></li><li><a href="/notary/hospital-notary">Hospital &amp; care visits</a></li><li><a href="/notary/remote-online-notarization">Remote online notarization</a></li><li><a href="/notary/remote-ink-signed-notarization">Remote ink-signed (RIN)</a></li></ul></div>
+    <div><h4>Legal support</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="${NJ_HUB}#services">All services</a></li></ul></div>
+    <div><h4>Business services</h4><ul><li><a href="/bookkeeping/">Bookkeeping</a></li><li><a href="/bookkeeping/#interest">Payroll &amp; filings</a></li><li><a href="/websites/">Websites &amp; local SEO</a></li><li><a href="/notary/law-firms">For law firms</a></li><li><a href="/notary/fees">Fees</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="${NJ_HUB}">New Jersey coverage</a></li><li><a href="/notary/vendors">Vendor packet</a></li><li><a href="/notary/#notaries">Join as a notary</a></li><li><a href="/notary/become-a-process-server">Become a process server</a></li><li><a href="/notary/become-a-witness">Become a witness</a></li><li><a href="/notary/training">Notary training</a></li></ul></div>
   </div>
-  <p class="foot-links"><a href="/about">About</a> · <a href="/notary/fees">Fees</a> · <a href="/notary/law-firms">For law firms</a> · <a href="/notary/guides">Guides</a> · <a href="/notary/vendors">Vendor packet</a> · <a href="/notary/#notaries">Join as a notary</a> · <a href="/notary/become-a-witness">Become a witness</a> · <a href="/notary/become-a-process-server">Become a process server</a> · <a href="/notary/training">Notary training</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
-  <div class="legal">
-    <p>MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
-    <p>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</p>
+  <div class="fcounties"><h4>New Jersey counties</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
+  <div class="fbottom">
+    <p class="fnote">MCC Solutions is not a law firm and does not provide legal advice. Notaries and signing agents cannot explain the legal effect of documents. Remote notarization availability depends on state law and the acceptance of the receiving party.</p>
+    <div class="frow"><span>© ${new Date().getFullYear()} MCC Solutions. All rights reserved.</span><span class="flinks"><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a></span></div>
   </div>
 </div></footer>
 <script>(function(){var b=document.getElementById("menuBtn"),n=document.getElementById("mainNav");b.addEventListener("click",function(){b.setAttribute("aria-expanded",n.classList.toggle("open"))});})();</script>

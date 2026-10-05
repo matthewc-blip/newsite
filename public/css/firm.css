@@ -107,3 +107,17 @@ html.motion h1.typed::after{opacity:0;transition:opacity .6s}
 @keyframes blink{50%{opacity:0}}
 html.motion [data-reveal]{opacity:0;transform:translateY(10px);transition:opacity .6s cubic-bezier(.2,.6,.2,1) var(--d,0ms),transform .6s cubic-bezier(.2,.6,.2,1) var(--d,0ms)}
 html.motion [data-reveal].in{opacity:1;transform:none}
+
+/* organized footer: brand and contact, four link columns, then legal */
+footer .fgrid{display:grid;grid-template-columns:1.45fr repeat(4,1fr);gap:40px 32px}
+@media (max-width:1040px){footer .fgrid{grid-template-columns:repeat(2,1fr)}footer .fbrand{grid-column:1/-1}}
+@media (max-width:340px){footer .fgrid{grid-template-columns:1fr}}
+footer .fbrand p{max-width:36ch;margin-top:14px;line-height:1.55}
+footer .fcontact{margin-top:18px;display:flex;flex-direction:column;gap:6px;font-size:.88rem;padding:0;list-style:none}
+footer .fcontact a{color:var(--deep-fg)}
+footer .fcounties{margin-top:40px;padding-top:24px;border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent)}
+footer .fcounties ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px 20px;margin-top:2px}
+footer .fbottom{margin-top:40px;padding-top:22px;border-top:1px solid color-mix(in srgb,var(--deep-fg) 14%,transparent);display:flex;flex-direction:column;gap:14px;font-size:.8rem}
+footer .fnote{max-width:90ch;line-height:1.55}
+footer .frow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px}
+footer .flinks{display:flex;gap:22px}
