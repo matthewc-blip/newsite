@@ -90,11 +90,11 @@ async function findOrCreateCustomer({ name, email, phone, bookingRef }) {
 }
 
 // Stripe Checkout in "setup" mode: the customer saves a card; nothing is charged yet.
+// Payment methods for Checkout come from Stripe Dashboard > Settings > Payment methods (the API no longer takes a list); leave Card on there.
 async function createCardSession({ customerId, bookingId, bookingRef, successUrl, cancelUrl }) {
   const s = await stripe.checkout.sessions.create({
     mode: "setup",
     customer: customerId,
-    payment_method_types: ["card"],
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: { mcc_booking_id: String(bookingId), mcc_booking_ref: bookingRef },
