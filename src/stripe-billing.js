@@ -94,6 +94,7 @@ async function findOrCreateCustomer({ name, email, phone, bookingRef }) {
 async function createCardSession({ customerId, bookingId, bookingRef, successUrl, cancelUrl }) {
   const s = await stripe.checkout.sessions.create({
     mode: "setup",
+    currency: "usd", // required by newer Stripe API versions when payment methods come from the Dashboard
     customer: customerId,
     success_url: successUrl,
     cancel_url: cancelUrl,
