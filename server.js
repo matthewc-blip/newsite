@@ -34,8 +34,8 @@ const PUBLIC_HOST = (() => { try { return PUBLIC_ORIGIN ? new URL(PUBLIC_ORIGIN)
 const CSP = [
   "default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'self'", "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
-  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com",
-  "font-src 'self' data:", "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.google.com",
+  "font-src 'self' data:", "connect-src 'self' https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com https://stats.g.doubleclick.net https://www.google.com/g/collect https://www.google.com/ccm/collect",
   "frame-src 'none'", "manifest-src 'self'", "worker-src 'self'",
 ].join("; ");
 app.use((req, res, next) => {
@@ -72,6 +72,8 @@ app.get(["/bookkeeping", "/bookkeeping/"], async (req, res, next) => {
 });
 // The homepage and notary page are static files written with www.mcc-solutionsnj.com links; serve them
 // with PUBLIC_URL instead so every page points search engines at the same address.
+const cssCache = {};
+const inlineCss = (f) => (cssCache[f] ??= require("fs").readFileSync(path.join(__dirname, "public", "css", f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").trim());
 const STATIC_CANON = { "/": "index.html", "/index.html": "index.html", "/notary/": "notary/index.html", "/notary/index.html": "notary/index.html" };
 app.get(Object.keys(STATIC_CANON), (req, res, next) => {
   // Express matches /notary and /notary/ alike; send the no-slash form to the folder URL like the static server does.
@@ -83,7 +85,13 @@ app.get(Object.keys(STATIC_CANON), (req, res, next) => {
   if (!file || !PUBLIC_ORIGIN || PUBLIC_ORIGIN === "https://www.mcc-solutionsnj.com") return next();
   require("fs").readFile(path.join(__dirname, "public", file), "utf8", (err, html) => {
     if (err) return next();
-    res.type("html").send(html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN));
+    html = html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN);
+    // Inline the two small stylesheets so they don't block the first paint (the files stay the source of truth).
+    for (const f of ["fonts.css", "firm.css"]) {
+      const tag = `<link rel="stylesheet" href="/css/${f}">`;
+      if (html.includes(tag)) html = html.replace(tag, () => `<style>${inlineCss(f)}</style>`);
+    }
+    res.type("html").send(html);
   });
 });
 // Stripe webhooks need the raw body for signature checks, so this route comes before the JSON parser.
