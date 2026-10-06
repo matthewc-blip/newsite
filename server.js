@@ -29,6 +29,23 @@ app.disable("x-powered-by");
 // (or the reverse) are sent to it permanently. Only the www/non-www twin is redirected, never other hosts.
 const PUBLIC_ORIGIN = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const PUBLIC_HOST = (() => { try { return PUBLIC_ORIGIN ? new URL(PUBLIC_ORIGIN).host : ""; } catch { return ""; } })();
+// Security headers on every response, including static files.
+const CSP = [
+  "default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'self'", "form-action 'self'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com",
+  "font-src 'self' data:", "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+  "frame-src 'none'", "manifest-src 'self'", "worker-src 'self'",
+].join("; ");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Content-Security-Policy", CSP);
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), publickey-credentials-get=(self), publickey-credentials-create=(self)");
+  if (req.secure) res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  next();
+});
 app.use((req, res, next) => {
   // Off unless REDIRECT_WWW=1: Render or Cloudflare may already redirect between www and non-www,
   // and two redirects pointing opposite ways loop forever.
@@ -71,12 +88,6 @@ app.get(Object.keys(STATIC_CANON), (req, res, next) => {
 // Stripe webhooks need the raw body for signature checks, so this route comes before the JSON parser.
 app.post("/api/webhooks/stripe", express.raw({ type: "application/json", limit: "1mb" }), (req, res) => require("./src/billing").handleStripeWebhook(req, res));
 app.use(express.json({ limit: "100kb" }));
-app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "same-origin");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  next();
-});
 
 /* ---------------- helpers ---------------- */
 const SERVICES = ["mobile", "ron", "rin"];
