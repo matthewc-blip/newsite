@@ -24,6 +24,7 @@ const PORT = Number(process.env.PORT || 3000);
 const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
+app.use(require("compression")());
 
 // One web address for search engines: if PUBLIC_URL is https://www.example.com, visits to example.com
 // (or the reverse) are sent to it permanently. Only the www/non-www twin is redirected, never other hosts.
@@ -741,7 +742,14 @@ require("./src/pages").register(app);
 
 /* ---------------- static ---------------- */
 app.use("/fonts", express.static(path.join(__dirname, "public", "fonts"), { maxAge: "365d", immutable: true }));
-app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
+// Images and fonts rarely change, so browsers keep them a month. CSS and JS keep a short cache since file names aren't versioned. Pages always revalidate.
+app.use(express.static(path.join(__dirname, "public"), {
+  extensions: ["html"],
+  setHeaders: (res, file) => {
+    if (/\.(png|jpe?g|webp|svg|ico|woff2?)$/i.test(file)) res.setHeader("Cache-Control", "public, max-age=2592000");
+    else if (/\.(css|js)$/i.test(file)) res.setHeader("Cache-Control", "public, max-age=3600");
+  },
+}));
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 app.use((err, req, res, next) => {
   console.error(err);
