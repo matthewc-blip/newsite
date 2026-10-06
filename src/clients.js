@@ -19,15 +19,15 @@ async function sendClientLink(u, link, welcome) {
   const s = await getSettings();
   await mail.send({
     to: u.email,
-    subject: welcome ? `Your ${s.business.name} client account is ready` : `Your ${s.business.name} sign-in link`,
-    text: `Hi ${u.name},\n\n${welcome ? `Your company now has an account with ${s.business.name}. Place signing orders, upload closing packages and download scanbacks in one place.\n\n` : ""}Sign in: ${link}\n\nThis link expires in ${welcome ? "7 days" : "30 minutes"}. After that, sign in at ${mail.BASE}/client/ with this email address.`,
+    subject: welcome === "pending" ? `Confirm your ${s.business.name} business account` : welcome ? `Your ${s.business.name} client account is ready` : `Your ${s.business.name} sign-in link`,
+    text: `Hi ${u.name},\n\n${welcome === "pending" ? `We received a request to open a business account for ${u.company || "your company"} with ${s.business.name}. Click the link to confirm this email address. The desk reviews new accounts, usually within one business day, and we'll email you as soon as yours is approved so you can place orders.\n\nIf you didn't request this, ignore this email and nothing will happen.\n\n` : welcome ? `Your company now has an account with ${s.business.name}. Place signing orders, upload closing packages and download scanbacks in one place.\n\n` : ""}Sign in: ${link}\n\nThis link expires in ${welcome ? (welcome === "pending" ? "24 hours" : "7 days") : "30 minutes"}. After that, sign in at ${mail.BASE}/client/ with this email address.`,
   });
 }
 
 // Link a booking to a client account when the contact email belongs to a client user.
 async function autoLink(booking) {
   if (booking.client_account_id || !booking.contact_email) return booking;
-  const u = await db.one("SELECT id, account_id FROM client_users WHERE lower(email) = lower($1) AND active = 1", [booking.contact_email]);
+  const u = await db.one("SELECT u.id, u.account_id FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE lower(u.email) = lower($1) AND u.active = 1 AND a.approved = 1", [booking.contact_email]);
   if (!u) return booking;
   return db.one("UPDATE bookings SET client_account_id = $1, client_user_id = $2 WHERE id = $3 RETURNING *", [u.account_id, u.id, booking.id]);
 }
@@ -40,8 +40,9 @@ function requireClient(req, res, next) {
   next();
 }
 async function loadClient(req, res, next) {
-  const u = await db.one(`SELECT u.*, a.company, a.active AS account_active FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE u.id = $1`, [req.clientUserId]);
+  const u = await db.one(`SELECT u.*, a.company, a.active AS account_active, a.approved AS account_approved FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE u.id = $1`, [req.clientUserId]);
   if (!u || !u.active || !u.account_active) return res.status(401).json({ error: "This account is inactive. Contact the desk." });
+  if (u.account_approved !== 1 && req.method !== "GET") return res.status(403).json({ error: "Your account is waiting for approval. We'll email you as soon as the desk has reviewed it.", code: "pending_approval" });
   req.client = u;
   next();
 }
@@ -80,10 +81,42 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
     setCookie(req, res, "mcc_client", sign({ uid: row.user_id, exp: Date.now() + 30 * DAY }), 30 * 86400);
     res.json({ ok: true });
   });
+  // Self-service sign-up. The account starts unapproved; the emailed link proves the address, and the desk approves before any order can be placed.
+  app.post("/api/client/signup", rateLimit(5, 60 * 60000), async (req, res) => {
+    if (req.body.website) return res.status(400).json({ error: "Rejected" }); // honeypot
+    const company = str(req.body.company, 160), name = str(req.body.name, 120), email = str(req.body.email, 160).toLowerCase();
+    const phone = str(req.body.phone, 40), billing = str(req.body.billing_email, 160).toLowerCase(), about = str(req.body.about, 600);
+    const fields = {};
+    if (!company) fields.company = "Enter your company name.";
+    if (!name) fields.name = "Enter your name.";
+    if (!emailOk(email)) fields.email = "Enter a valid work email.";
+    if (phone && !phoneOk(phone)) fields.phone = "That phone number looks wrong.";
+    if (billing && !emailOk(billing)) fields.billing_email = "That billing email looks wrong.";
+    if (Object.keys(fields).length) return res.status(400).json({ error: "Please fix the highlighted fields.", fields });
+    const existing = await db.one(`SELECT u.* FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE lower(u.email) = $1 AND u.active = 1 AND a.active = 1`, [email]);
+    if (existing) { // already has an account: send a normal sign-in link instead, and say nothing different
+      sendClientLink(existing, await createClientLink(existing.id, 30), false).catch((e) => console.error("Signup link:", e.message));
+      return res.json({ ok: true });
+    }
+    if (await db.one("SELECT id FROM client_users WHERE lower(email) = $1", [email])) return res.json({ ok: true }); // disabled user: no new account
+    let user;
+    try {
+      user = await db.tx(async (t) => {
+        const a = await t.one("INSERT INTO client_accounts(company, phone, billing_email, notes, active, approved, source) VALUES($1,$2,$3,$4,1,0,'self') RETURNING id",
+          [company, phone, billing || email, about ? `Self sign-up note: ${about}` : ""]);
+        return t.one("INSERT INTO client_users(account_id, name, email) VALUES($1,$2,$3) RETURNING *", [a.id, name, email]);
+      });
+    } catch (e) { if (e.code === "23505") return res.json({ ok: true }); throw e; }
+    try {
+      await sendClientLink({ ...user, company }, await createClientLink(user.id, 24 * 60), "pending");
+      mail.deskNotice(`New business account request: ${company}`, `${name} <${email}>${phone ? " · " + phone : ""} asked for a business account for ${company}.${about ? "\n\nNote: " + about : ""}\n\nReview and approve it in the dashboard under Clients (${mail.BASE}/admin/).`).catch(() => {});
+    } catch (e) { console.error("Signup email failed:", e.message); }
+    res.json({ ok: true });
+  });
   app.post("/api/client/logout", (req, res) => { setCookie(req, res, "mcc_client", "", 0); res.json({ ok: true }); });
 
   app.get("/api/client/me", requireClient, loadClient, async (req, res) => {
-    const a = await db.one("SELECT id, company, phone, instructions FROM client_accounts WHERE id = $1", [req.client.account_id]);
+    const a = await db.one("SELECT id, company, phone, instructions, approved FROM client_accounts WHERE id = $1", [req.client.account_id]);
     const team = await db.all("SELECT name, email, last_login_at FROM client_users WHERE account_id = $1 AND active = 1 ORDER BY name", [a.id]);
     const s = await getSettings();
     res.json({ user: { name: req.client.name, email: req.client.email }, account: a, team, business: s.business, timezone: s.business.timezone });
@@ -205,6 +238,19 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
       if (req.body.invite !== false) await sendClientLink(u, await createClientLink(u.id, 7 * 24 * 60), true);
       res.status(201).json({ id: u.id });
     } catch (e) { if (e.code === "23505") return res.status(400).json({ error: "That email already belongs to a client user." }); throw e; }
+  });
+  app.post("/api/admin/clients/:id/approve", requireAdmin, async (req, res) => {
+    const a = await db.one("UPDATE client_accounts SET approved = 1, active = 1 WHERE id = $1 RETURNING *", [Number(req.params.id) || 0]);
+    if (!a) return res.status(404).json({ error: "Not found" });
+    // link their earlier bookings now that the account can order
+    const users = await db.all("SELECT * FROM client_users WHERE account_id = $1 AND active = 1", [a.id]);
+    for (const u of users) await db.run("UPDATE bookings SET client_account_id = $1, client_user_id = $2 WHERE client_account_id IS NULL AND lower(contact_email) = lower($3)", [a.id, u.id, u.email]);
+    if (req.body.notify !== false) {
+      const s = await getSettings();
+      for (const u of users) mail.send({ to: u.email, subject: `Your ${s.business.name} business account is approved`,
+        text: `Hi ${u.name},\n\nYour account for ${a.company} is approved. Sign in to place signing orders, upload closing packages and download scanbacks:\n${mail.BASE}/client/\n\nEnter your work email and we'll send a sign-in link.\n\n${s.business.name}` }).catch((e) => console.error("Approval email:", e.message));
+    }
+    res.json({ ok: true });
   });
   app.patch("/api/admin/client-users/:id", requireAdmin, async (req, res) => {
     await db.run("UPDATE client_users SET active = $1 WHERE id = $2", [req.body.active ? 1 : 0, Number(req.params.id) || 0]);

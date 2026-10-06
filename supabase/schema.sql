@@ -408,3 +408,8 @@ create table if not exists bookkeeping_leads (
 );
 create index if not exists idx_bookkeeping_status on bookkeeping_leads(status);
 alter table bookkeeping_leads enable row level security;
+
+-- ===== Self-service business accounts (added in v14; safe to re-run) =====
+-- accounts created by the business itself start unapproved: they can sign in but not order until the desk approves
+alter table client_accounts add column if not exists approved integer default 1;
+alter table client_accounts add column if not exists source text default 'desk';

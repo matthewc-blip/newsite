@@ -755,13 +755,20 @@
     const box = $("#clientCards");
     if (!clientAccounts.length) { box.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No client accounts yet. Add your title companies and lenders so they can order online.</div>'; return; }
     box.innerHTML = clientAccounts.map((a) => `<div class="card${a.active ? "" : " handled"}">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${esc(a.company)}</h3><button class="btn btn-ghost btn-sm" data-editc="${a.id}">Edit</button></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${esc(a.company)} ${a.approved === 1 ? "" : '<span class="pill p-warn">Needs approval</span>'}</h3><span>${a.approved === 1 ? "" : `<button class="btn btn-primary btn-sm" data-approvec="${a.id}">Approve</button> `}<button class="btn btn-ghost btn-sm" data-editc="${a.id}">Edit</button></span></div>
+      ${a.approved === 1 ? "" : `<p class="meta">Signed up online${a.created_at ? " " + esc(String(a.created_at).slice(0, 10)) : ""}. They can sign in but can't order until you approve.</p>`}
+      ${a.notes ? `<p style="font-size:.88rem;color:var(--ink-2)">${esc(a.notes)}</p>` : ""}
       <p class="meta">${a.orders} order${a.orders === 1 ? "" : "s"} · ${a.open_orders} open${a.phone ? " · " + esc(a.phone) : ""}</p>
       ${a.instructions ? `<p>${esc(a.instructions)}</p>` : ""}
       <ul class="users">${a.users.map((u) => `<li><span>${esc(u.name)} · ${esc(u.email)} <small style="color:var(--muted)">${u.last_login_at ? "active " + esc(u.last_login_at.slice(0, 10)) : "not signed in yet"}${u.active ? "" : " · disabled"}</small></span>
         <span><button class="linkbtn" style="color:var(--brass-ink)" data-ulink="${u.id}">Copy link</button><button class="linkbtn" style="color:var(--brass-ink)" data-usend="${u.id}">Email link</button><button class="linkbtn" data-uact="${u.id}" data-on="${u.active ? 0 : 1}">${u.active ? "Disable" : "Enable"}</button></span></li>`).join("") || '<li style="color:var(--muted)">No users yet.</li>'}</ul>
       <div class="inline"><input placeholder="Name" id="un-${a.id}"><input placeholder="Email" type="email" id="ue-${a.id}"><button class="btn btn-ghost btn-sm" data-uadd="${a.id}">Add &amp; Invite</button></div>
       <p class="form-msg" id="cm-${a.id}"></p></div>`).join("");
+    $$("[data-approvec]", box).forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try { await api(`/api/admin/clients/${b.dataset.approvec}/approve`, { method: "POST", body: {} }); await loadClients(); }
+      catch (e) { b.disabled = false; alert(e.message); }
+    }));
     $$("[data-editc]", box).forEach((b) => b.addEventListener("click", () => editClient(clientAccounts.find((a) => a.id === Number(b.dataset.editc)))));
     $$("[data-uadd]", box).forEach((b) => b.addEventListener("click", async () => {
       const id = b.dataset.uadd, m = $("#cm-" + id);

@@ -59,6 +59,7 @@
   .msg{font-size:.9rem}
   .msg.ok{color:var(--ok)} .msg.err{color:var(--warn)}
   .msg:empty{display:none}
+  body.pending [data-go="new"],body.pending #tabs [data-tab="new"]{display:none!important}
   .login{max-width:420px;margin:60px auto;display:flex;flex-direction:column;gap:16px}
   .linkbtn{background:none;border:0;color:var(--warn);font:600 .84rem var(--f-body);cursor:pointer;padding:0 4px}
   .drop{border:2px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--ink-2);font-size:.92rem}
@@ -87,9 +88,26 @@
       <div class="field"><label for="l-email">Work email</label><input id="l-email" type="email" autocomplete="email" placeholder="you@company.com"></div>
       <button class="btn btn-primary" type="submit">Email Me a Link</button>
       <p class="msg" id="loginMsg" role="status"></p>
-      <p style="font-size:.85rem;color:var(--muted)">Need an account? <a href="/notary/law-firms#account">Request a firm account</a> or <a href="/notary/#contact">contact the desk</a>.</p>
+      <p style="font-size:.85rem;color:var(--muted)">New here? <a href="#signup">Create a business account</a> below, or <a href="/notary/#contact">contact the desk</a>.</p>
+    </form>
+    <form class="card login" id="signupForm" novalidate style="margin-top:0">
+      <p class="eyebrow" id="signup">Business accounts</p>
+      <h2>Create a business account</h2>
+      <p style="color:var(--ink-2)">For title companies, lenders, law firms and other businesses that order regularly. Your team gets one place to order, upload documents and see invoices. We review new accounts, usually within one business day.</p>
+      <div class="field"><label for="s-company">Company</label><input id="s-company" autocomplete="organization"></div>
+      <div class="field"><label for="s-name">Your name</label><input id="s-name" autocomplete="name"></div>
+      <div class="field"><label for="s-email">Work email</label><input id="s-email" type="email" autocomplete="email" placeholder="you@company.com"></div>
+      <div class="field"><label for="s-phone">Phone <span class="opt">(optional)</span></label><input id="s-phone" type="tel" autocomplete="tel"></div>
+      <div class="field"><label for="s-billing">Billing email <span class="opt">(optional, if different)</span></label><input id="s-billing" type="email"></div>
+      <div class="field"><label for="s-about">What will you order? <span class="opt">(optional)</span></label><textarea id="s-about" rows="2" placeholder="Loan signings for refinances in Union and Middlesex County"></textarea></div>
+      <div style="position:absolute;left:-9999px" aria-hidden="true"><label>Website <input id="s-website" tabindex="-1" autocomplete="off"></label></div>
+      <button class="btn btn-primary" type="submit">Create Account</button>
+      <p class="msg" id="signupMsg" role="status"></p>
+      <p style="font-size:.85rem;color:var(--muted)">We'll email a link to confirm your address. You can sign in right away, and you can place orders once the desk approves the account.</p>
     </form>
   </section>
+
+  <div class="card" id="pendBanner" role="status" hidden style="margin-bottom:18px;border-color:var(--brass)"><b>Your account is waiting for approval.</b> <span style="color:var(--ink-2)">The desk reviews new accounts, usually within one business day, and we'll email you when you can place orders. Need it sooner? Call <span id="pendPhone"></span>.</span></div>
 
   <!-- ORDERS -->
   <section class="c-sec" data-tab="orders" hidden>

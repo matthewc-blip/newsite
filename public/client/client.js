@@ -38,6 +38,18 @@
     try { await api("/api/client/request-link", { method: "POST", body: { email: $("#l-email").value.trim() } }); msg($("#loginMsg"), "If that email has an account, a sign-in link is on its way.", "ok"); }
     catch (err) { msg($("#loginMsg"), err.message, "err"); }
   });
+  $("#signupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
+    try {
+      await api("/api/client/signup", { method: "POST", body: { company: $("#s-company").value.trim(), name: $("#s-name").value.trim(), email: $("#s-email").value.trim(), phone: $("#s-phone").value.trim(), billing_email: $("#s-billing").value.trim(), about: $("#s-about").value.trim(), website: $("#s-website").value } });
+      msg($("#signupMsg"), "Thanks. Check your email for a link to confirm your address and sign in. The desk will review the account and email you when it's approved.", "ok");
+      e.target.reset();
+    } catch (err) {
+      const f = err.fields ? Object.values(err.fields)[0] : "";
+      msg($("#signupMsg"), f || err.message, "err");
+    } finally { btn.disabled = false; }
+  });
   $("#logout").addEventListener("click", async () => { await api("/api/client/logout", { method: "POST" }).catch(() => {}); location.href = "/client/"; });
 
   /* ---------- tabs ---------- */
@@ -335,6 +347,10 @@
     $("#signin").hidden = true; $("#tabs").hidden = false;
     $("#who").textContent = `${me.account.company} · ${me.user.name}`;
     renderAccount();
+    const pending = me.account.approved !== 1;
+    $("#pendBanner").hidden = !pending;
+    document.body.classList.toggle("pending", pending);
+    if (pending) $("#pendPhone").textContent = me.business.phone || "";
     const m = location.hash.match(/^#order-(\d+)$/), rq = location.hash.match(/^#request-(\d+)$/);
     if (m) openOrder(Number(m[1])).catch(() => showTab("orders"));
     else if (rq) openReq(Number(rq[1])).catch(() => showTab("requests"));
