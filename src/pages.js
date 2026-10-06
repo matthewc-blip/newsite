@@ -458,6 +458,53 @@ function register(app) {
     }));
   });
 
+  /* ---------- Become a notary / loan signing agent (application + Google for Jobs) ---------- */
+  app.get("/notary/become-a-notary", async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Become a notary or signing agent", "/notary/become-a-notary"]];
+    const jobDesc = "<p>MCC Solutions dispatches mobile notary, loan signing and remote online notarization work across New Jersey. We are looking for commissioned notaries and loan signing agents to take assignments as independent contractors.</p>"
+      + "<p><b>What you will do:</b> accept signings near you from the MCC portal, travel to the signer (or join a remote session), notarize and complete the package, then upload scanbacks and return the documents. The pay for each job is shown before you accept.</p>"
+      + "<p><b>Requirements:</b></p><ul><li>An active notary commission (New Jersey, or your own state for remote work)</li><li>Errors and omissions (E&amp;O) insurance</li><li>A background check completed within the last 12 months</li><li>A W-9 and a signed independent contractor agreement</li><li>A home ZIP code and the distance you are willing to travel</li><li>A smartphone and email, and the ability to print loan documents for in-person signings</li></ul>"
+      + "<p>This is independent contractor work, paid per assignment, with a 1099 at year end. You choose which jobs to accept.</p>";
+    res.send(layout({
+      req, biz, path: "/notary/become-a-notary", crumbs,
+      title: "Become a Notary or Loan Signing Agent in New Jersey | MCC",
+      description: "Take mobile notary and loan signing assignments across New Jersey as an independent contractor. See the requirements and apply. Pay is shown on every job before you accept.",
+      body: {
+        hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Take notary and loan signing jobs near you</h1><p class="lede" style="margin-top:14px">MCC Solutions sends mobile notary, loan signing and remote notarization assignments to commissioned notaries across New Jersey. You accept the jobs that fit your schedule and your area, and the pay is shown before you say yes.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#notaries">Apply now</a></div>`,
+        main: `<section class="band"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">What you'll need</p><h2>Requirements</h2><ul class="checks">
+            <li>An active notary commission (New Jersey, or your own state for remote work)</li>
+            <li>Errors and omissions (E&amp;O) insurance</li>
+            <li>A background check completed in the last 12 months</li>
+            <li>A W-9, and a signed independent contractor agreement</li>
+            <li>Your home ZIP and how far you're willing to travel</li>
+            <li>A smartphone and email, plus the ability to print loan documents for in-person signings</li>
+            <li>Loan signing agent certification, if you want loan work</li>
+          </ul>
+          <p style="color:var(--ink-2)">We don't give legal or financial advice at signings, and neither do you. Never notarize without a proper ID check.</p></div>
+          <div class="stack"><p class="eyebrow">How it works</p><h2>From application to payment</h2><ol class="steps" style="grid-template-columns:1fr">
+            <li><h3>Apply</h3><p>Takes a couple of minutes. We review applications within 3 business days.</p></li>
+            <li><h3>Onboard online</h3><p>Upload your commission, E&amp;O, background check and W-9, then sign the contractor agreement. Your portal uses a password and a passkey, so your account stays secure.</p></li>
+            <li><h3>Accept jobs</h3><p>Offers arrive by email, or by text if you turn that on, with the location, time and your pay shown. Accept or decline in the portal.</p></li>
+            <li><h3>Complete the signing</h3><p>Notarize, mark the job complete, and upload the scanbacks.</p></li>
+            <li><h3>Get paid</h3><p>You're paid per assignment as an independent contractor, and you'll receive a 1099 at year end.</p></li>
+          </ol>
+          <p style="color:var(--ink-2)">Honest note: we're a young company. We're building up volume with title companies, law firms and families, and we're keeping the team small so the notaries who join early get the work as it grows.</p></div>
+        </div></section>
+        <section class="band alt"><div class="wrap stack">
+          <p class="eyebrow">Ready?</p><h2>Apply to the notary network</h2>
+          <p>The application is on our notary page. Tell us your commission, your coverage area and what kinds of signings you do.</p>
+          <p><a class="btn btn-primary" href="/notary/#notaries">Go to the application</a></p>
+          <p style="color:var(--ink-2)">Want other kinds of work? You can also <a href="/notary/become-a-witness">work as a signing witness</a> or <a href="/notary/become-a-process-server">serve papers as a process server</a>.</p>
+        </div></section>`,
+        ctaTitle: "Questions about joining? Call the desk.",
+      },
+      schema: [{ "@type": "JobPosting", title: "Mobile Notary / Loan Signing Agent (independent contractor)", description: jobDesc, employmentType: "CONTRACTOR", datePosted: "2026-10-05", validThrough: "2027-04-05T23:59:59-04:00", directApply: false, hiringOrganization: { "@type": "Organization", name: "MCC Solutions", sameAs: url + "/", logo: url + "/favicon.svg" }, jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } }, industry: "Notary and signing services" }],
+    }));
+  });
+
   /* ---------- Notary training (interest list) ---------- */
   app.get("/notary/training", async (req, res) => {
     const biz = await business();
