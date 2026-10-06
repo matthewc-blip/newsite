@@ -506,9 +506,10 @@ function register(app, { requireAdmin }) {
   });
 
   app.post("/api/admin/notaries/:id/reset-passkeys", requireAdmin, async (req, res) => {
-    const n = await db.one("SELECT id FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
+    const n = await db.one("SELECT id, name, email, phone FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
     if (!n) return res.status(404).json({ error: "Not found" });
-    await passkeys.resetFor("portal", n.id); // they register a new one at their next sign-in
+    try { await passkeys.deskReset("portal", n, req.body || {}); } // they register a new one at their next sign-in
+    catch (e) { if (!e.status) throw e; return res.status(e.status).json({ error: e.message }); }
     res.json({ ok: true });
   });
   app.post("/api/admin/notaries/:id/login-link", requireAdmin, async (req, res) => {

@@ -97,6 +97,7 @@
     $("#login").hidden = true; $("#app").hidden = false;
     $("#emailWarn").hidden = me.emailEnabled;
     settings = (await api("/api/admin/settings")).settings;
+    loadSecurityEvents();
     MCCPasskey.manager({ root: $("#secKeys"), base: "/api/admin/mfa", header: "mcc-admin", note: "Register a passkey on each device you use, so losing one doesn't lock you out." });
     TZ = settings.business.timezone;
     $("#tzLabel").textContent = `Times in ${shortTz()} · ${settings.business.name}`;
@@ -529,9 +530,9 @@
     $("#ndSend").onclick = async () => { try { await getLink(true); $("#ndMsg").className = "form-msg ok"; $("#ndMsg").textContent = `Onboarding email sent to ${n.email}.`; } catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; } };
     $("#ndCopy").onclick = async () => { const l = await getLink(false); $("#ndLinkRow").hidden = false; $("#ndLink").value = l; $("#ndLink").select(); navigator.clipboard?.writeText(l).then(() => ($("#ndCopy").textContent = "Copied")).catch(() => {}); };
     if ($("#ndReset")) $("#ndReset").onclick = async () => {
-      const b = $("#ndReset");
-      if (b.dataset.c !== "1") { b.dataset.c = "1"; b.textContent = "Click again to reset"; return; }
-      try { await api(`/api/admin/notaries/${n.id}/reset-passkeys`, { method: "POST", body: {} }); openNotary(n.id, "Passkeys reset. They register a new one at their next sign-in."); renderNotaries(); }
+      const ans = await askReset(n.name, n.phone);
+      if (!ans) return;
+      try { await api(`/api/admin/notaries/${n.id}/reset-passkeys`, { method: "POST", body: ans }); openNotary(n.id, "Passkeys reset. They were emailed, and it's logged. They register a new one at their next sign-in."); renderNotaries(); loadSecurityEvents(); }
       catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; }
     };
     $("#ndEdit").onclick = () => { closeDrawers(); showTab("notaries"); editNotary(n); };
@@ -779,6 +780,33 @@
   }
   $("#billThrough").addEventListener("change", loadBilling);
 
+  /* ---------- passkey reset (identity check) ---------- */
+  function askReset(name, phone) {
+    const dlg = $("#resetDlg");
+    return new Promise((resolve) => {
+      $("#rdTitle").textContent = `Reset passkeys for ${name}`;
+      $("#rdPhone").innerHTML = phone ? `Phone on file: <b>${esc(phone)}</b>` : '<b style="color:var(--warn)">No phone on file.</b> A phone check isn\'t possible. Choose "Other" only if you have another reliable way to verify them.';
+      $("#rdNote").value = ""; $("#rdMsg").textContent = "";
+      dlg.querySelector('input[value="callback"]').checked = true;
+      const done = (v) => { dlg.close(); $("#resetForm").onsubmit = null; $("#rdCancel").onclick = null; resolve(v); };
+      $("#rdCancel").onclick = () => done(null);
+      $("#resetForm").onsubmit = (e) => {
+        e.preventDefault();
+        const method = dlg.querySelector('input[name="rdm"]:checked').value, note = $("#rdNote").value.trim();
+        if (method === "other" && note.length < 10) { $("#rdMsg").textContent = "Describe how you verified them."; return; }
+        done({ method, note });
+      };
+      dlg.showModal();
+    });
+  }
+  async function loadSecurityEvents() {
+    try {
+      const { events } = await api("/api/admin/security-events");
+      const lbl = { desk_reset: "Desk reset", backup_code_recovery: "Backup-code recovery", backup_codes_regenerated: "New backup codes" };
+      $("#secEvents").innerHTML = events.length ? `<ul class="log">${events.map((e) => `<li style="grid-template-columns:150px 1fr auto"><span>${esc(lbl[e.action] || e.action)}</span><span>${esc(e.subject_label || "")}${e.method ? " · " + esc(e.method) : ""}${e.note ? " · " + esc(e.note) : ""}</span><time>${esc(String(e.created_at).slice(0, 16).replace("T", " "))}</time></li>`).join("")}</ul>` : "<p style=\"color:var(--muted)\">Nothing yet.</p>";
+    } catch { $("#secEvents").textContent = ""; }
+  }
+
   /* ---------- clients ---------- */
   $("#clientUrl").textContent = location.origin + "/client/";
   let clientAccounts = [];
@@ -809,8 +837,12 @@
     }));
     $$("[data-ulink]", box).forEach((b) => b.addEventListener("click", async () => { const { link } = await api(`/api/admin/client-users/${b.dataset.ulink}/login-link`, { method: "POST", body: {} }); navigator.clipboard?.writeText(link).then(() => (b.textContent = "Copied")).catch(() => { b.textContent = link; }); }));
     $$("[data-ureset]", box).forEach((b) => b.addEventListener("click", async () => {
-      if (b.dataset.c !== "1") { b.dataset.c = "1"; b.textContent = "Click again to reset"; return; }
-      await api(`/api/admin/client-users/${b.dataset.ureset}/reset-passkeys`, { method: "POST", body: {} }); loadClients();
+      const acct = clientAccounts.find((a) => a.users.some((u) => u.id === Number(b.dataset.ureset)));
+      const u = acct.users.find((x) => x.id === Number(b.dataset.ureset));
+      const ans = await askReset(u.name, acct.phone);
+      if (!ans) return;
+      try { await api(`/api/admin/client-users/${u.id}/reset-passkeys`, { method: "POST", body: ans }); loadClients(); loadSecurityEvents(); }
+      catch (e) { alert(e.message); }
     }));
     $$("[data-usend]", box).forEach((b) => b.addEventListener("click", async () => { await api(`/api/admin/client-users/${b.dataset.usend}/login-link`, { method: "POST", body: { send: true } }); b.textContent = "Sent"; }));
     $$("[data-uact]", box).forEach((b) => b.addEventListener("click", async () => { await api(`/api/admin/client-users/${b.dataset.uact}`, { method: "PATCH", body: { active: b.dataset.on === "1" } }); loadClients(); }));

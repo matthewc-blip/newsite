@@ -161,6 +161,10 @@ function register(app) {
     await passkeys.core.removeKey(KIND, req.admin.id, req.params.id); return { ok: true };
   }));
 
+  app.get("/api/admin/security-events", requireAdmin, async (req, res) => {
+    res.json({ events: await db.all("SELECT id, kind, subject_label, action, method, note, created_at FROM security_events ORDER BY created_at DESC LIMIT 50") });
+  });
+
   /* ----- change password (signed in) ----- */
   app.post("/api/admin/auth/change-password", requireAdmin, rl(5, 15), J(async (req, res) => {
     const cur = String(req.body.current || ""), next = String(req.body.password || "");

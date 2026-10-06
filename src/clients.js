@@ -260,9 +260,10 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
     res.json({ ok: true });
   });
   app.post("/api/admin/client-users/:id/reset-passkeys", requireAdmin, async (req, res) => {
-    const u = await db.one("SELECT id, name FROM client_users WHERE id = $1", [Number(req.params.id) || 0]);
+    const u = await db.one("SELECT u.id, u.name, u.email, a.phone FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE u.id = $1", [Number(req.params.id) || 0]);
     if (!u) return res.status(404).json({ error: "Not found" });
-    await passkeys.resetFor("client", u.id); // they register a new one at their next sign-in
+    try { await passkeys.deskReset("client", u, req.body || {}); } // they register a new one at their next sign-in
+    catch (e) { if (!e.status) throw e; return res.status(e.status).json({ error: e.message }); }
     res.json({ ok: true });
   });
   app.post("/api/admin/client-users/:id/login-link", requireAdmin, async (req, res) => {

@@ -455,3 +455,29 @@ create table if not exists admin_setup_tokens (
 );
 alter table admin_users enable row level security;
 alter table admin_setup_tokens enable row level security;
+
+-- ===== Backup codes and security log (added in v17; safe to re-run) =====
+-- One-time codes that let a person who lost their passkey register a new one. Only salted scrypt hashes are stored.
+create table if not exists backup_codes (
+  id integer generated always as identity primary key,
+  kind text not null check (kind in ('client','portal')),
+  subject_id integer not null,
+  salt text not null,
+  code_hash text not null,
+  used_at timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists idx_backup_codes_subject on backup_codes (kind, subject_id);
+-- Who reset or recovered what, and how identity was checked.
+create table if not exists security_events (
+  id integer generated always as identity primary key,
+  kind text not null,
+  subject_id integer,
+  subject_label text,
+  action text not null,
+  method text,
+  note text,
+  created_at timestamptz default now()
+);
+alter table backup_codes enable row level security;
+alter table security_events enable row level security;

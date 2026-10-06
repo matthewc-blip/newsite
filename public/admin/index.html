@@ -39,6 +39,21 @@
   </div>
 </div>
 
+<dialog id="resetDlg" style="max-width:480px;width:calc(100% - 32px);border:1px solid var(--line);border-radius:10px;padding:22px">
+  <form method="dialog" id="resetForm">
+    <h3 id="rdTitle">Reset passkeys</h3>
+    <p id="rdPhone" style="color:var(--ink-2);font-size:.92rem;margin:8px 0"></p>
+    <p style="font-size:.88rem;color:var(--ink-2)">Only reset after you've confirmed who they are. Caller ID can be faked, so the safest check is to <b>hang up and call them back on the number on file</b>. Never use a number or email they give you on the call.</p>
+    <div class="field" style="margin-top:10px"><label><input type="radio" name="rdm" value="callback" checked> I called them back on the number on file</label>
+      <label><input type="radio" name="rdm" value="inbound_call"> They called from the number on file (weaker)</label>
+      <label><input type="radio" name="rdm" value="other"> Other check (describe below)</label></div>
+    <div class="field"><label for="rdNote">Note <span class="opt">(required for "other")</span></label><textarea id="rdNote" rows="2" maxlength="400"></textarea></div>
+    <p class="form-msg" id="rdMsg"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn btn-ghost btn-sm" value="cancel" id="rdCancel" type="button">Cancel</button><button class="btn btn-primary btn-sm" id="rdGo" type="submit">Reset passkeys</button></div>
+    <p style="font-size:.82rem;color:var(--muted);margin-top:8px">They get an email about the reset, and it's logged with how you verified them.</p>
+  </form>
+</dialog>
+
 <div id="app" hidden>
   <header class="adm-top">
     <a class="brand" href="/admin/"><span class="seal">MCC</span><span><span class="brand-name">Dispatch Desk</span><span class="brand-sub" id="tzLabel">MCC Solutions</span></span></a>
@@ -178,6 +193,7 @@
         <p class="form-msg" id="pwMsg" role="status"></p>
       </form>
     </div>
+    <div class="form-card" style="margin-bottom:18px"><h3>Recent security events</h3><div id="secEvents" style="margin-top:8px;font-size:.9rem"></div></div>
     <div id="settingsBody"></div>
   </section>
 </div>
