@@ -496,12 +496,19 @@
         <div class="inline" style="margin-top:10px"><select id="ndKind">${kinds.map((k) => `<option value="${k}">${esc(docKinds[k])}</option>`).join("")}</select>
           <label class="btn btn-ghost btn-sm" style="cursor:pointer">Upload for notary<input type="file" id="ndFile" accept="application/pdf,image/*" hidden></label></div></div>
       <div class="dsec"><h4>Contact</h4><dl class="kvs"><dt>Email</dt><dd>${esc(n.email || "—")}</dd><dt>Phone</dt><dd>${esc(n.phone || "—")}</dd><dt>Commission #</dt><dd>${esc(n.commission_number || "—")}</dd><dt>E&amp;O amount</dt><dd>${esc(n.eo_amount || "—")}</dd><dt>Notes</dt><dd>${esc(n.notes || "—")}</dd></dl>
+        <p style="margin-top:10px;font-size:.9rem">Sign-in passkey: <b>${n.passkeys ? n.passkeys + " registered" : "none yet (they set one up at next sign-in)"}</b>${n.passkeys ? ' <button class="linkbtn" id="ndReset" type="button" style="color:var(--warn)">Reset passkeys</button>' : ""}</p>
         <button class="btn btn-ghost btn-sm" id="ndEdit" type="button" style="margin-top:10px">Edit details &amp; dates</button></div>
       <p class="form-msg" id="ndMsg"></p>`;
     openDrawer($("#notaryDrawer"));
     const getLink = async (send) => (await api(`/api/admin/notaries/${n.id}/login-link`, { method: "POST", body: { send } })).link;
     $("#ndSend").onclick = async () => { try { await getLink(true); $("#ndMsg").className = "form-msg ok"; $("#ndMsg").textContent = `Onboarding email sent to ${n.email}.`; } catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; } };
     $("#ndCopy").onclick = async () => { const l = await getLink(false); $("#ndLinkRow").hidden = false; $("#ndLink").value = l; $("#ndLink").select(); navigator.clipboard?.writeText(l).then(() => ($("#ndCopy").textContent = "Copied")).catch(() => {}); };
+    if ($("#ndReset")) $("#ndReset").onclick = async () => {
+      const b = $("#ndReset");
+      if (b.dataset.c !== "1") { b.dataset.c = "1"; b.textContent = "Click again to reset"; return; }
+      try { await api(`/api/admin/notaries/${n.id}/reset-passkeys`, { method: "POST", body: {} }); openNotary(n.id, "Passkeys reset. They register a new one at their next sign-in."); renderNotaries(); }
+      catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; }
+    };
     $("#ndEdit").onclick = () => { closeDrawers(); showTab("notaries"); editNotary(n); };
     $("#ndFile").onchange = async () => {
       const f = $("#ndFile").files[0]; if (!f) return;
@@ -760,8 +767,8 @@
       ${a.notes ? `<p style="font-size:.88rem;color:var(--ink-2)">${esc(a.notes)}</p>` : ""}
       <p class="meta">${a.orders} order${a.orders === 1 ? "" : "s"} · ${a.open_orders} open${a.phone ? " · " + esc(a.phone) : ""}</p>
       ${a.instructions ? `<p>${esc(a.instructions)}</p>` : ""}
-      <ul class="users">${a.users.map((u) => `<li><span>${esc(u.name)} · ${esc(u.email)} <small style="color:var(--muted)">${u.last_login_at ? "active " + esc(u.last_login_at.slice(0, 10)) : "not signed in yet"}${u.active ? "" : " · disabled"}</small></span>
-        <span><button class="linkbtn" style="color:var(--brass-ink)" data-ulink="${u.id}">Copy link</button><button class="linkbtn" style="color:var(--brass-ink)" data-usend="${u.id}">Email link</button><button class="linkbtn" data-uact="${u.id}" data-on="${u.active ? 0 : 1}">${u.active ? "Disable" : "Enable"}</button></span></li>`).join("") || '<li style="color:var(--muted)">No users yet.</li>'}</ul>
+      <ul class="users">${a.users.map((u) => `<li><span>${esc(u.name)} · ${esc(u.email)} <small style="color:var(--muted)">${u.last_login_at ? "active " + esc(u.last_login_at.slice(0, 10)) : "not signed in yet"}${u.active ? "" : " · disabled"} · ${u.passkeys ? u.passkeys + " passkey" + (u.passkeys > 1 ? "s" : "") : "no passkey yet"}</small></span>
+        <span><button class="linkbtn" style="color:var(--brass-ink)" data-ulink="${u.id}">Copy link</button><button class="linkbtn" style="color:var(--brass-ink)" data-usend="${u.id}">Email link</button>${u.passkeys ? `<button class="linkbtn" data-ureset="${u.id}">Reset passkeys</button>` : ""}<button class="linkbtn" data-uact="${u.id}" data-on="${u.active ? 0 : 1}">${u.active ? "Disable" : "Enable"}</button></span></li>`).join("") || '<li style="color:var(--muted)">No users yet.</li>'}</ul>
       <div class="inline"><input placeholder="Name" id="un-${a.id}"><input placeholder="Email" type="email" id="ue-${a.id}"><button class="btn btn-ghost btn-sm" data-uadd="${a.id}">Add &amp; Invite</button></div>
       <p class="form-msg" id="cm-${a.id}"></p></div>`).join("");
     $$("[data-approvec]", box).forEach((b) => b.addEventListener("click", async () => {
@@ -776,6 +783,10 @@
       catch (e) { m.className = "form-msg"; m.textContent = e.message; }
     }));
     $$("[data-ulink]", box).forEach((b) => b.addEventListener("click", async () => { const { link } = await api(`/api/admin/client-users/${b.dataset.ulink}/login-link`, { method: "POST", body: {} }); navigator.clipboard?.writeText(link).then(() => (b.textContent = "Copied")).catch(() => { b.textContent = link; }); }));
+    $$("[data-ureset]", box).forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.c !== "1") { b.dataset.c = "1"; b.textContent = "Click again to reset"; return; }
+      await api(`/api/admin/client-users/${b.dataset.ureset}/reset-passkeys`, { method: "POST", body: {} }); loadClients();
+    }));
     $$("[data-usend]", box).forEach((b) => b.addEventListener("click", async () => { await api(`/api/admin/client-users/${b.dataset.usend}/login-link`, { method: "POST", body: { send: true } }); b.textContent = "Sent"; }));
     $$("[data-uact]", box).forEach((b) => b.addEventListener("click", async () => { await api(`/api/admin/client-users/${b.dataset.uact}`, { method: "PATCH", body: { active: b.dataset.on === "1" } }); loadClients(); }));
   }

@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const express = require("express");
 const { db, getSettings, logEvent } = require("./db");
 const { str, emailOk, phoneOk, dateOk, rateLimit, sign, verify, cookie, setCookie } = require("./util");
+const passkeys = require("./passkeys");
 const { dateInTz } = require("./time");
 const storage = require("./storage");
 const mail = require("./email");
@@ -173,6 +174,7 @@ function startReminderJob() {
 function requireNotary(req, res, next) {
   const s = verify(cookie(req, "mcc_notary"));
   if (!s || !s.nid) return res.status(401).json({ error: "Sign in to the notary portal." });
+  if (!passkeys.sessionOk(s)) return res.status(403).json(passkeys.mfaError);
   if (req.method !== "GET" && req.get("X-Requested-With") !== "mcc-portal") return res.status(403).json({ error: "Forbidden" });
   req.notaryId = s.nid;
   next();
@@ -213,10 +215,11 @@ function register(app, { requireAdmin }) {
     if (!n) return res.status(401).json({ error: "Your notary account is inactive. Contact the desk." });
     await db.run("UPDATE notary_login_tokens SET used_at = coalesce(used_at, now()) WHERE token_hash = $1", [hash(t)]);
     await db.run("UPDATE notaries SET last_login_at = now() WHERE id = $1", [n.id]);
-    setCookie(req, res, "mcc_notary", sign({ nid: n.id, exp: Date.now() + 30 * DAY }), 30 * 86400);
+    passkeys.loginCookie(req, res, "portal", n.id); // emailed link is factor one; a passkey is factor two
     res.json({ ok: true });
   });
 
+  passkeys.mount(app, "portal");
   app.post("/api/portal/logout", (req, res) => { setCookie(req, res, "mcc_notary", "", 0); res.json({ ok: true }); });
 
   /* ----- portal profile ----- */
@@ -438,7 +441,8 @@ function register(app, { requireAdmin }) {
     const ns = await db.all(`SELECT n.*,
         (SELECT COUNT(*) FROM bookings b WHERE b.notary_id = n.id AND b.status = 'completed')::int AS completed,
         (SELECT COUNT(*) FROM bookings b WHERE b.notary_id = n.id AND b.notary_status = 'offered' AND b.status = ANY($1))::int AS open_offers,
-        (SELECT coalesce(sum(notary_fee),0) FROM bookings b WHERE b.notary_id = n.id AND b.status = 'completed' AND b.notary_paid_at IS NULL)::float AS unpaid
+        (SELECT coalesce(sum(notary_fee),0) FROM bookings b WHERE b.notary_id = n.id AND b.status = 'completed' AND b.notary_paid_at IS NULL)::float AS unpaid,
+        (SELECT COUNT(*) FROM passkeys p WHERE p.kind = 'portal' AND p.subject_id = n.id)::int AS passkeys
       FROM notaries n ORDER BY active DESC, name`, [ACTIVE]);
     const docs = await db.all("SELECT id, notary_id, kind, filename, content_type, size_bytes, uploaded_at, uploaded_by FROM notary_documents ORDER BY uploaded_at DESC");
     const t = await today();
@@ -501,6 +505,12 @@ function register(app, { requireAdmin }) {
     res.json({ ok: true });
   });
 
+  app.post("/api/admin/notaries/:id/reset-passkeys", requireAdmin, async (req, res) => {
+    const n = await db.one("SELECT id FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
+    if (!n) return res.status(404).json({ error: "Not found" });
+    await passkeys.resetFor("portal", n.id); // they register a new one at their next sign-in
+    res.json({ ok: true });
+  });
   app.post("/api/admin/notaries/:id/login-link", requireAdmin, async (req, res) => {
     const n = await db.one("SELECT * FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
     if (!n) return res.status(404).json({ error: "Not found" });

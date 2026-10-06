@@ -413,3 +413,20 @@ alter table bookkeeping_leads enable row level security;
 -- accounts created by the business itself start unapproved: they can sign in but not order until the desk approves
 alter table client_accounts add column if not exists approved integer default 1;
 alter table client_accounts add column if not exists source text default 'desk';
+
+-- ===== Passkeys: required second factor for client users and notaries (added in v15; safe to re-run) =====
+-- kind is 'client' (client_users) or 'portal' (notaries, witnesses and process servers). Credentials hold only a public key.
+create table if not exists passkeys (
+  id integer generated always as identity primary key,
+  kind text not null check (kind in ('client','portal')),
+  subject_id integer not null,
+  credential_id text not null unique,
+  public_key text not null,
+  counter bigint not null default 0,
+  transports text,
+  name text,
+  created_at timestamptz default now(),
+  last_used_at timestamptz
+);
+create index if not exists idx_passkeys_subject on passkeys (kind, subject_id);
+alter table passkeys enable row level security;

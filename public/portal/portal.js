@@ -17,6 +17,7 @@
     let j = {};
     try { j = await res.json(); } catch {}
     if (res.status === 401) { showSignin(j.error); throw new Error(j.error || "Sign in again."); }
+    if (res.status === 403 && j.code === "mfa_required") { showMfa(); throw new Error(j.error); }
     if (!res.ok) throw Object.assign(new Error(j.error || "Something went wrong."), { fields: j.fields });
     return j;
   }
@@ -24,6 +25,10 @@
   const msg = (el, text, kind) => { el.textContent = text; el.className = "msg " + (kind || ""); };
 
   /* ---------- sign in ---------- */
+  function showMfa() {
+    $("#signin").hidden = true; $("#tabs").hidden = true; $$("section[data-tab]").forEach((x) => (x.hidden = true)); $("#mfa").hidden = false;
+    MCCPasskey.gate({ root: $("#mfaBox"), base: "/api/portal/mfa", header: "mcc-portal", onDone: () => location.reload() });
+  }
   function showSignin(text) {
     $("#signin").hidden = false;
     $("#tabs").hidden = true;
@@ -56,6 +61,7 @@
   async function load() {
     me = await api("/api/portal/me");
     TZ = me.timezone;
+    MCCPasskey.manager({ root: $("#aKeys"), base: "/api/portal/mfa", header: "mcc-portal" });
     $("#signin").hidden = true;
     $("#tabs").hidden = false;
     $("#who").textContent = me.notary.name;

@@ -85,6 +85,7 @@
     <button data-tab="jobs" aria-current="page">Jobs <span class="badge" id="bJobs" hidden></span></button>
     <button data-tab="onboarding">Onboarding <span class="badge" id="bOnb" hidden>!</span></button>
     <button data-tab="earnings">Earnings</button>
+    <button data-tab="security">Security</button>
     <button id="logout">Sign out</button>
   </nav>
 </div></header>
@@ -101,6 +102,14 @@
       <p class="msg" id="loginMsg" role="status"></p>
       <p style="font-size:.85rem;color:var(--muted)">Not on our roster yet? <a href="/notary/#notaries">Apply to join</a>.</p>
     </form>
+  </section>
+
+  <section id="mfa" hidden><div class="card login" id="mfaBox"></div></section>
+
+  <!-- security -->
+  <section class="p-sec" data-tab="security" hidden>
+    <h2>Sign-in security</h2>
+    <div class="card" style="margin-top:14px"><div id="aKeys"></div></div>
   </section>
 
   <!-- jobs -->
@@ -160,6 +169,7 @@
   </section>
 </main>
 
+<script src="/js/passkey.js"></script>
 <script src="/portal/portal.js"></script>
 </body>
 </html>

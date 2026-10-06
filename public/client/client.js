@@ -24,6 +24,7 @@
     let j = {};
     try { j = await res.json(); } catch {}
     if (res.status === 401) { showSignin(j.error); throw new Error(j.error || "Sign in again."); }
+    if (res.status === 403 && j.code === "mfa_required") { showMfa(); throw new Error(j.error); }
     if (!res.ok) throw Object.assign(new Error(j.error || "Something went wrong."), { fields: j.fields });
     return j;
   }
@@ -32,6 +33,10 @@
   const pill = ([t, c]) => `<span class="pill ${c}">${esc(t)}</span>`;
 
   /* ---------- auth ---------- */
+  function showMfa() {
+    $("#signin").hidden = true; $("#tabs").hidden = true; $$("section[data-tab]").forEach((x) => (x.hidden = true)); $("#mfa").hidden = false;
+    MCCPasskey.gate({ root: $("#mfaBox"), base: "/api/client/mfa", header: "mcc-client", onDone: () => location.reload() });
+  }
   function showSignin(t) { $("#signin").hidden = false; $("#tabs").hidden = true; $$("section[data-tab]").forEach((s) => (s.hidden = true)); if (t) msg($("#loginMsg"), t, "err"); }
   $("#loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -319,6 +324,7 @@
     $("#aCompany").textContent = me.account.company;
     $("#aInstr").textContent = me.account.instructions || "None on file.";
     $("#aTeam").innerHTML = me.team.map((t) => `<li><time>${t.last_login_at ? "Active " + esc(t.last_login_at.slice(0, 10)) : "Invited"}</time><span>${esc(t.name)} · ${esc(t.email)}</span></li>`).join("");
+    MCCPasskey.manager({ root: $("#aKeys"), base: "/api/client/mfa", header: "mcc-client" });
     $("#aDesk").textContent = `${me.business.phone} · ${me.business.email}`;
   }
 

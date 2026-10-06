@@ -5,6 +5,7 @@ const { str, emailOk, phoneOk, rateLimit, sign, verify, cookie, setCookie } = re
 const storage = require("./storage");
 const mail = require("./email");
 const docs = require("./documents");
+const passkeys = require("./passkeys");
 
 const DAY = 86400000;
 const hash = (t) => crypto.createHash("sha256").update(t).digest("hex");
@@ -35,6 +36,7 @@ async function autoLink(booking) {
 function requireClient(req, res, next) {
   const s = verify(cookie(req, "mcc_client"));
   if (!s || !s.uid) return res.status(401).json({ error: "Sign in to your client account." });
+  if (!passkeys.sessionOk(s)) return res.status(403).json(passkeys.mfaError);
   if (req.method !== "GET" && req.get("X-Requested-With") !== "mcc-client") return res.status(403).json({ error: "Forbidden" });
   req.clientUserId = s.uid;
   next();
@@ -78,7 +80,7 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
     const row = t && (await db.one("SELECT * FROM client_login_tokens WHERE token_hash = $1 AND expires_at > now()", [hash(t)]));
     if (!row) return res.status(401).json({ error: "That sign-in link has expired. Enter your email to get a new one." });
     await db.run("UPDATE client_users SET last_login_at = now() WHERE id = $1", [row.user_id]);
-    setCookie(req, res, "mcc_client", sign({ uid: row.user_id, exp: Date.now() + 30 * DAY }), 30 * 86400);
+    passkeys.loginCookie(req, res, "client", row.user_id); // emailed link is factor one; a passkey is factor two
     res.json({ ok: true });
   });
   // Self-service sign-up. The account starts unapproved; the emailed link proves the address, and the desk approves before any order can be placed.
@@ -113,6 +115,7 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
     } catch (e) { console.error("Signup email failed:", e.message); }
     res.json({ ok: true });
   });
+  passkeys.mount(app, "client");
   app.post("/api/client/logout", (req, res) => { setCookie(req, res, "mcc_client", "", 0); res.json({ ok: true }); });
 
   app.get("/api/client/me", requireClient, loadClient, async (req, res) => {
@@ -207,7 +210,7 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
         (SELECT COUNT(*) FROM bookings b WHERE b.client_account_id = a.id)::int AS orders,
         (SELECT COUNT(*) FROM bookings b WHERE b.client_account_id = a.id AND b.status IN ('requested','confirmed','assigned') AND b.start_utc > now())::int AS open_orders
       FROM client_accounts a ORDER BY a.active DESC, a.company`);
-    const users = await db.all("SELECT id, account_id, name, email, active, last_login_at FROM client_users ORDER BY name");
+    const users = await db.all("SELECT id, account_id, name, email, active, last_login_at, (SELECT COUNT(*) FROM passkeys p WHERE p.kind = 'client' AND p.subject_id = client_users.id)::int AS passkeys FROM client_users ORDER BY name");
     res.json({ accounts: accounts.map((a) => ({ ...a, users: users.filter((u) => u.account_id === a.id) })) });
   });
   const readAccount = (b) => [str(b.company, 160), str(b.phone, 40), str(b.billing_email, 160).toLowerCase(), str(b.instructions, 3000), str(b.notes, 3000), b.active === false ? 0 : 1,
@@ -254,6 +257,12 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
   });
   app.patch("/api/admin/client-users/:id", requireAdmin, async (req, res) => {
     await db.run("UPDATE client_users SET active = $1 WHERE id = $2", [req.body.active ? 1 : 0, Number(req.params.id) || 0]);
+    res.json({ ok: true });
+  });
+  app.post("/api/admin/client-users/:id/reset-passkeys", requireAdmin, async (req, res) => {
+    const u = await db.one("SELECT id, name FROM client_users WHERE id = $1", [Number(req.params.id) || 0]);
+    if (!u) return res.status(404).json({ error: "Not found" });
+    await passkeys.resetFor("client", u.id); // they register a new one at their next sign-in
     res.json({ ok: true });
   });
   app.post("/api/admin/client-users/:id/login-link", requireAdmin, async (req, res) => {

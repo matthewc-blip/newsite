@@ -109,6 +109,8 @@
 
   <div class="card" id="pendBanner" role="status" hidden style="margin-bottom:18px;border-color:var(--brass)"><b>Your account is waiting for approval.</b> <span style="color:var(--ink-2)">The desk reviews new accounts, usually within one business day, and we'll email you when you can place orders. Need it sooner? Call <span id="pendPhone"></span>.</span></div>
 
+  <section id="mfa" hidden><div class="card login" id="mfaBox"></div></section>
+
   <!-- ORDERS -->
   <section class="c-sec" data-tab="orders" hidden>
     <div class="c-head"><h2>Orders</h2>
@@ -236,10 +238,12 @@
     <h2 id="aCompany"></h2>
     <div class="detail-grid">
       <div class="card"><p class="sub">Standing instructions</p><p id="aInstr" style="white-space:pre-wrap;color:var(--ink-2)"></p><p style="font-size:.85rem;color:var(--muted);margin-top:12px">Notaries see these on every order. Ask the desk to update them.</p></div>
+      <div class="card"><p class="sub">Sign-in security</p><div id="aKeys"></div></div>
       <div class="card"><p class="sub">Your team</p><ul class="timeline" id="aTeam"></ul><p style="font-size:.85rem;color:var(--muted);margin-top:12px">To add a teammate, contact the desk: <span id="aDesk"></span></p></div>
     </div>
   </section>
 </main>
+<script src="/js/passkey.js"></script>
 <script src="/client/client.js"></script>
 </body>
 </html>
