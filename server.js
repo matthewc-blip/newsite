@@ -20,8 +20,6 @@ const bookkeeping = require("./src/bookkeeping");
 const { str, emailOk, phoneOk, httpError, rateLimit, sign, verify, cookie, STATE_CODES } = require("./src/util");
 
 const PORT = Number(process.env.PORT || 3000);
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-if (!ADMIN_PASSWORD) console.warn("ADMIN_PASSWORD is not set. The dispatch dashboard is locked until you set it.");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -365,26 +363,10 @@ app.post("/api/messages", rateLimit(5, 10 * 60000), async (req, res) => {
 });
 
 /* ---------------- admin auth ---------------- */
-function requireAdmin(req, res, next) {
-  if (!verify(cookie(req, "mcc_admin"))) return res.status(401).json({ error: "Sign in to the dashboard." });
-  if (req.method !== "GET" && req.get("X-Requested-With") !== "mcc-admin") return res.status(403).json({ error: "Forbidden" });
-  next();
-}
+const adminAuth = require("./src/admin-auth");
+const requireAdmin = adminAuth.requireAdmin;
+adminAuth.register(app); // login, passkey and setup routes; the account lives in the database
 
-app.post("/api/admin/login", rateLimit(8, 15 * 60000), (req, res) => {
-  const pw = str(req.body.password, 200);
-  if (!ADMIN_PASSWORD) return res.status(503).json({ error: "Set ADMIN_PASSWORD on the server first." });
-  const a = crypto.createHash("sha256").update(pw).digest();
-  const b = crypto.createHash("sha256").update(ADMIN_PASSWORD).digest();
-  if (!crypto.timingSafeEqual(a, b)) return res.status(401).json({ error: "Wrong password." });
-  const token = sign({ exp: Date.now() + 12 * 3600 * 1000 });
-  res.setHeader("Set-Cookie", `mcc_admin=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200${req.secure ? "; Secure" : ""}`);
-  res.json({ ok: true });
-});
-app.post("/api/admin/logout", (req, res) => {
-  res.setHeader("Set-Cookie", "mcc_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
-  res.json({ ok: true });
-});
 app.post("/api/admin/test-email", requireAdmin, rateLimit(10, 15 * 60000), async (req, res) => {
   const to = str(req.body.to, 200) || process.env.DESK_EMAIL || "";
   if (!emailOk(to)) return res.status(400).json({ error: "Enter a valid email address." });

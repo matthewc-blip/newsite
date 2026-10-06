@@ -430,3 +430,28 @@ create table if not exists passkeys (
 );
 create index if not exists idx_passkeys_subject on passkeys (kind, subject_id);
 alter table passkeys enable row level security;
+
+-- ===== Admin account (added in v16; safe to re-run) =====
+-- The dashboard login lives here, not in an environment variable: one fixed owner email, a password hash, and a passkey (kind 'admin' in passkeys).
+-- Recovery: to wipe the passkey, run  delete from passkeys where kind = 'admin';  then request a setup link on the sign-in page.
+alter table passkeys drop constraint if exists passkeys_kind_check;
+alter table passkeys add constraint passkeys_kind_check check (kind in ('client','portal','admin'));
+create table if not exists admin_users (
+  id integer generated always as identity primary key,
+  email text not null unique,
+  password_hash text,
+  session_epoch integer not null default 1,   -- bump to sign every dashboard session out
+  failed_logins integer not null default 0,
+  locked_until timestamptz,
+  password_set_at timestamptz,
+  created_at timestamptz default now()
+);
+create table if not exists admin_setup_tokens (
+  token_hash text primary key,
+  admin_id integer not null references admin_users(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz default now()
+);
+alter table admin_users enable row level security;
+alter table admin_setup_tokens enable row level security;

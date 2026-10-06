@@ -15,12 +15,28 @@
 <body>
 
 <div id="login" class="login" hidden>
-  <form class="form-card login-card" id="loginForm">
+  <div class="form-card login-card" id="loginCard">
     <div class="brand"><span class="seal">MCC</span><span><span class="brand-name">Dispatch Desk</span><span class="brand-sub">MCC Solutions</span></span></div>
-    <div class="field"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" required></div>
-    <button class="btn btn-primary" type="submit">Sign In</button>
-    <p class="form-msg" id="loginMsg" role="alert"></p>
-  </form>
+
+    <form id="loginForm" novalidate>
+      <div class="field"><label for="em">Email</label><input id="em" type="email" value="matthewc@mcc-solutionsnj.com" readonly autocomplete="username"></div>
+      <div class="field"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary" type="submit">Continue</button>
+      <p class="form-msg" id="loginMsg" role="alert"></p>
+      <p style="font-size:.88rem;margin-top:10px"><button class="linkbtn" type="button" id="reqSetup" style="color:var(--brass-ink)">First time, or forgot your password? Email me a setup link</button></p>
+    </form>
+
+    <form id="setupForm" hidden novalidate>
+      <h2 style="font-size:1.3rem">Choose a password</h2>
+      <p style="color:var(--ink-2);font-size:.92rem">At least 12 characters. Three or four random words works well. Next you'll register a passkey.</p>
+      <div class="field"><label for="np">New password</label><input id="np" type="password" autocomplete="new-password" required></div>
+      <div class="field"><label for="np2">Confirm password</label><input id="np2" type="password" autocomplete="new-password" required></div>
+      <button class="btn btn-primary" type="submit">Save password</button>
+      <p class="form-msg" id="setupMsg" role="alert"></p>
+    </form>
+
+    <div id="keyStep" hidden></div>
+  </div>
 </div>
 
 <div id="app" hidden>
@@ -151,6 +167,17 @@
   <section class="tab" data-tab="settings" hidden>
     <div class="toolbar"><h2 class="tab-title">Booking settings</h2><button class="btn btn-primary btn-sm" id="saveSettings">Save Settings</button></div>
     <p class="form-msg" id="settingsMsg" role="status"></p>
+    <div class="form-card" id="secCard" style="margin-bottom:18px">
+      <h3>Your sign-in</h3>
+      <p style="color:var(--ink-2);font-size:.92rem">Signed in as matthewc@mcc-solutionsnj.com with a password and a passkey. Register a passkey on each device you use.</p>
+      <div id="secKeys" style="margin-top:8px"></div>
+      <form id="pwForm" style="margin-top:16px;max-width:380px" novalidate>
+        <div class="field"><label for="cp">Current password</label><input id="cp" type="password" autocomplete="current-password"></div>
+        <div class="field"><label for="cp1">New password</label><input id="cp1" type="password" autocomplete="new-password"></div>
+        <button class="btn btn-ghost btn-sm" type="submit">Change password</button>
+        <p class="form-msg" id="pwMsg" role="status"></p>
+      </form>
+    </div>
     <div id="settingsBody"></div>
   </section>
 </div>
@@ -195,6 +222,7 @@
   </form>
 </div>
 
+<script src="/js/passkey.js"></script>
 <script src="/admin/admin.js"></script>
 </body>
 </html>

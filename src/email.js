@@ -18,15 +18,17 @@ const BASE = (process.env.PUBLIC_URL || "http://localhost:3000").replace(/\/$/, 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 async function send({ to, subject, text, html, attachments }) {
-  if (!to) return;
+  if (!to) return false;
   if (!enabled) {
     console.log(`[email disabled] To: ${to} | ${subject}\n${text}\n`);
-    return;
+    return false;
   }
   try {
     await transport.sendMail({ from: FROM, to, subject, text, html, attachments });
+    return true;
   } catch (e) {
     console.error("Email failed:", e.message);
+    return false;
   }
 }
 

@@ -47,7 +47,8 @@
     } });
   }
 
-  async function gate({ root, base, header, onDone }) {
+  async function gate({ root, base, header, onDone, after, lost }) {
+    after = after || "the email link";
     const call = client(base, header);
     root.innerHTML = '<p class="eyebrow">Two-step sign-in</p><p style="color:var(--ink-2)">Checking your account…</p>';
     let st;
@@ -58,11 +59,11 @@
       <h2>${has ? "Confirm it's you" : "Set up your passkey"}</h2>
       <p style="color:var(--ink-2)">${has
         ? "Use the passkey you registered: your fingerprint, face or device PIN, or a security key."
-        : "Your account needs a second step after the email link. A passkey uses your device's fingerprint, face or PIN (or a security key) and can't be phished or intercepted. We don't use text-message codes."}</p>
+        : `Your account needs a second step after ${after}. A passkey uses your device's fingerprint, face or PIN (or a security key) and can't be phished or intercepted. We don't use text-message codes.`}</p>
       ${has ? "" : '<div class="field"><label for="pk-name">Name this passkey <span class="opt">(optional)</span></label><input id="pk-name" maxlength="60" placeholder="Work laptop, iPhone…"></div>'}
       <button class="btn btn-primary" type="button" id="pk-go">${has ? "Use my passkey" : "Create a passkey"}</button>
       <p class="msg" id="pk-msg" role="status"></p>
-      <p style="font-size:.85rem;color:var(--muted)">${has ? "Lost your passkey or changed devices? Contact the desk and we'll reset it so you can register a new one." : "You'll do this once per account, then confirm it each time you sign in."}</p>`;
+      <p style="font-size:.85rem;color:var(--muted)">${has ? (lost || "Lost your passkey or changed devices? Contact the desk and we'll reset it so you can register a new one.") : "You'll do this once per account, then confirm it each time you sign in."}</p>`;
     const msg = $m(root);
     if (!supported()) { msg("This browser doesn't support passkeys. Use a current version of Chrome, Safari, Edge or Firefox.", "err"); root.querySelector("#pk-go").disabled = true; return; }
     root.querySelector("#pk-go").onclick = async (ev) => {
@@ -75,7 +76,7 @@
   }
   const $m = (root) => (t, k) => { const m = root.querySelector("#pk-msg"); if (m) { m.textContent = t; m.className = "msg " + (k || ""); } };
 
-  async function manager({ root, base, header }) {
+  async function manager({ root, base, header, note }) {
     const call = client(base, header);
     async function draw(note, kind) {
       let st; try { st = await call("/status"); } catch (e) { root.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return; }
@@ -83,7 +84,7 @@
       root.innerHTML = `<ul style="list-style:none;margin:0;padding:0">${st.passkeys.map((p) => `<li style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)"><span><b>${esc(p.name || "Passkey")}</b><br><small style="color:var(--muted)">Added ${esc(fmt(p.created_at))} · last used ${esc(fmt(p.last_used_at))}</small></span><button class="linkbtn" data-rm="${p.id}" style="color:var(--warn)">Remove</button></li>`).join("") || '<li style="padding:10px 0">No passkey yet.</li>'}</ul>
         <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" type="button" id="pk-add">Add another passkey</button></div>
         <p class="msg ${kind || ""}" id="pk-msg" role="status">${esc(note || "")}</p>
-        <p style="font-size:.85rem;color:var(--muted);margin-top:8px">Sign-in uses your emailed link plus a passkey. Register one on each device you use, so losing one doesn't lock you out.</p>`;
+        <p style="font-size:.85rem;color:var(--muted);margin-top:8px">${esc(note || "Sign-in uses your emailed link plus a passkey. Register one on each device you use, so losing one doesn't lock you out.")}</p>`;
       const msg = $m(root);
       root.querySelector("#pk-add").onclick = async (ev) => {
         if (!supported()) return msg("This browser doesn't support passkeys.", "err");

@@ -40,6 +40,65 @@ const list = (kind, id) => db.all("SELECT id, name, created_at, last_used_at FRO
 const countFor = async (kind, id) => (await db.one("SELECT COUNT(*)::int AS n FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, id])).n;
 const resetFor = (kind, id) => db.run("DELETE FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, id]);
 
+/* ----- core steps, shared by the portal routes below and the admin sign-in (src/admin-auth.js) ----- */
+const fail = (status, message, code) => Object.assign(new Error(message), { status, code });
+const mkState = (kind, id, purpose, challenge) => sign({ k: kind, id, p: purpose, ch: challenge, exp: Date.now() + 5 * 60000 });
+const readState = (body, kind, id, purpose) => { const s = verify(body && body.state); return s && s.k === kind && s.id === id && s.p === purpose ? s : null; };
+const tx = (c) => (c.transports ? c.transports.split(",") : undefined);
+
+async function regOptions(req, kind, subject, mayAdd) {
+  const existing = await db.all("SELECT credential_id, transports FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, subject.id]);
+  if (existing.length && !mayAdd) throw fail(403, "Confirm one of your existing passkeys before adding another.");
+  const o = await sw.generateRegistrationOptions({
+    rpName: RP_NAME, rpID: rp(req).id, userName: subject.email, userDisplayName: subject.name || subject.email,
+    userID: new TextEncoder().encode(`${kind}:${subject.id}`), attestationType: "none",
+    excludeCredentials: existing.map((c) => ({ id: c.credential_id, transports: tx(c) })),
+    authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
+  });
+  return { options: o, state: mkState(kind, subject.id, "reg", o.challenge) };
+}
+async function regVerify(req, kind, subject, mayAdd) {
+  const st = readState(req.body, kind, subject.id, "reg");
+  if (!st) throw fail(400, "That request expired. Start again.");
+  if ((await countFor(kind, subject.id)) && !mayAdd) throw fail(403, "Confirm one of your existing passkeys before adding another.");
+  let v;
+  try { v = await sw.verifyRegistrationResponse({ response: req.body.response, expectedChallenge: st.ch, expectedOrigin: rp(req).origins, expectedRPID: rp(req).id, requireUserVerification: true }); }
+  catch (e) { throw fail(400, "We couldn't verify that passkey. " + String(e.message || "").slice(0, 160)); }
+  if (!v.verified || !v.registrationInfo) throw fail(400, "We couldn't verify that passkey.");
+  const c = v.registrationInfo.credential;
+  try {
+    await db.run("INSERT INTO passkeys(kind, subject_id, credential_id, public_key, counter, transports, name) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [kind, subject.id, c.id, Buffer.from(c.publicKey).toString("base64url"), c.counter || 0, (c.transports || (req.body.response.response && req.body.response.response.transports) || []).join(",") || null, str(req.body.name, 60) || "Passkey"]);
+  } catch (e) { if (e.code === "23505") throw fail(400, "That passkey is already registered."); throw e; }
+}
+async function authOptions(req, kind, subject) {
+  const creds = await db.all("SELECT credential_id, transports FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, subject.id]);
+  if (!creds.length) throw fail(400, "No passkey on this account yet.", "no_passkey");
+  const o = await sw.generateAuthenticationOptions({ rpID: rp(req).id, userVerification: "required", allowCredentials: creds.map((c) => ({ id: c.credential_id, transports: tx(c) })) });
+  return { options: o, state: mkState(kind, subject.id, "auth", o.challenge) };
+}
+async function authVerify(req, kind, subject) {
+  const st = readState(req.body, kind, subject.id, "auth");
+  if (!st) throw fail(400, "That request expired. Start again.");
+  const row = await db.one("SELECT * FROM passkeys WHERE kind = $1 AND subject_id = $2 AND credential_id = $3", [kind, subject.id, str(req.body.response && req.body.response.id, 400)]);
+  if (!row) throw fail(400, "That passkey isn't registered on this account.");
+  let v;
+  try { v = await sw.verifyAuthenticationResponse({ response: req.body.response, expectedChallenge: st.ch, expectedOrigin: rp(req).origins, expectedRPID: rp(req).id, requireUserVerification: true,
+      credential: { id: row.credential_id, publicKey: Buffer.from(row.public_key, "base64url"), counter: Number(row.counter), transports: tx(row) } }); }
+  catch (e) { throw fail(400, "We couldn't verify that passkey. " + String(e.message || "").slice(0, 160)); }
+  if (!v.verified) throw fail(400, "We couldn't verify that passkey.");
+  await db.run("UPDATE passkeys SET counter = $1, last_used_at = now() WHERE id = $2", [v.authenticationInfo.newCounter, row.id]);
+}
+async function removeKey(kind, subjectId, id) {
+  const n = await countFor(kind, subjectId);
+  if (REQUIRED && n <= 1) throw fail(400, "Keep at least one passkey, or you'd be locked out. Add another first.");
+  await db.run("DELETE FROM passkeys WHERE id = $1 AND kind = $2 AND subject_id = $3", [Number(id) || 0, kind, subjectId]);
+}
+const wrap = (fn) => async (req, res) => {
+  try { res.json(await fn(req, res)); }
+  catch (e) { if (!e.status) throw e; res.status(e.status).json({ error: e.message, code: e.code }); }
+};
+
 function mount(app, kind) {
   const K = KINDS[kind];
   const session = (req) => { const s = verify(cookie(req, K.cookie)); return s && s[K.idKey] ? s : null; };
@@ -53,78 +112,19 @@ function mount(app, kind) {
     next();
   }
   const upgrade = (req, res) => setCookie(req, res, K.cookie, sign({ [K.idKey]: req.subject.id, mfa: 1, exp: Date.now() + 30 * DAY }), 30 * 86400);
-  const state = (req, purpose, challenge) => sign({ k: kind, id: req.subject.id, p: purpose, ch: challenge, exp: Date.now() + 5 * 60000 });
-  const readState = (req, purpose) => { const s = verify(req.body && req.body.state); return s && s.k === kind && s.id === req.subject.id && s.p === purpose ? s : null; };
   const limit = rateLimit(30, 15 * 60000);
 
   app.get(K.base + "/status", auth, async (req, res) => {
-    const passkeys = await list(kind, req.subject.id);
-    res.json({ required: REQUIRED, verified: sessionOk(req.mfaSess), name: req.subject.name, email: req.subject.email, passkeys });
+    res.json({ required: REQUIRED, verified: sessionOk(req.mfaSess), name: req.subject.name, email: req.subject.email, passkeys: await list(kind, req.subject.id) });
   });
-
-  app.post(K.base + "/register/options", auth, limit, async (req, res) => {
-    const existing = await db.all("SELECT credential_id, transports FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, req.subject.id]);
-    if (existing.length && !sessionOk(req.mfaSess)) return res.status(403).json({ error: "Confirm one of your existing passkeys before adding another." });
-    const o = await sw.generateRegistrationOptions({
-      rpName: RP_NAME, rpID: rp(req).id, userName: req.subject.email, userDisplayName: req.subject.name || req.subject.email,
-      userID: new TextEncoder().encode(`${kind}:${req.subject.id}`), attestationType: "none",
-      excludeCredentials: existing.map((c) => ({ id: c.credential_id, transports: c.transports ? c.transports.split(",") : undefined })),
-      authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
-    });
-    res.json({ options: o, state: state(req, "reg", o.challenge) });
-  });
-
-  app.post(K.base + "/register/verify", auth, limit, async (req, res) => {
-    const st = readState(req, "reg");
-    if (!st) return res.status(400).json({ error: "That request expired. Start again." });
-    const existing = await countFor(kind, req.subject.id);
-    if (existing && !sessionOk(req.mfaSess)) return res.status(403).json({ error: "Confirm one of your existing passkeys before adding another." });
-    let v;
-    try {
-      v = await sw.verifyRegistrationResponse({ response: req.body.response, expectedChallenge: st.ch, expectedOrigin: rp(req).origins, expectedRPID: rp(req).id, requireUserVerification: true });
-    } catch (e) { return res.status(400).json({ error: "We couldn't verify that passkey. " + String(e.message || "").slice(0, 160) }); }
-    if (!v.verified || !v.registrationInfo) return res.status(400).json({ error: "We couldn't verify that passkey." });
-    const c = v.registrationInfo.credential;
-    const name = str(req.body.name, 60) || "Passkey";
-    try {
-      await db.run("INSERT INTO passkeys(kind, subject_id, credential_id, public_key, counter, transports, name) VALUES($1,$2,$3,$4,$5,$6,$7)",
-        [kind, req.subject.id, c.id, Buffer.from(c.publicKey).toString("base64url"), c.counter || 0, (c.transports || (req.body.response.response && req.body.response.response.transports) || []).join(",") || null, name]);
-    } catch (e) { if (e.code === "23505") return res.status(400).json({ error: "That passkey is already registered." }); throw e; }
-    upgrade(req, res);
-    res.json({ ok: true });
-  });
-
-  app.post(K.base + "/auth/options", auth, limit, async (req, res) => {
-    const creds = await db.all("SELECT credential_id, transports FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, req.subject.id]);
-    if (!creds.length) return res.status(400).json({ error: "No passkey on this account yet.", code: "no_passkey" });
-    const o = await sw.generateAuthenticationOptions({ rpID: rp(req).id, userVerification: "required",
-      allowCredentials: creds.map((c) => ({ id: c.credential_id, transports: c.transports ? c.transports.split(",") : undefined })) });
-    res.json({ options: o, state: state(req, "auth", o.challenge) });
-  });
-
-  app.post(K.base + "/auth/verify", auth, limit, async (req, res) => {
-    const st = readState(req, "auth");
-    if (!st) return res.status(400).json({ error: "That request expired. Start again." });
-    const row = await db.one("SELECT * FROM passkeys WHERE kind = $1 AND subject_id = $2 AND credential_id = $3", [kind, req.subject.id, str(req.body.response && req.body.response.id, 400)]);
-    if (!row) return res.status(400).json({ error: "That passkey isn't registered on this account." });
-    let v;
-    try {
-      v = await sw.verifyAuthenticationResponse({ response: req.body.response, expectedChallenge: st.ch, expectedOrigin: rp(req).origins, expectedRPID: rp(req).id, requireUserVerification: true,
-        credential: { id: row.credential_id, publicKey: Buffer.from(row.public_key, "base64url"), counter: Number(row.counter), transports: row.transports ? row.transports.split(",") : undefined } });
-    } catch (e) { return res.status(400).json({ error: "We couldn't verify that passkey. " + String(e.message || "").slice(0, 160) }); }
-    if (!v.verified) return res.status(400).json({ error: "We couldn't verify that passkey." });
-    await db.run("UPDATE passkeys SET counter = $1, last_used_at = now() WHERE id = $2", [v.authenticationInfo.newCounter, row.id]);
-    upgrade(req, res);
-    res.json({ ok: true });
-  });
-
-  app.delete(K.base + "/passkeys/:id", auth, async (req, res) => {
-    if (!sessionOk(req.mfaSess)) return res.status(403).json(mfaError);
-    const n = await countFor(kind, req.subject.id);
-    if (REQUIRED && n <= 1) return res.status(400).json({ error: "Keep at least one passkey, or you'd be locked out. Add another first." });
-    await db.run("DELETE FROM passkeys WHERE id = $1 AND kind = $2 AND subject_id = $3", [Number(req.params.id) || 0, kind, req.subject.id]);
-    res.json({ ok: true });
-  });
+  app.post(K.base + "/register/options", auth, limit, wrap((req) => regOptions(req, kind, req.subject, sessionOk(req.mfaSess))));
+  app.post(K.base + "/register/verify", auth, limit, wrap(async (req, res) => { await regVerify(req, kind, req.subject, sessionOk(req.mfaSess)); upgrade(req, res); return { ok: true }; }));
+  app.post(K.base + "/auth/options", auth, limit, wrap((req) => authOptions(req, kind, req.subject)));
+  app.post(K.base + "/auth/verify", auth, limit, wrap(async (req, res) => { await authVerify(req, kind, req.subject); upgrade(req, res); return { ok: true }; }));
+  app.delete(K.base + "/passkeys/:id", auth, wrap(async (req) => {
+    if (!sessionOk(req.mfaSess)) throw fail(403, mfaError.error, mfaError.code);
+    await removeKey(kind, req.subject.id, req.params.id); return { ok: true };
+  }));
 }
 
-module.exports = { REQUIRED, mount, loginCookie, sessionOk, mfaError, countFor, resetFor, list };
+module.exports = { REQUIRED, mount, loginCookie, sessionOk, mfaError, countFor, resetFor, list, core: { regOptions, regVerify, authOptions, authVerify, removeKey, fail, wrap } };

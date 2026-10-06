@@ -55,15 +55,39 @@
   }
 
   /* ---------- auth ---------- */
-  function showLogin() { $("#login").hidden = false; $("#app").hidden = true; setTimeout(() => $("#pw").focus(), 50); }
+  function showStep(which) { ["loginForm", "setupForm", "keyStep"].forEach((id) => ($("#" + id).hidden = id !== which)); }
+  function showLogin() { $("#login").hidden = false; $("#app").hidden = true; if (!setupToken) { showStep("loginForm"); setTimeout(() => $("#pw").focus(), 50); } }
+  const keyStep = (after) => { showStep("keyStep"); MCCPasskey.gate({ root: $("#keyStep"), base: "/api/admin/mfa", header: "mcc-admin", after, lost: "Lost your passkey? In Supabase, run: delete from passkeys where kind = 'admin'; then request a setup link here.", onDone: () => { $("#pw").value = ""; start(); } }); };
+  let setupToken = new URLSearchParams(location.search).get("setup");
+  if (setupToken) { history.replaceState(null, "", "/admin/"); $("#login").hidden = false; $("#app").hidden = true; showStep("setupForm"); }
   $("#loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    $("#loginMsg").textContent = "";
+    $("#loginMsg").textContent = ""; $("#loginMsg").className = "form-msg";
     try {
-      await api("/api/admin/login", { method: "POST", body: { password: $("#pw").value } });
-      $("#pw").value = "";
-      start();
+      await api("/api/admin/login", { method: "POST", body: { email: $("#em").value, password: $("#pw").value } });
+      keyStep("your password");
     } catch (err) { $("#loginMsg").textContent = err.message; }
+  });
+  $("#reqSetup").addEventListener("click", async () => {
+    try { await api("/api/admin/auth/request-setup", { method: "POST", body: {} }); $("#loginMsg").className = "form-msg ok"; $("#loginMsg").textContent = "If email is working, a setup link is on its way to matthewc@mcc-solutionsnj.com. It expires in 30 minutes."; }
+    catch (err) { $("#loginMsg").className = "form-msg"; $("#loginMsg").textContent = err.message; }
+  });
+  $("#setupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const m = $("#setupMsg"); m.className = "form-msg"; m.textContent = "";
+    if ($("#np").value !== $("#np2").value) { m.textContent = "The two passwords don't match."; return; }
+    try {
+      const r = await api("/api/admin/auth/setup/password", { method: "POST", body: { token: setupToken, password: $("#np").value } });
+      setupToken = null; $("#np").value = ""; $("#np2").value = "";
+      if (r.needsPasskey) keyStep("setting your password");
+      else { showStep("loginForm"); $("#loginMsg").className = "form-msg ok"; $("#loginMsg").textContent = "Password updated. Sign in with your new password and passkey."; }
+    } catch (err) { m.textContent = err.message; }
+  });
+  $("#pwForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const m = $("#pwMsg"); m.className = "form-msg"; m.textContent = "";
+    try { await api("/api/admin/auth/change-password", { method: "POST", body: { current: $("#cp").value, password: $("#cp1").value } }); $("#cp").value = ""; $("#cp1").value = ""; m.className = "form-msg ok"; m.textContent = "Password changed."; }
+    catch (err) { m.textContent = err.message; }
   });
   $("#logout").addEventListener("click", async () => { await api("/api/admin/logout", { method: "POST" }).catch(() => {}); showLogin(); });
 
@@ -73,6 +97,7 @@
     $("#login").hidden = true; $("#app").hidden = false;
     $("#emailWarn").hidden = me.emailEnabled;
     settings = (await api("/api/admin/settings")).settings;
+    MCCPasskey.manager({ root: $("#secKeys"), base: "/api/admin/mfa", header: "mcc-admin", note: "Register a passkey on each device you use, so losing one doesn't lock you out." });
     TZ = settings.business.timezone;
     $("#tzLabel").textContent = `Times in ${shortTz()} · ${settings.business.name}`;
     $$(".bizTz").forEach((e) => (e.textContent = shortTz()));
