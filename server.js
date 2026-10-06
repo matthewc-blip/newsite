@@ -553,6 +553,12 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
     if (row.invoice_id && f !== row.quoted_fee) return res.status(400).json({ error: "This job is already invoiced. Void the invoice to change fees." });
     if (f !== row.quoted_fee) { sets.quoted_fee = f; notes.push(`Fee quoted: ${f == null ? "cleared" : "$" + f.toFixed(2)}`); }
   }
+  // A job can't be completed until it has a client fee (the quoted fee, or the booking's estimate). Enter 0 for a no-charge job.
+  if (sets.status === "completed") {
+    const bodyFee = req.body.quoted_fee === undefined ? undefined : (req.body.quoted_fee === "" || req.body.quoted_fee === null ? null : Number(req.body.quoted_fee));
+    const effective = (bodyFee !== undefined ? bodyFee : row.quoted_fee) ?? row.est_fee;
+    if (effective == null) return res.status(400).json({ error: "Set the client fee before marking this job completed. Enter 0 if there's no charge.", code: "fee_required" });
+  }
   if (feeItems && JSON.stringify(feeItems) !== JSON.stringify(addons.list(row))) {
     sets.addons = JSON.stringify(feeItems); sets.addons_total = feeTotal;
     const f = fees.ofKind(feeItems);

@@ -121,6 +121,7 @@ async function onCompleted(bookingId) {
     mail.deskNotice(`Set a fee to charge ${b.ref}`, `${b.ref} is complete and ${b.contact_name} has a card on file, but there's no client fee yet. Set the fee and click Charge card.`);
     return;
   }
+  if (Number(b.quoted_fee ?? b.est_fee) <= 0 && !Number(b.addons_total || 0)) return; // no-charge job: nothing to bill
   try { await charge(b.id, { kind: "service" }); }
   catch (e) { console.error(`Auto-charge for ${b.ref} failed:`, e.message); }
 }

@@ -309,6 +309,11 @@
     const patch = async (body, okText) => {
       try { await api("/api/admin/bookings/" + id, { method: "PATCH", body }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = okText; loadBoard(); loadStats(); }
       catch (e) {
+        if (e.code === "fee_required" && body.quoted_fee === undefined) {
+          const v = prompt("This job has no client fee yet. Enter the total to charge the client (enter 0 for a no-charge job):");
+          if (v !== null && v.trim() !== "") return patch({ ...body, quoted_fee: v.trim() }, okText);
+          if ($("#dFee")) $("#dFee").focus();
+        }
         if (e.code === "margin" && !body.override_margin && confirm(e.message + "\n\nSave anyway? The override is recorded in the booking history.")) return patch({ ...body, override_margin: true }, okText + " (margin override)");
         $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message;
       }
@@ -692,7 +697,7 @@
       .map(([l, v], i) => `<div class="tile${i === 1 && v > 0 ? " alert" : ""}"><b>${usd(v)}</b><span>${l}</span></div>`).join("");
     if (!$("#billThrough").value) $("#billThrough").value = new Date().toISOString().slice(0, 10);
     const jTotal = (j) => (j.price == null ? null : j.price + (j.extras || 0));
-    const jobLine = (j) => `<li style="grid-template-columns:1fr auto"><span>${esc(j.ref)}${j.file_number ? " · File " + esc(j.file_number) : ""} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}${j.canceled ? ' <span class="pill p-warn">Trip / cancel fee</span>' : ""}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(jTotal(j)) + (j.notarial ? ` <small style="color:var(--muted)">incl. ${usd(j.notarial)} notarial</small>` : "") + (j.extras ? ` <small style="color:var(--muted)">incl. ${usd(j.extras)} extras</small>` : "")}</b></li>`;
+    const jobLine = (j) => `<li style="grid-template-columns:1fr auto"><span>${esc(j.ref)}${j.file_number ? " · File " + esc(j.file_number) : ""} · ${esc(j.category)} · ${esc(full(j.start_utc).replace(/, \d{4}.*/, ""))}${j.canceled ? ' <span class="pill p-warn">Trip / cancel fee</span>' : ""}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span> <button class="linkbtn" style="color:var(--brass-ink)" data-setfee="${j.id}">Set fee</button>' : usd(jTotal(j)) + (j.notarial ? ` <small style="color:var(--muted)">incl. ${usd(j.notarial)} notarial</small>` : "") + (j.extras ? ` <small style="color:var(--muted)">incl. ${usd(j.extras)} extras</small>` : "")}</b></li>`;
     const cards = d.clients.map((c) => {
       const total = c.jobs.reduce((a, j) => a + (jTotal(j) || 0), 0), missing = c.jobs.filter((j) => j.price == null).length;
       return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(c.company)}</h3><b style="font-family:var(--f-display);font-size:1.4rem">${usd(total)}</b></div>
@@ -700,7 +705,7 @@
         ${missing ? `<p class="form-msg">${missing} job${missing > 1 ? "s need" : " needs"} a client fee. Open the booking to set it.</p>` : ""}
         <div class="actions"><button class="btn btn-primary btn-sm" data-billacct="${c.account_id}" ${missing ? "disabled" : ""}>Create &amp; Send Invoice</button><button class="btn btn-ghost btn-sm" data-billdraft="${c.account_id}" ${missing ? "disabled" : ""}>Save as Draft</button></div></div>`;
     });
-    if (d.individuals.length) cards.push(`<div class="card"><h3>Individual customers</h3><p class="meta">One invoice per job, due on receipt</p><ul class="log">${d.individuals.map((j) => `<li style="grid-template-columns:1fr auto auto"><span>${esc(j.contact_name)} · ${esc(j.ref)} · ${esc(j.category)}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(jTotal(j))}${j.canceled ? ' <small style="color:var(--muted)">trip / cancel fee</small>' : ""}</b><button class="linkbtn" style="color:var(--brass-ink)" data-billone="${j.id}" ${j.price == null ? "disabled" : ""}>Invoice</button></li>`).join("")}</ul></div>`);
+    if (d.individuals.length) cards.push(`<div class="card"><h3>Individual customers</h3><p class="meta">One invoice per job, due on receipt</p><ul class="log">${d.individuals.map((j) => `<li style="grid-template-columns:1fr auto auto"><span>${esc(j.contact_name)} · ${esc(j.ref)} · ${esc(j.category)}</span><b>${j.price == null ? '<span style="color:var(--warn)">no fee</span>' : usd(jTotal(j))}${j.canceled ? ' <small style="color:var(--muted)">trip / cancel fee</small>' : ""}</b>${j.price == null ? `<button class="linkbtn" style="color:var(--brass-ink)" data-setfee="${j.id}">Set fee</button>` : `<button class="linkbtn" style="color:var(--brass-ink)" data-billone="${j.id}">Invoice</button>`}</li>`).join("")}</ul></div>`);
     $("#unbilled").innerHTML = cards.join("") || '<div class="empty-state" style="grid-column:1/-1">Nothing to bill. Completed jobs show up here until they\'re on an invoice.</div>';
     const run = async (body, btn) => {
       btn.disabled = true;
@@ -710,6 +715,12 @@
     };
     $$("[data-billacct]").forEach((b) => (b.onclick = () => run({ accountId: Number(b.dataset.billacct) }, b)));
     $$("[data-billdraft]").forEach((b) => (b.onclick = () => run({ accountId: Number(b.dataset.billdraft), send: false }, b)));
+    $$("[data-setfee]").forEach((b) => (b.onclick = async () => {
+      const v = prompt("Client fee for this job, in dollars (enter 0 for no charge):");
+      if (v === null || v.trim() === "") return;
+      try { await api("/api/admin/bookings/" + b.dataset.setfee, { method: "PATCH", body: { quoted_fee: v.trim() } }); await loadBilling(); }
+      catch (e) { alert(e.message); }
+    }));
     $$("[data-billone]").forEach((b) => (b.onclick = () => run({ bookingId: Number(b.dataset.billone) }, b)));
 
     $("#invoiceRows").innerHTML = d.invoices.length ? d.invoices.map((i) => `<tr>
