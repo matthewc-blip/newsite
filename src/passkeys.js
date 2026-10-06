@@ -6,6 +6,7 @@ const { db } = require("./db");
 const crypto = require("crypto");
 const { str, sign, verify, cookie, setCookie, rateLimit } = require("./util");
 const mail = require("./email");
+const { hashPassword, checkPassword, passwordProblem } = require("./password");
 
 const REQUIRED = process.env.REQUIRE_PASSKEYS !== "0";
 const DAY = 86400000;
@@ -21,22 +22,22 @@ function rp(req) {
 }
 
 const KINDS = {
-  client: { cookie: "mcc_client", idKey: "uid", base: "/api/client/mfa", header: "mcc-client",
-    load: (id) => db.one("SELECT u.id, u.name, u.email, a.phone FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE u.id = $1 AND u.active = 1 AND a.active = 1", [id]) },
-  portal: { cookie: "mcc_notary", idKey: "nid", base: "/api/portal/mfa", header: "mcc-portal",
-    load: (id) => db.one("SELECT id, name, email, phone FROM notaries WHERE id = $1 AND active = 1", [id]) },
+  client: { cookie: "mcc_client", idKey: "uid", base: "/api/client/mfa", header: "mcc-client", table: "client_users", signin: "/api/client/signin",
+    byEmail: (e) => db.one("SELECT u.* FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE lower(u.email) = $1 AND u.active = 1 AND a.active = 1", [e]),
+    load: (id) => db.one("SELECT u.id, u.name, u.email, u.password_hash, a.phone FROM client_users u JOIN client_accounts a ON a.id = u.account_id WHERE u.id = $1 AND u.active = 1 AND a.active = 1", [id]) },
+  portal: { cookie: "mcc_notary", idKey: "nid", base: "/api/portal/mfa", header: "mcc-portal", table: "notaries", signin: "/api/portal/signin",
+    byEmail: (e) => db.one("SELECT * FROM notaries WHERE lower(email) = $1 AND active = 1", [e]),
+    load: (id) => db.one("SELECT id, name, email, phone, password_hash FROM notaries WHERE id = $1 AND active = 1", [id]) },
 };
 
-// Cookie set after the emailed link: a short session until the passkey is confirmed (when passkeys are required).
+// Cookie set after the emailed link: it only proves the email address. `lnk` lets the person set a new password; `pw` stays 0 until they do.
 function loginCookie(req, res, kind, id) {
   const K = KINDS[kind];
-  const mfa = REQUIRED ? 0 : 1;
-  const ttl = mfa ? 30 * DAY : 12 * 3600 * 1000;
-  setCookie(req, res, K.cookie, sign({ [K.idKey]: id, mfa, exp: Date.now() + ttl }), Math.round(ttl / 1000));
+  setCookie(req, res, K.cookie, sign({ [K.idKey]: id, pw: 0, lnk: 1, mfa: REQUIRED ? 0 : 1, exp: Date.now() + 12 * 3600 * 1000 }), 12 * 3600);
 }
-// True when a signed session may use the portal (passkey confirmed, or passkeys not required).
-const sessionOk = (s) => !REQUIRED || !!(s && s.mfa);
-const mfaError = { error: "Confirm your passkey to continue.", code: "mfa_required" };
+// True when a signed session may use the portal: password entered or set, and the passkey confirmed (when passkeys are required).
+const sessionOk = (s) => !!(s && s.pw && (!REQUIRED || s.mfa));
+const mfaError = { error: "Finish signing in to continue.", code: "mfa_required" };
 
 const list = (kind, id) => db.all("SELECT id, name, created_at, last_used_at FROM passkeys WHERE kind = $1 AND subject_id = $2 ORDER BY created_at", [kind, id]);
 const countFor = async (kind, id) => (await db.one("SELECT COUNT(*)::int AS n FROM passkeys WHERE kind = $1 AND subject_id = $2", [kind, id])).n;
@@ -164,14 +165,34 @@ function mount(app, kind) {
     req.mfaSess = s; req.subject = subject;
     next();
   }
-  const upgrade = (req, res) => setCookie(req, res, K.cookie, sign({ [K.idKey]: req.subject.id, mfa: 1, exp: Date.now() + 30 * DAY }), 30 * 86400);
+  const upgrade = (req, res) => setCookie(req, res, K.cookie, sign({ [K.idKey]: req.subject.id, pw: 1, mfa: 1, exp: Date.now() + 30 * DAY }), 30 * 86400);
   const limit = rateLimit(30, 15 * 60000);
+  const needPw = (req, res, next) => (req.mfaSess.pw ? next() : res.status(403).json({ error: "Set or enter your password first.", code: "password_required" }));
 
+  // Set a password. Allowed straight after the emailed link (that is how a first password is set or a forgotten one reset),
+  // or while signed in by giving the current password.
+  app.post(K.base + "/password", auth, rateLimit(10, 15 * 60000), wrap(async (req, res) => {
+    const pw = String(req.body.password || "");
+    const had = !!req.subject.password_hash;
+    const fresh = !!req.mfaSess.lnk && !req.mfaSess.pw;
+    if (!fresh) {
+      if (!sessionOk(req.mfaSess)) throw fail(403, mfaError.error, mfaError.code);
+      if (!checkPassword(req.body.current, req.subject.password_hash)) throw fail(401, "Your current password isn't right.");
+    }
+    const bad = passwordProblem(pw, [req.subject.email.split("@")[0], req.subject.name, ...String(req.subject.name || "").split(/\s+/)]);
+    if (bad) throw fail(400, bad);
+    await db.run(`UPDATE ${K.table} SET password_hash = $1, password_set_at = now(), failed_logins = 0, locked_until = NULL WHERE id = $2`, [hashPassword(pw), req.subject.id]);
+    await logEvent(kind, req.subject, had ? "password_changed" : "password_set", fresh ? "Emailed link" : "Current password", null);
+    if (had) alertOwner(req.subject, "Your password was changed", "The password on your MCC Solutions account was just changed.");
+    const ttl = req.mfaSess.mfa ? 30 * DAY : 12 * 3600 * 1000;
+    setCookie(req, res, K.cookie, sign({ [K.idKey]: req.subject.id, pw: 1, mfa: req.mfaSess.mfa ? 1 : 0, exp: Date.now() + ttl }), Math.round(ttl / 1000));
+    return { ok: true };
+  }));
   app.get(K.base + "/status", auth, async (req, res) => {
-    res.json({ required: REQUIRED, verified: sessionOk(req.mfaSess), name: req.subject.name, email: req.subject.email, passkeys: await list(kind, req.subject.id), backupCodesLeft: await codesLeft(kind, req.subject.id) });
+    res.json({ required: REQUIRED, verified: sessionOk(req.mfaSess), pwDone: !!req.mfaSess.pw, passwordSet: !!req.subject.password_hash, name: req.subject.name, email: req.subject.email, passkeys: await list(kind, req.subject.id), backupCodesLeft: await codesLeft(kind, req.subject.id) });
   });
-  app.post(K.base + "/register/options", auth, limit, wrap((req) => regOptions(req, kind, req.subject, sessionOk(req.mfaSess))));
-  app.post(K.base + "/register/verify", auth, limit, wrap(async (req, res) => {
+  app.post(K.base + "/register/options", auth, needPw, limit, wrap((req) => regOptions(req, kind, req.subject, sessionOk(req.mfaSess))));
+  app.post(K.base + "/register/verify", auth, needPw, limit, wrap(async (req, res) => {
     const hadKeys = (await countFor(kind, req.subject.id)) > 0;
     await regVerify(req, kind, req.subject, sessionOk(req.mfaSess));
     upgrade(req, res);
@@ -180,7 +201,7 @@ function mount(app, kind) {
     return { ok: true, backupCodes };
   }));
   // Lost passkey: a backup code removes the old passkeys so a new one can be registered (the emailed link is still required to get here).
-  app.post(K.base + "/recover", auth, rateLimit(5, 15 * 60000), wrap(async (req) => {
+  app.post(K.base + "/recover", auth, needPw, rateLimit(5, 15 * 60000), wrap(async (req) => {
     if (!(await countFor(kind, req.subject.id))) throw fail(400, "There's no passkey to recover. Create one instead.");
     if (!(await useCode(kind, req.subject.id, req.body.code))) throw fail(401, "That backup code didn't work. Check it and try again, or contact the desk.");
     await resetFor(kind, req.subject.id);
@@ -195,11 +216,30 @@ function mount(app, kind) {
     await logEvent(kind, req.subject, "backup_codes_regenerated", null, null);
     return { ok: true, backupCodes: codes };
   }));
-  app.post(K.base + "/auth/options", auth, limit, wrap((req) => authOptions(req, kind, req.subject)));
-  app.post(K.base + "/auth/verify", auth, limit, wrap(async (req, res) => { await authVerify(req, kind, req.subject); upgrade(req, res); return { ok: true }; }));
+  app.post(K.base + "/auth/options", auth, needPw, limit, wrap((req) => authOptions(req, kind, req.subject)));
+  app.post(K.base + "/auth/verify", auth, needPw, limit, wrap(async (req, res) => { await authVerify(req, kind, req.subject); upgrade(req, res); return { ok: true }; }));
   app.delete(K.base + "/passkeys/:id", auth, wrap(async (req) => {
     if (!sessionOk(req.mfaSess)) throw fail(403, mfaError.error, mfaError.code);
     await removeKey(kind, req.subject.id, req.params.id); return { ok: true };
+  }));
+
+  // Password sign-in (step one). The passkey is still step two. Same answer for unknown email, wrong password and no password yet.
+  app.post(K.signin, rateLimit(10, 15 * 60000), wrap(async (req, res) => {
+    const email = str(req.body.email, 160).toLowerCase();
+    const generic = "That email and password don't match. First time, or forgot your password? Use the link option below.";
+    const u = email && (await K.byEmail(email));
+    if (!u || !u.password_hash) { crypto.scryptSync("x", "y", 64, { N: 16384, r: 8, p: 1 }); throw fail(401, generic); }
+    if (u.locked_until && new Date(u.locked_until) > new Date()) throw fail(429, "Too many wrong attempts. Wait 15 minutes, or use the emailed link to reset your password.");
+    if (!checkPassword(req.body.password, u.password_hash)) {
+      const n = (u.failed_logins || 0) + 1;
+      await db.run(`UPDATE ${K.table} SET failed_logins = $1, locked_until = $2 WHERE id = $3`, [n, n >= 5 ? new Date(Date.now() + 15 * 60000) : null, u.id]);
+      if (n === 5) alertOwner(u, "Several wrong password attempts", "Someone entered the wrong password five times on your account, so sign-in is paused for 15 minutes.");
+      throw fail(401, generic);
+    }
+    await db.run(`UPDATE ${K.table} SET failed_logins = 0, locked_until = NULL WHERE id = $1`, [u.id]);
+    const ttl = 12 * 3600 * 1000;
+    setCookie(req, res, K.cookie, sign({ [K.idKey]: u.id, pw: 1, mfa: REQUIRED ? 0 : 1, exp: Date.now() + ttl }), Math.round(ttl / 1000));
+    return { ok: true };
   }));
 }
 

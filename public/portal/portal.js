@@ -37,13 +37,12 @@
   }
   $("#loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = e.target.querySelector("button");
-    btn.disabled = true;
-    try {
-      await api("/api/portal/request-link", { method: "POST", body: { email: $("#l-email").value.trim() } });
-      msg($("#loginMsg"), "If that email is on our roster, a sign-in link is on its way. Check your inbox (and spam).", "ok");
-    } catch (err) { msg($("#loginMsg"), err.message, "err"); }
-    btn.disabled = false;
+    try { await api("/api/portal/signin", { method: "POST", body: { email: $("#l-email").value.trim(), password: $("#l-pw").value } }); location.reload(); }
+    catch (err) { msg($("#loginMsg"), err.message, "err"); }
+  });
+  $("#mailLink").addEventListener("click", async () => {
+    try { await api("/api/portal/request-link", { method: "POST", body: { email: $("#l-email").value.trim() } }); msg($("#loginMsg"), "If that email is on our roster, a link is on its way. Check your inbox (and spam). It lets you set or reset your password.", "ok"); }
+    catch (err) { msg($("#loginMsg"), err.message, "err"); }
   });
   $("#logout").addEventListener("click", async () => { await api("/api/portal/logout", { method: "POST" }).catch(() => {}); location.href = "/portal/"; });
 

@@ -142,9 +142,9 @@ async function notaryOffer(b, n, settings, link) {
 async function notarySignIn(n, link, settings) {
   await send({
     to: n.email,
-    subject: `Your ${settings.business.name} notary portal sign-in link`,
-    text: `Hi ${n.name},\n\nUse this link to sign in to the notary portal. It works once and expires in 30 minutes.\n\n${link}\n\nIf you didn't ask for this, ignore this email.`,
-    html: wrapHtml("Sign in to the notary portal", `Hi ${esc(n.name)}, this link works once and expires in 30 minutes.`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a><br><br>If you didn't ask for this, ignore this email.`),
+    subject: `Your ${settings.business.name} notary portal link to set your password`,
+    text: `Hi ${n.name},\n\nUse this link to set or reset your notary portal password. It works once and expires in 30 minutes. After that, sign in with your password and passkey.\n\n${link}\n\nIf you didn't ask for this, ignore this email.`,
+    html: wrapHtml("Set your notary portal password", `Hi ${esc(n.name)}, this link works once and expires in 30 minutes. Use it to set or reset your password, then sign in with your password and passkey.`, [], `<a href="${esc(link)}" style="display:inline-block;background:#a8751f;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:600">Set my password</a><br><br>If you didn't ask for this, ignore this email.`),
   });
 }
 

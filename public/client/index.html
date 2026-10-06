@@ -84,10 +84,12 @@
     <form class="card login" id="loginForm" novalidate>
       <p class="eyebrow">Client portal</p>
       <h2>Sign in</h2>
-      <p style="color:var(--ink-2)">For title companies, lenders and law firms with an MCC Solutions account. Enter your work email and we'll send a sign-in link.</p>
-      <div class="field"><label for="l-email">Work email</label><input id="l-email" type="email" autocomplete="email" placeholder="you@company.com"></div>
-      <button class="btn btn-primary" type="submit">Email Me a Link</button>
+      <p style="color:var(--ink-2)">For title companies, lenders and law firms with an MCC Solutions account. Sign in with your work email and password, then confirm your passkey.</p>
+      <div class="field"><label for="l-email">Work email</label><input id="l-email" type="email" autocomplete="username" placeholder="you@company.com"></div>
+      <div class="field"><label for="l-pw">Password</label><input id="l-pw" type="password" autocomplete="current-password"></div>
+      <button class="btn btn-primary" type="submit">Sign In</button>
       <p class="msg" id="loginMsg" role="status"></p>
+      <p style="font-size:.88rem"><button class="linkbtn" type="button" id="mailLink" style="color:var(--brass-ink)">First time, or forgot your password? Email me a link</button></p>
       <p style="font-size:.85rem;color:var(--muted)">New here? <a href="#signup">Create a business account</a> below, or <a href="/notary/#contact">contact the desk</a>.</p>
     </form>
     <form class="card login" id="signupForm" novalidate style="margin-top:0">

@@ -62,6 +62,27 @@
     } });
   }
 
+  // Step after the emailed link: set (or reset) the account password. Sign-in is the password, then a passkey.
+  function passwordStep({ root, call, st, redo }) {
+    const first = !st.passwordSet;
+    root.innerHTML = `<p class="eyebrow">Step 1 of 2</p><h2>${first ? "Create your password" : "Set a new password"}</h2>
+      <p style="color:var(--ink-2)">${first ? "Your account uses a password and then a passkey." : "You came in by email link, so choose a new password. You'll still confirm your passkey next."} At least 12 characters. A few random words works well.</p>
+      <form id="pw-form" novalidate>
+        <div class="field"><label for="pw-1">New password</label><input id="pw-1" type="password" autocomplete="new-password" minlength="12"></div>
+        <div class="field"><label for="pw-2">Confirm password</label><input id="pw-2" type="password" autocomplete="new-password"></div>
+        <button class="btn btn-primary" type="submit">Save password</button>
+        <p class="msg" id="pk-msg" role="status"></p>
+      </form>`;
+    const msg = $m(root);
+    root.querySelector("#pw-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const a = root.querySelector("#pw-1").value, b = root.querySelector("#pw-2").value;
+      if (a !== b) return msg("The two passwords don't match.", "err");
+      const btn = e.target.querySelector("button"); btn.disabled = true;
+      try { await call("/password", "POST", { password: a }); redo(); } catch (er) { msg(er.message, "err"); btn.disabled = false; }
+    };
+  }
+
   async function gate({ root, base, header, onDone, after, lost }) {
     after = after || "the email link";
     const call = client(base, header);
@@ -69,6 +90,7 @@
     let st;
     try { st = await call("/status"); } catch (e) { root.innerHTML = `<p class="eyebrow">Two-step sign-in</p><p class="msg err">${esc(e.message)}</p><p><a href="">Start over</a></p>`; return; }
     if (st.verified) return onDone();
+    if (st.pwDone === false) return passwordStep({ root, call, st, redo: () => gate({ root, base, header, onDone, after, lost }) });
     const has = st.passkeys.length > 0;
     root.innerHTML = `<p class="eyebrow">Two-step sign-in</p>
       <h2>${has ? "Confirm it's you" : "Set up your passkey"}</h2>
@@ -109,9 +131,19 @@
       root.innerHTML = `<ul style="list-style:none;margin:0;padding:0">${st.passkeys.map((p) => `<li style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)"><span><b>${esc(p.name || "Passkey")}</b><br><small style="color:var(--muted)">Added ${esc(fmt(p.created_at))} · last used ${esc(fmt(p.last_used_at))}</small></span><button class="linkbtn" data-rm="${p.id}" style="color:var(--warn)">Remove</button></li>`).join("") || '<li style="padding:10px 0">No passkey yet.</li>'}</ul>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" type="button" id="pk-add">Add another passkey</button>${st.backupCodesLeft === undefined ? "" : `<button class="btn btn-ghost btn-sm" type="button" id="pk-codes-new">${st.backupCodesLeft ? "New backup codes" : "Get backup codes"}</button>`}</div>
         ${st.backupCodesLeft === undefined ? "" : `<p style="font-size:.88rem;color:var(--muted);margin-top:8px">Backup codes left: <b>${st.backupCodesLeft}</b>. Generating new codes cancels the old ones.</p>`}
+        <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">Change password</summary>
+          <form id="pw-change" novalidate style="margin-top:8px;max-width:340px">
+            <div class="field"><label for="pc-cur">Current password</label><input id="pc-cur" type="password" autocomplete="current-password"></div>
+            <div class="field"><label for="pc-new">New password <span class="opt">(12+ characters)</span></label><input id="pc-new" type="password" autocomplete="new-password"></div>
+            <button class="btn btn-ghost btn-sm" type="submit">Change password</button>
+          </form></details>
         <p class="msg ${kind || ""}" id="pk-msg" role="status">${esc(note || "")}</p>
-        <p style="font-size:.85rem;color:var(--muted);margin-top:8px">${esc(note || "Sign-in uses your emailed link plus a passkey. Register one on each device you use, so losing one doesn't lock you out.")}</p>`;
+        <p style="font-size:.85rem;color:var(--muted);margin-top:8px">${esc(note || "Sign-in uses your password plus a passkey. Register one on each device you use, so losing one doesn't lock you out.")}</p>`;
       const msg = $m(root);
+      root.querySelector("#pw-change").onsubmit = async (e) => {
+        e.preventDefault();
+        try { await call("/password", "POST", { current: root.querySelector("#pc-cur").value, password: root.querySelector("#pc-new").value }); draw("Password changed.", "ok"); } catch (er) { msg(er.message, "err"); }
+      };
       root.querySelector("#pk-add").onclick = async (ev) => {
         if (!supported()) return msg("This browser doesn't support passkeys.", "err");
         ev.currentTarget.disabled = true; msg("Waiting for your device…");

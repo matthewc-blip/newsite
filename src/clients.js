@@ -20,8 +20,8 @@ async function sendClientLink(u, link, welcome) {
   const s = await getSettings();
   await mail.send({
     to: u.email,
-    subject: welcome === "pending" ? `Confirm your ${s.business.name} business account` : welcome ? `Your ${s.business.name} client account is ready` : `Your ${s.business.name} sign-in link`,
-    text: `Hi ${u.name},\n\n${welcome === "pending" ? `We received a request to open a business account for ${u.company || "your company"} with ${s.business.name}. Click the link to confirm this email address. The desk reviews new accounts, usually within one business day, and we'll email you as soon as yours is approved so you can place orders.\n\nIf you didn't request this, ignore this email and nothing will happen.\n\n` : welcome ? `Your company now has an account with ${s.business.name}. Place signing orders, upload closing packages and download scanbacks in one place.\n\n` : ""}Sign in: ${link}\n\nThis link expires in ${welcome ? (welcome === "pending" ? "24 hours" : "7 days") : "30 minutes"}. After that, sign in at ${mail.BASE}/client/ with this email address.`,
+    subject: welcome === "pending" ? `Confirm your ${s.business.name} business account` : welcome ? `Your ${s.business.name} client account is ready` : `Your ${s.business.name} link to set your password`,
+    text: `Hi ${u.name},\n\n${welcome === "pending" ? `We received a request to open a business account for ${u.company || "your company"} with ${s.business.name}. Click the link to confirm this email address. The desk reviews new accounts, usually within one business day, and we'll email you as soon as yours is approved so you can place orders.\n\nIf you didn't request this, ignore this email and nothing will happen.\n\n` : welcome ? `Your company now has an account with ${s.business.name}. Place signing orders, upload closing packages and download scanbacks in one place.\n\n` : ""}Set up your password and sign in: ${link}\n\nThis link expires in ${welcome ? (welcome === "pending" ? "24 hours" : "7 days") : "30 minutes"}. After that, sign in at ${mail.BASE}/client/ with your email and password (use the link option there if you forgot it). You'll also confirm a passkey.`,
   });
 }
 
@@ -251,7 +251,7 @@ function register(app, { requireAdmin, insertBooking, readBookingInput }) {
     if (req.body.notify !== false) {
       const s = await getSettings();
       for (const u of users) mail.send({ to: u.email, subject: `Your ${s.business.name} business account is approved`,
-        text: `Hi ${u.name},\n\nYour account for ${a.company} is approved. Sign in to place signing orders, upload closing packages and download scanbacks:\n${mail.BASE}/client/\n\nEnter your work email and we'll send a sign-in link.\n\n${s.business.name}` }).catch((e) => console.error("Approval email:", e.message));
+        text: `Hi ${u.name},\n\nYour account for ${a.company} is approved. Sign in to place signing orders, upload closing packages and download scanbacks:\n${mail.BASE}/client/\n\nSign in with your email and password. First time? Use the link option on that page to set a password.\n\n${s.business.name}` }).catch((e) => console.error("Approval email:", e.message));
     }
     res.json({ ok: true });
   });

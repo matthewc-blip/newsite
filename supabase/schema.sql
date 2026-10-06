@@ -481,3 +481,14 @@ create table if not exists security_events (
 );
 alter table backup_codes enable row level security;
 alter table security_events enable row level security;
+
+-- ===== Passwords for client users and notaries (added in v18; safe to re-run) =====
+-- Sign-in is now email + password, then a passkey. The emailed link only proves the address, to set or reset the password.
+alter table client_users add column if not exists password_hash text;
+alter table client_users add column if not exists password_set_at timestamptz;
+alter table client_users add column if not exists failed_logins integer not null default 0;
+alter table client_users add column if not exists locked_until timestamptz;
+alter table notaries add column if not exists password_hash text;
+alter table notaries add column if not exists password_set_at timestamptz;
+alter table notaries add column if not exists failed_logins integer not null default 0;
+alter table notaries add column if not exists locked_until timestamptz;

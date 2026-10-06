@@ -40,7 +40,11 @@
   function showSignin(t) { $("#signin").hidden = false; $("#tabs").hidden = true; $$("section[data-tab]").forEach((s) => (s.hidden = true)); if (t) msg($("#loginMsg"), t, "err"); }
   $("#loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    try { await api("/api/client/request-link", { method: "POST", body: { email: $("#l-email").value.trim() } }); msg($("#loginMsg"), "If that email has an account, a sign-in link is on its way.", "ok"); }
+    try { await api("/api/client/signin", { method: "POST", body: { email: $("#l-email").value.trim(), password: $("#l-pw").value } }); location.reload(); }
+    catch (err) { msg($("#loginMsg"), err.message, "err"); }
+  });
+  $("#mailLink").addEventListener("click", async () => {
+    try { await api("/api/client/request-link", { method: "POST", body: { email: $("#l-email").value.trim() } }); msg($("#loginMsg"), "If that email has an account, a link is on its way. It lets you set or reset your password.", "ok"); }
     catch (err) { msg($("#loginMsg"), err.message, "err"); }
   });
   $("#signupForm").addEventListener("submit", async (e) => {
