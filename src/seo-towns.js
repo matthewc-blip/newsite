@@ -211,7 +211,7 @@ function register(app, c) {
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(t.name)} bookkeeping questions</h2></div>
           ${faqHtml(faqs)}
           <h3 style="margin-top:36px;margin-bottom:12px">Nearby towns</h3>${nearLinks(t, bookPath)}
-          <p style="margin-top:14px;color:var(--ink-2)">Also in ${esc(t.name)}: <a href="${webPath(t)}">websites and local SEO</a> · <a href="${notaryPath(t)}">mobile notary</a></p>
+          <p style="margin-top:14px;color:var(--ink-2)">Also in ${esc(t.name)}: <a href="${webPath(t)}">websites and local SEO</a> · <a href="${notaryPath(t)}">mobile notary</a> · <a href="/bookkeeping/software">bookkeeping by software</a> · <a href="/bookkeeping/guides">bookkeeping guides</a></p>
         </div></section>`,
         ctaTitle: `Bookkeeping help in ${t.name}? Ask for a quote.`, ctaHref: "/bookkeeping/#interest", ctaLabel: "Get a Quote",
       },
