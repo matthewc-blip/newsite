@@ -6,6 +6,8 @@ const prices = require("./prices");
 const { EXTRA } = require("./seo-extra");
 const { GUIDES, guidePath, guidesFor } = require("./guides");
 const { DOCS, docPath, DOCS_HUB, DOC_CATEGORIES } = require("./doc-pages");
+const townsMod = require("./seo-towns");
+const { TOWNS } = townsMod;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const bySlug = Object.fromEntries(COUNTIES.map((c) => [c.slug, c]));
@@ -45,7 +47,7 @@ function orgSchema(url, biz, areas) {
 const faqSchema = (faqs) => ({ "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
 const crumbSchema = (url, items) => ({ "@type": "BreadcrumbList", itemListElement: items.map(([name, path], i) => ({ "@type": "ListItem", position: i + 1, name, item: url + path })) });
 
-function layout({ req, biz, title, description, path, crumbs, body, schema }) {
+function layout({ req, biz, title, description, path, crumbs, body, schema, noindex }) {
   const url = base(req);
   const canonical = url + path;
   const graph = { "@context": "https://schema.org", "@graph": schema };
@@ -59,7 +61,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(canonical)}">
-<meta property="og:type" content="website">
+${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:type" content="website">
 <meta property="og:site_name" content="MCC Solutions">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
@@ -93,7 +95,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
     <a href="/notary/#faq">FAQ</a>
     <a href="/notary/#contact">Contact</a>
   </nav>
-  <a class="btn btn-primary hdr-cta" href="/notary/#order">Book Now</a>
+  <a class="btn btn-primary hdr-cta" href="${esc(body.ctaHref || "/notary/#order")}">${esc(body.ctaLabel || "Book Now")}</a>
 </div></header>
 <main>
   <section class="page-hero"><div class="wrap">
@@ -103,7 +105,7 @@ function layout({ req, biz, title, description, path, crumbs, body, schema }) {
   ${body.main}
   <section class="band cta-band"><div class="wrap">
     <h2>${esc(body.ctaTitle || "Need a notary? Send it to the desk.")}</h2>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn btn-primary" href="/notary/#order">Book Now</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call ${phone}</a></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn btn-primary" href="${esc(body.ctaHref || "/notary/#order")}">${esc(body.ctaLabel || "Book Now")}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call ${phone}</a></div>
   </div></section>
 </main>
 <footer><div class="wrap">
@@ -198,6 +200,7 @@ function requestForm(s) {
 }
 
 function register(app) {
+  require("./seo-towns").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   app.get(NJ_HUB, async (req, res) => {
     const biz = await business();
     const url = base(req);
@@ -251,6 +254,7 @@ function register(app) {
         <section class="band"><div class="wrap" style="max-width:860px">
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(c.name)} County notary questions</h2></div>
           ${faqHtml(faqs)}
+          ${c.slug === "union" ? `<h3 style="margin-top:36px;margin-bottom:12px">All 21 Union County towns</h3><p style="color:var(--ink-2)">Pick your town for local details:</p><ul class="county-links">${TOWNS.map((t) => `<li><a href="${townsMod.notaryPath(t)}">${esc(t.name)}</a></li>`).join("")}</ul><p style="margin-top:12px;color:var(--ink-2)">Business owner? See <a href="/bookkeeping/">bookkeeping</a> and <a href="/websites/">websites and local SEO</a>, with a page for each town.</p>` : ""}
           <h3 style="margin-top:36px;margin-bottom:12px">Nearby counties</h3>${countyLinks(neighbors)}
         </div></section>`,
         ctaTitle: `Need a notary in ${c.name} County? Send it to the desk.`,
@@ -409,9 +413,9 @@ function register(app) {
 
   app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
-    if ((await getSettings().catch(() => null))?.bookkeeping?.open) paths.push(["/bookkeeping/", "0.7"]);
+    if ((await getSettings().catch(() => null))?.bookkeeping?.open) { paths.push(["/bookkeeping/", "0.7"]); TOWNS.forEach((t) => paths.push([townsMod.bookPath(t), "0.5"])); }
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map(([p, pr]) => `  <url><loc>${esc(url + p)}</loc><lastmod>${BUILT}</lastmod><priority>${pr}</priority></url>`).join("\n")}
