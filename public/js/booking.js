@@ -395,7 +395,7 @@
       ron: "A coordinator will confirm your session and email the secure signing link. Have your photo ID and a device with a camera ready.",
       rin: "A coordinator will confirm RIN eligibility and arrange for the paper documents to reach you before the video session.",
     }[b.service];
-    $("#doneText").textContent = `We emailed a copy to ${$("#b-cemail").value.trim()}. ${next}`;
+    $("#doneText").textContent = `We emailed a copy to ${$("#b-cemail").value.trim()}. Your time is not guaranteed until you receive a confirmation email from us. ${next}`;
     fillDl($("#doneReview"), [["Booking", b.ref], ...rows()]);
     $("#doneIcs").href = `/api/bookings/${encodeURIComponent(b.ref)}/ics?token=${encodeURIComponent(token)}`;
     $("#doneManage").href = res.manageUrl;
@@ -403,7 +403,7 @@
     cardBox.hidden = !b.cardRequested;
     if (b.cardRequired) {
       $("#doneTitle").textContent = `Booking ${b.ref} received. One last step`;
-      $("#doneText").textContent = `A card is required to confirm your appointment. It's charged only after your appointment, once the final fee is confirmed. Taking you to secure checkout…`;
+      $("#doneText").textContent = `A card is required to confirm your appointment, and no time is guaranteed until you receive a confirmation email from us. The card is charged only after your appointment, once the final fee is confirmed. Taking you to secure checkout…`;
       setTimeout(() => $("#doneCardBtn").click(), 1500);
     }
     $("#doneCardBtn").onclick = async () => {

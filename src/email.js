@@ -76,12 +76,12 @@ async function bookingCreated(b, settings, ics) {
   const lines = summaryLines(b, settings);
   const link = manageUrl(b);
   const cardLine = settings.billing?.cardAtBooking === "required" && !b.client_account_id && !b.stripe_payment_method_id ? "To confirm your appointment, please save a card using the link below. It is charged only after your appointment, once the final fee is confirmed." : "";
-  const text = `We received your request.\n\n${cardLine ? cardLine + "\n\n" : ""}${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${NEXT_STEPS[b.service]}\n\nView, add a card or cancel: ${link}\nQuestions: ${settings.business.phone} / ${settings.business.email}`;
+  const text = `We received your request. Your requested time is not guaranteed until you receive a separate confirmation email from us.\n\n${cardLine ? cardLine + "\n\n" : ""}${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${NEXT_STEPS[b.service]}\n\nView, add a card or cancel: ${link}\nQuestions: ${settings.business.phone} / ${settings.business.email}`;
   await send({
     to: b.contact_email,
     subject: `Booking request received · ${b.ref}`,
     text,
-    html: wrapHtml("Booking request received", esc((cardLine ? cardLine + " " : "") + NEXT_STEPS[b.service]), lines, `<a href="${esc(link)}">View or cancel this booking</a><br>Questions: ${esc(settings.business.phone)} · ${esc(settings.business.email)}`),
+    html: wrapHtml("Booking request received", esc("Your requested time is not guaranteed until you receive a separate confirmation email from us. " + (cardLine ? cardLine + " " : "") + NEXT_STEPS[b.service]), lines, `<a href="${esc(link)}">View or cancel this booking</a><br>Questions: ${esc(settings.business.phone)} · ${esc(settings.business.email)}`),
     attachments: ics ? [{ filename: `${b.ref}.ics`, content: ics, contentType: "text/calendar" }] : undefined,
   });
   await send({
