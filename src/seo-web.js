@@ -225,6 +225,7 @@ function register(app, c) {
             busy=true;$("chk-go").disabled=true;m.style.color="var(--muted)";m.textContent="Checking, this takes a few seconds\\u2026";
             post("/api/seo-check",{url:u}).then(function(j){last=j.result;m.textContent="";render(last)}).catch(function(err){m.style.color="";m.textContent=err.message}).then(function(){busy=false;$("chk-go").disabled=false});
           });
+          try{var q0=new URLSearchParams(location.search).get("url");if(q0){$("chk-url").value=q0.slice(0,300);$("chk-go").click()}}catch(e){}
           $("l-go").addEventListener("click",function(){var m=$("l-msg");m.textContent="";m.style.color="";if(!last){m.textContent="Run the check first.";return}
             var n=$("l-name").value.trim(),em=$("l-email").value.trim();if(!n||!em){m.textContent="Enter your name and email.";return}
             $("l-go").disabled=true;

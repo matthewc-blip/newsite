@@ -94,6 +94,11 @@ form.card{border-radius:var(--r)}
     <h1 data-type>A website that gets found, and gets you calls.</h1>
     <p class="lede">Clear, fast websites and local search work for small businesses. We run our own booking, dispatch and client site end to end, and we build yours the same way: simple to use, easy to find, and yours to keep.</p>
     <div class="ctas"><a class="btn btn-primary" href="#quote">Get a quote</a><a class="btn btn-ghost" href="#what">What we do</a></div>
+    <form class="quickcheck" action="/websites/seo-checker" method="get" aria-label="Free website check" style="margin:26px 0 0;max-width:640px;padding:16px 18px;border:1px solid var(--line);border-left:4px solid var(--brass);background:rgba(255,255,255,.04);border-radius:6px">
+      <label for="qc-url" style="display:block;font-weight:700;margin-bottom:8px">Free website check: how does your site look to Google?</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input id="qc-url" name="url" inputmode="url" autocomplete="url" placeholder="yourbusiness.com" maxlength="300" required style="flex:1 1 240px;min-width:0;padding:12px 14px;font:inherit;border:1px solid var(--line);border-radius:4px"><button class="btn btn-primary" type="submit">Check my site</button></div>
+      <p style="margin:8px 0 0;font-size:.88rem;opacity:.85">Takes a few seconds, no sign-up to see results. Or <a href="/websites/quiz">take the 2-minute quiz</a>.</p>
+    </form>
     <div class="strip" aria-label="How we work"><span>Fixed written quote</span><span>You own your domain and accounts</span><span>No ranking promises, just solid work</span></div>
   </div></section>
 
