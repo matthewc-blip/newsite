@@ -7,6 +7,17 @@ const svPath = (s) => `${SV_HUB}/${s.slug}`;
 const gPath = (g) => `${HUB}/${g.slug}`;
 const SV = Object.fromEntries(SERVICES.map((s) => [s.slug, s]));
 const GD = Object.fromEntries(GUIDES.map((g) => [g.slug, g]));
+// Rate card (set by the owner, 2026-10-07). Change here and in public/websites/index.html.
+const PRICES = {
+  "local-seo": { from: "$500/mo", rows: [["Local SEO audit", "$500", "one-time: site, profile, listings and a written plan"], ["Starter", "$500/mo", "profile upkeep and one new page or fix a month"], ["Standard", "$900/mo", "adds review support and two pages a month"], ["Growth", "$1,500/mo", "adds more content and a monthly call"]], note: "Monthly plans have a 3-month minimum. We never promise rankings." },
+  "google-business-profile": { from: "$350", rows: [["Profile setup or cleanup", "$350", "one-time: claim, verify, complete, fix duplicates"]], note: "Suspended profiles are quoted after we see the cause. Google makes the final call on appeals." },
+  "website-design": { from: "$1,500", rows: [["Starter website", "$1,500", "up to 5 pages, mobile, forms, Business Profile and Search Console set up"], ["Standard website", "$3,000", "up to 12 pages, service pages, schema, speed tuning"], ["Growth website", "From $5,000", "12+ pages, booking, town pages, tracking; quoted"]], note: "Every project gets a fixed written quote before work starts. You own the domain and accounts." },
+  "website-speed": { from: "$400", rows: [["Speed fix", "$400", "Core Web Vitals review and the fixes that matter most"]], note: "Rebuilds are quoted separately if the site is too heavy to fix." },
+  "technical-seo-and-schema": { from: "$85/hr", rows: [["Technical SEO and schema", "Quoted", "most sites are covered in an audit or a build"], ["Ad hoc work", "$85/hr", "fixes, redirects, markup and other small jobs"]], note: "We estimate the hours in writing before we start." },
+  "website-care": { from: "$99/mo", rows: [["Care", "$99/mo", "updates, backups and security checks"], ["Care + SEO check", "$199/mo", "adds a monthly Search Console and analytics review"]], note: "Cancel any time. You keep your site and accounts." },
+};
+const priceBand = (pr) => pr ? `<section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">Pricing</p><h2>What it costs</h2></div><div class="price-list">${pr.rows.map(([n, a, d]) => `<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line,#ddd)"><div><b>${n}</b><br><span style="color:var(--ink-2)">${d}</span></div><div style="white-space:nowrap;font-weight:600">${a}</div></div>`).join("")}</div><p style="margin-top:14px;color:var(--ink-2)">${pr.note} Prices are starting points. We confirm a written quote before any work begins.</p></div></section>` : "";
+
 const paths = () => [[HUB, "0.6"], [SV_HUB, "0.7"], ...SERVICES.map((s) => [svPath(s), "0.7"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
 
 function register(app, c) {
@@ -41,7 +52,7 @@ function register(app, c) {
       description: "Local SEO, Google Business Profile, website design, speed fixes, technical SEO and website care for New Jersey small businesses. Fixed written quotes.",
       body: {
         hero: `<p class="eyebrow">Websites &amp; local SEO</p><h1 style="margin-top:10px">Website and local SEO services for New Jersey businesses</h1><p class="lede" style="margin-top:14px">Clear, fast websites and local search work from a Cranford firm. Fixed written quotes, you own your accounts, and no ranking promises.</p>`,
-        main: `<section class="band"><div class="wrap"><div class="grid g3">${SERVICES.map((s) => card(svPath(s), "SERVICE", s.name, s.description, s.short)).join("")}</div>
+        main: `<section class="band"><div class="wrap"><div class="grid g3">${SERVICES.map((s) => card(svPath(s), "SERVICE", s.name, s.description + (PRICES[s.slug] ? ` From ${PRICES[s.slug].from}.` : ""), s.short)).join("")}</div>
           <p style="margin-top:28px;color:var(--ink-2)">Not sure where to start? Read <a href="${gPath(GD["local-seo-checklist-for-small-business"])}">our local SEO checklist</a> or <a href="/websites/#quote">tell us about your business</a>.</p></div></section>`,
         ctaTitle: "Tell us what you need. We'll quote it in writing.", ...CTA,
       },
@@ -68,6 +79,7 @@ function register(app, c) {
           <div class="sec-head"><p class="eyebrow">How it works</p><h2>Four steps</h2></div>
           <ol class="steps">${s.process.map(([h, p]) => `<li><b>${esc(h)}</b><span>${esc(p)}</span></li>`).join("")}</ol>
         </div></section>
+        ${priceBand(PRICES[s.slug])}
         <section class="band"><div class="wrap" style="max-width:860px">
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(s.name)} questions</h2></div>
           ${faqHtml(s.faqs)}
@@ -114,4 +126,4 @@ function register(app, c) {
   });
 }
 
-module.exports = { register, paths, HUB, SV_HUB };
+module.exports = { register, paths, HUB, SV_HUB, PRICES };
