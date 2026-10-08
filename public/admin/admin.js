@@ -743,6 +743,13 @@
         ${s.persona_link ? `<p style="font-size:.88rem"><button class="linkbtn" data-rcopy="${esc(s.persona_link)}">Copy ID check link</button></p>` : ""}
         ${s.recording_url ? `<p style="font-size:.88rem"><a href="${esc(s.recording_url)}" target="_blank" rel="noopener">Open recording</a>${s.recording_passcode ? " · passcode " + esc(s.recording_passcode) : ""}</p>` : ""}
         <details style="margin:8px 0"><summary>Checklist (${done}/${REM.checks.length})</summary>${REM.checks.map(([k, l]) => `<label style="display:flex;gap:8px;margin:6px 0;font-size:.9rem"><input type="checkbox" data-rck="${s.id}:${k}" ${c[k] ? "checked" : ""}> ${esc(l)}</label>`).join("")}</details>
+        <details style="margin:8px 0"><summary>Fingerprints (${(s.hashes || []).length})</summary>
+          ${(s.hashes || []).map((h) => `<p style="font-size:.78rem;margin:6px 0;word-break:break-all"><b>${esc(h.kind.replace("_", " "))}</b> · ${esc(h.filename || "")} ${h.size_bytes != null ? "· " + Number(h.size_bytes).toLocaleString() + " bytes" : ""} · ${esc(h.source)}<br><code>${esc(h.sha256)}</code></p>`).join("") || '<p style="font-size:.86rem;color:var(--muted)">None yet. Zoom recordings are fingerprinted automatically when they finish.</p>'}
+          <label style="font-size:.84rem;display:block;margin-top:8px">Fingerprint a file (it stays on your computer)
+            <select data-hkind="${s.id}"><option value="signed_paper">Signed paper scan</option><option value="notarized_copy">Notarized copy</option><option value="recording">Recording</option><option value="transcript">Transcript</option><option value="other">Other</option></select>
+            <input type="file" data-hfile="${s.id}"></label>
+          <label style="font-size:.84rem;display:block;margin-top:8px">Check a file against the saved fingerprints <input type="file" data-hcheck="${s.id}"></label>
+          <p class="form-msg" data-hmsg="${s.id}" style="font-size:.84rem"></p></details>
         <label style="font-size:.86rem">Tracking number for the signed paper <input data-rtrack="${s.id}" value="${esc(s.tracking || "")}" style="width:100%"></label>
         <div class="actions" style="margin-top:10px;flex-wrap:wrap">
           ${!s.zoom_join_url && REM.zoom ? `<button class="btn btn-ghost btn-sm" data-ract="zoom" data-id="${s.id}">Create Zoom</button>` : ""}
@@ -765,6 +772,21 @@
     $$("[data-rck]").forEach((b) => (b.onchange = async () => {
       const [id, k] = b.dataset.rck.split(":"), s = REM.sessions.find((x) => String(x.id) === id), cl = { ...(s.checklist || {}), [k]: b.checked };
       try { const r = await api("/api/admin/remote/" + id, { method: "POST", body: { checklist: cl } }); s.checklist = r.session.checklist; } catch (e) { msg(e.message, true); }
+    }));
+    const sha = async (file) => { const buf = await file.arrayBuffer(); return [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))].map((x) => x.toString(16).padStart(2, "0")).join(""); };
+    const hm = (id, t, good) => { const m = $(`[data-hmsg="${id}"]`); m.textContent = t; m.className = "form-msg" + (good ? " ok" : ""); };
+    $$("[data-hfile]").forEach((i) => (i.onchange = async () => {
+      const f = i.files[0], id = i.dataset.hfile; if (!f) return;
+      if (f.size > 400 * 1048576) return hm(id, "That file is too large to fingerprint in the browser. Run shasum -a 256 on it and paste the result with the API, or use a smaller file.");
+      hm(id, "Calculating…", true);
+      try { const h = await sha(f); await api(`/api/admin/remote/${id}/hashes`, { method: "POST", body: { kind: $(`[data-hkind="${id}"]`).value, filename: f.name, size: f.size, sha256: h } }); await loadRemote(); $(`[data-rs="${id}"] details:nth-of-type(2)`)?.setAttribute("open", ""); hm(id, "Fingerprint saved.", true); }
+      catch (e) { hm(id, e.message); }
+    }));
+    $$("[data-hcheck]").forEach((i) => (i.onchange = async () => {
+      const f = i.files[0], id = i.dataset.hcheck; if (!f) return;
+      const s = REM.sessions.find((x) => String(x.id) === id);
+      try { const h = await sha(f), m = (s.hashes || []).find((x) => x.sha256 === h); hm(id, m ? `Match: this file is identical to the saved ${m.kind.replace("_", " ")} (${m.filename || ""}).` : "No match. This file differs from every saved fingerprint.", !!m); }
+      catch (e) { hm(id, "Could not read that file."); }
     }));
     $$("[data-rtrack]").forEach((b) => (b.onchange = () => post(b.dataset.rtrack, { tracking: b.value })));
   }

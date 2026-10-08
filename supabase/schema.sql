@@ -544,3 +544,17 @@ create table if not exists remote_sessions (
   created_at timestamptz default now()
 );
 alter table remote_sessions enable row level security;
+
+-- Tamper-evidence: SHA-256 fingerprints of recordings and signed papers (safe to re-run)
+create table if not exists remote_hashes (
+  id serial primary key,
+  session_id integer not null references remote_sessions(id) on delete cascade,
+  kind text not null,          -- recording, transcript, signed_paper, notarized_copy, other
+  filename text,
+  size_bytes bigint,
+  sha256 text not null,
+  source text default 'manual', -- zoom (hashed by the server when Zoom finished recording) or manual
+  created_at timestamptz default now()
+);
+create index if not exists remote_hashes_session on remote_hashes(session_id);
+alter table remote_hashes enable row level security;

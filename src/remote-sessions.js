@@ -48,6 +48,36 @@ async function zoomMeeting(topic, startIso, tz) {
   return { id: String(j.id), join: j.join_url, start: j.start_url, passcode: j.password || "" };
 }
 
+/* ---------- Tamper-evidence: SHA-256 fingerprints ---------- */
+// A fingerprint proves a file is byte-for-byte what existed when it was recorded here. It does not stop anyone changing the file.
+const HEX = /^[a-f0-9]{64}$/;
+const KINDS = ["recording", "transcript", "signed_paper", "notarized_copy", "other"];
+async function addHash(sessionId, kind, filename, size, sha256, source) {
+  return db.one("insert into remote_hashes (session_id,kind,filename,size_bytes,sha256,source) values ($1,$2,$3,$4,$5,$6) returning *", [sessionId, kind, filename || null, size == null ? null : Number(size), sha256, source]);
+}
+async function hashZoomFile(url) {
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${await zoomToken()}` }, redirect: "follow" });
+  if (!r.ok || !r.body) throw new Error("Zoom download failed: " + r.status);
+  const h = crypto.createHash("sha256"); let n = 0;
+  for await (const chunk of r.body) { h.update(chunk); n += chunk.length; }
+  return { sha256: h.digest("hex"), size: n };
+}
+async function hashRecording(sessionId, files) {
+  const done = [];
+  for (const f of files || []) {
+    if (!f.download_url || (f.status && f.status !== "completed")) continue;
+    const ext = String(f.file_type || "").toUpperCase();
+    const kind = ext === "TRANSCRIPT" || ext === "VTT" ? "transcript" : "recording";
+    try {
+      const { sha256, size } = await hashZoomFile(f.download_url);
+      const row = await addHash(sessionId, kind, `${f.recording_type || "recording"}.${ext.toLowerCase() || "bin"}`, size, sha256, "zoom");
+      done.push(row);
+    } catch (e) { console.error("Recording fingerprint failed:", e.message); }
+  }
+  if (done.length) await mail.deskNotice("Recording fingerprints saved", done.map((r) => `${r.filename}  ${r.size_bytes} bytes  SHA-256 ${r.sha256}`).join("\n") + "\n\nKeep this email as an independent, dated copy.");
+  return done;
+}
+
 /* ---------- Persona ---------- */
 const P = (path, opts = {}) => fetch("https://withpersona.com/api/v1" + path, { ...opts, headers: { Authorization: `Bearer ${E.PERSONA_API_KEY}`, "Persona-Version": "2023-01-05", "Content-Type": "application/json", ...(opts.headers || {}) } });
 async function personaStart(s) {
@@ -154,6 +184,8 @@ function zoomWebhook(req, res) {
     const o = ev.payload?.object || {};
     const mid = String(o.id || "");
     if (ev.event === "recording.completed" && mid) {
+      const sess = await db.one("select id from remote_sessions where zoom_meeting_id=$1", [mid]);
+      if (sess) hashRecording(sess.id, o.recording_files).catch((e) => console.error("Fingerprint job:", e.message));
       await db.run("update remote_sessions set recording_url=$2, recording_passcode=$3, recording_ref=$4, recording_at=now(), checklist = coalesce(checklist,'{}'::jsonb) where zoom_meeting_id=$1", [mid, o.share_url || null, o.password || null, String(o.uuid || "")]);
     }
     if (ev.event === "meeting.ended" && mid) {
@@ -188,8 +220,20 @@ function register(app, { requireAdmin }) {
 
   app.get("/api/admin/remote", requireAdmin, wrap(async () => ({
     zoom: zoomOn(), zoomWebhook: !!E.ZOOM_WEBHOOK_SECRET, persona: personaOn(), personaWebhook: !!E.PERSONA_WEBHOOK_SECRET, checks: CHECKS,
-    sessions: (await db.all("select * from remote_sessions order by coalesce(scheduled_at, created_at) desc limit 100")).map(view),
+    sessions: await (async () => {
+      const rows = (await db.all("select * from remote_sessions order by coalesce(scheduled_at, created_at) desc limit 100")).map(view);
+      const hs = await db.all("select * from remote_hashes where session_id = any($1::int[]) order by created_at", [rows.map((r) => r.id)]);
+      return rows.map((r) => ({ ...r, hashes: hs.filter((h) => h.session_id === r.id) }));
+    })(),
   })));
+  app.post("/api/admin/remote/:id/hashes", requireAdmin, wrap(async (req) => {
+    const s = await load(req), b = req.body || {};
+    const kind = KINDS.includes(b.kind) ? b.kind : "other", sha = String(b.sha256 || "").trim().toLowerCase();
+    if (!HEX.test(sha)) throw bad("That doesn't look like a SHA-256 fingerprint (64 letters and numbers).");
+    const dupe = await db.one("select id from remote_hashes where session_id=$1 and sha256=$2", [s.id, sha]);
+    if (dupe) throw bad("That fingerprint is already saved for this session.");
+    return { hash: await addHash(s.id, kind, str(b.filename, 200), Number(b.size) >= 0 ? Number(b.size) : null, sha, "manual") };
+  }));
   app.post("/api/admin/remote", requireAdmin, wrap(async (req) => ({ session: view(await create(req.body || {})) })));
   app.post("/api/admin/remote/:id", requireAdmin, wrap(async (req) => {
     const s = await load(req), b = req.body || {}, sets = [], vals = [];
@@ -243,4 +287,4 @@ function register(app, { requireAdmin }) {
   app.delete("/api/admin/remote/:id", requireAdmin, wrap(async (req) => { await db.run("delete from remote_sessions where id=$1 and completed_at is null", [Number(req.params.id) || 0]); return { ok: true }; }));
 }
 
-module.exports = { register, startJob, zoomWebhook, personaWebhook, runAlerts, CHECKS };
+module.exports = { register, startJob, zoomWebhook, personaWebhook, runAlerts, hashRecording, CHECKS };
