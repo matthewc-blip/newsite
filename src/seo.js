@@ -39,8 +39,6 @@ function orgSchema(url, biz, areas) {
     email: biz.email || undefined,
     priceRange: "$$",
     image: url + "/img/og.png",
-    address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" },
-    geo: { "@type": "GeoCoordinates", latitude: 40.6584, longitude: -74.3040 },
     founder: { "@type": "Person", name: "Matthew Coleman", url: url + "/about" },
     knowsAbout: ["Notary public", "Loan signing", "Remote online notarization", "Apostille", "Process serving", "Document recording"],
     hasOfferCatalog: { "@type": "OfferCatalog", name: "Notary and legal support services", itemListElement: ["Mobile notary", "Loan signing agent", "Hospital and care-facility notary", "Remote online notarization", "Remote ink-signed notarization", "Apostille services", "Process serving", "Document recording"].map((n) => ({ "@type": "Offer", itemOffered: { "@type": "Service", name: n } })) },
