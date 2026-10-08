@@ -6,6 +6,7 @@ const prices = require("./prices");
 const { fit } = require("./titles");
 const { EXTRA } = require("./seo-extra");
 const { GUIDES, guidePath, guidesFor } = require("./guides");
+const lb = require("./linkblocks");
 const { DOCS, docPath, DOCS_HUB, DOC_CATEGORIES } = require("./doc-pages");
 const townsMod = require("./seo-towns");
 const { TOWNS } = townsMod;
@@ -37,6 +38,12 @@ function orgSchema(url, biz, areas) {
     telephone: biz.phone || undefined,
     email: biz.email || undefined,
     priceRange: "$$",
+    image: url + "/img/og.png",
+    address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" },
+    geo: { "@type": "GeoCoordinates", latitude: 40.6584, longitude: -74.3040 },
+    founder: { "@type": "Person", name: "Matthew Coleman", url: url + "/about" },
+    knowsAbout: ["Notary public", "Loan signing", "Remote online notarization", "Apostille", "Process serving", "Document recording"],
+    hasOfferCatalog: { "@type": "OfferCatalog", name: "Notary and legal support services", itemListElement: ["Mobile notary", "Loan signing agent", "Hospital and care-facility notary", "Remote online notarization", "Remote ink-signed notarization", "Apostille services", "Process serving", "Document recording"].map((n) => ({ "@type": "Offer", itemOffered: { "@type": "Service", name: n } })) },
     description: "Mobile notary and loan signing agent dispatch for New Jersey: in-person signings, Remote Online Notarization and Remote Ink-Signed Notarization.",
     areaServed: areas,
     openingHoursSpecification: [
@@ -122,10 +129,10 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
   <div class="fgrid">
     <div class="fbrand"><a class="brand" href="/"><span class="seal">MCC</span><span class="brand-name">MCC Solutions</span></a><p>Notary, legal support and bookkeeping for New Jersey, run from one desk in Cranford.</p>
       <ul class="fcontact"><li><a href="${telHref(biz.phone)}">${phone}</a></li><li><a href="mailto:${esc(biz.email)}">${email}</a></li><li>Mon–Fri 7 AM–9 PM · Sat 9 AM–5 PM ET</li></ul></div>
-    <div><h4>Notary &amp; signings</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/documents">Documents we notarize</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/loan-signing-agent">Loan signing</a></li><li><a href="/notary/hospital-notary">Hospital &amp; care visits</a></li><li><a href="/notary/remote-online-notarization">Remote online notarization</a></li><li><a href="/notary/remote-ink-signed-notarization">Remote ink-signed (RIN)</a></li></ul></div>
+    <div><h4>Notary &amp; signings</h4><ul><li><a href="/notary/#order">Book an appointment</a></li><li><a href="/notary/documents">Documents we notarize</a></li><li><a href="/notary/which-service">Which service do I need?</a></li><li><a href="/notary/appointment-checklist">What to bring checklist</a></li><li><a href="/notary/mobile-notary">Mobile notary</a></li><li><a href="/notary/loan-signing-agent">Loan signing</a></li><li><a href="/notary/hospital-notary">Hospital &amp; care visits</a></li><li><a href="/notary/remote-online-notarization">Remote online notarization</a></li><li><a href="/notary/remote-ink-signed-notarization">Remote ink-signed (RIN)</a></li></ul></div>
     <div><h4>Legal support</h4><ul><li><a href="/notary/process-serving">Process serving</a></li><li><a href="/notary/document-recording">Document recording</a></li><li><a href="/notary/apostille-services">Apostilles</a></li><li><a href="/notary/certified-translation">Certified translation</a></li><li><a href="/notary/estate-document-scanning">Estate scanning</a></li><li><a href="${NJ_HUB}#services">All services</a></li></ul></div>
-    <div><h4>Business services</h4><ul><li><a href="/bookkeeping/">Bookkeeping</a></li><li><a href="/bookkeeping/#interest">Payroll &amp; filings</a></li><li><a href="/bookkeeping/guides">Bookkeeping guides</a></li><li><a href="/websites/">Websites &amp; local SEO</a></li><li><a href="/websites/guides">SEO &amp; website guides</a></li><li><a href="/notary/law-firms">For law firms</a></li><li><a href="/client/#signup">Business accounts</a></li><li><a href="/notary/fees">Fees</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
-    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="${NJ_HUB}">New Jersey coverage</a></li><li><a href="/notary/vendors">Vendor packet</a></li><li><a href="/notary/become-a-notary">Join as a notary</a></li><li><a href="/notary/become-a-process-server">Become a process server</a></li><li><a href="/notary/become-a-witness">Become a witness</a></li><li><a href="/notary/training">Notary training</a></li></ul></div>
+    <div><h4>Business services</h4><ul><li><a href="/bookkeeping/">Bookkeeping</a></li><li><a href="/bookkeeping/#interest">Payroll &amp; filings</a></li><li><a href="/bookkeeping/guides">Bookkeeping guides</a></li><li><a href="/websites/">Websites &amp; local SEO</a></li><li><a href="/websites/guides">SEO &amp; website guides</a></li><li><a href="/websites/seo-checker">Free website check</a></li><li><a href="/bookkeeping/health-check">Free bookkeeping check</a></li><li><a href="/notary/law-firms">For law firms</a></li><li><a href="/client/#signup">Business accounts</a></li><li><a href="/notary/fees">Fees</a></li><li><a href="/notary/guides">Guides</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="${NJ_HUB}">New Jersey coverage</a></li><li><a href="/notary/vendors">Vendor packet</a></li><li><a href="/notary/become-a-notary">Join as a notary</a></li><li><a href="/notary/become-a-notary/earnings">Notary earnings calculator</a></li><li><a href="/notary/become-a-process-server">Become a process server</a></li><li><a href="/notary/become-a-witness">Become a witness</a></li><li><a href="/notary/training">Notary training</a></li></ul></div>
   </div>
   <div class="fcounties"><h4>New Jersey counties</h4><ul class="foot-counties">${COUNTIES.map((c) => `<li><a href="${countyPath(c)}">${esc(c.name)}</a></li>`).join("")}</ul></div>
   <div class="fbottom">
@@ -285,6 +292,12 @@ function register(app) {
     }));
   });
 
+  const relatedBand = (slug) => {
+    const ds = lb.docsForService(slug), ss = lb.seasonalForService(slug);
+    const li = [...ds.map((d) => `<li><a href="${docPath(d)}">${esc(d.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</a></li>`), ...ss.map((x) => `<li><a href="${x.path}">${esc(x.label)}</a></li>`)];
+    return `<section class="band alt"><div class="wrap"><div class="sec-head"><p class="eyebrow">Related</p><h2>Documents and tools</h2></div>${li.length ? `<ul class="county-links">${li.join("")}</ul>` : ""}
+      <p style="margin-top:18px;color:var(--ink-2)">Not sure this is the right service? <a href="/notary/which-service">Find the right one in four questions</a>, or print <a href="/notary/appointment-checklist">what to bring to your appointment</a>.</p></div></section>`;
+  };
   for (const s of SERVICES) {
     app.get(servicePath(s), async (req, res) => {
       const settings = await getSettings().catch(() => null);
@@ -316,6 +329,7 @@ function register(app) {
             <div class="sec-head"><p class="eyebrow">FAQ</p><h2>Common questions</h2></div>
             ${faqHtml(allFaqs)}
           </div></section>
+          ${relatedBand(s.slug)}
           <section class="band"><div class="wrap">
             <div class="sec-head"><p class="eyebrow">Where we work</p><h2>${esc(s.name)} in every New Jersey county</h2></div>
             ${countyLinks(COUNTIES)}
@@ -323,7 +337,8 @@ function register(app) {
         },
         schema: [
           orgSchema(url, biz, { "@type": "State", name: "New Jersey" }),
-          { "@type": "Service", name: s.name, serviceType: s.short, description: s.description, provider: { "@id": url + "/#business" }, areaServed: { "@type": "State", name: "New Jersey" }, url: url + path },
+          { "@type": "Service", name: s.name, serviceType: s.short, description: s.description, provider: { "@id": url + "/#business" }, areaServed: { "@type": "State", name: "New Jersey" }, url: url + path,
+            ...(from ? { offers: { "@type": "Offer", priceCurrency: "USD", url: url + path, priceSpecification: { "@type": "PriceSpecification", minPrice: from.price, priceCurrency: "USD" } } } : {}) },
           faqSchema(allFaqs),
           crumbSchema(url, crumbs),
         ],
@@ -405,7 +420,8 @@ function register(app) {
       const path = docPath(d);
       const crumbs = [["MCC Solutions", "/"], ["Documents we notarize", DOCS_HUB], [d.title, path]];
       const svcs = d.services.map((sl) => SERVICES.find((x) => x.slug === sl)).filter(Boolean);
-      const rel = (d.related || []).map((sl) => DOCS.find((x) => x.slug === sl)).filter(Boolean);
+      const rel = lb.relatedDocs(d, 4);
+      const seas = lb.seasonalForDoc(d.slug);
       const updated = new Date(d.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
       res.send(layout({
         req, biz, path, crumbs, title: fit(d.title.replace(" in New Jersey", " in NJ").replace("New Jersey", "NJ")), description: d.description,
@@ -416,7 +432,7 @@ function register(app) {
               <h2>Common questions</h2>${faqHtml(d.faqs)}
               <p class="guide-note">This page is general information, not legal advice. A notary can't draft documents or advise you on their contents. Ask your attorney or the office requesting the document what you need.</p>
             </article>
-            <aside class="guide-aside"><div class="stack"><p class="eyebrow">How we can help</p>${svcs.map((x) => `<a class="svc" href="${servicePath(x)}"><h3>${esc(x.name)}</h3><p>${esc(x.description)}</p><span class="more">${esc(x.short)} →</span></a>`).join("")}${rel.length ? `<p class="eyebrow" style="margin-top:8px">Related documents</p>${rel.map((x) => `<a class="svc" href="${docPath(x)}"><h3>${esc(x.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</h3><span class="more">What to know →</span></a>`).join("")}` : ""}<a class="btn btn-ghost" href="${DOCS_HUB}">All documents</a></div></aside>
+            <aside class="guide-aside"><div class="stack"><p class="eyebrow">How we can help</p>${svcs.map((x) => `<a class="svc" href="${servicePath(x)}"><h3>${esc(x.name)}</h3><p>${esc(x.description)}</p><span class="more">${esc(x.short)} →</span></a>`).join("")}${rel.length ? `<p class="eyebrow" style="margin-top:8px">Related documents</p>${rel.map((x) => `<a class="svc" href="${docPath(x)}"><h3>${esc(x.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</h3><span class="more">What to know →</span></a>`).join("")}` : ""}<p class="eyebrow" style="margin-top:8px">Before your appointment</p><ul><li><a href="/notary/appointment-checklist?doc=${d.slug}">Printable checklist for this document</a></li>${seas.map((x) => `<li><a href="${x.path}">${esc(x.label)}</a></li>`).join("")}</ul><a class="btn btn-ghost" href="${DOCS_HUB}">All documents</a></div></aside>
           </div></section>`,
           ctaTitle: "Need it notarized? Send it to the desk.",
         },

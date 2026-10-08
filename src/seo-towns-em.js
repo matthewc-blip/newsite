@@ -20,7 +20,8 @@ const pathOf = (t) => (t.county ? townPath(t) : unionMod.notaryPath(t));
 
 function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
-  const nearLinks = (t) => `<ul class="county-links">${t.near.map((s) => lookup(t, s)).filter(Boolean).map((n) => `<li><a href="${pathOf(n)}">${esc(n.name)}</a></li>`).join("")}</ul>`;
+  const nearOf = (t) => { const out = t.near.map((s) => lookup(t, s)).filter(Boolean); for (const x of ALL) if (x !== t && !out.includes(x) && (x.near || []).some((s) => s === t.slug && lookup(x, s) === t)) out.push(x); return out; };
+  const nearLinks = (t) => `<ul class="county-links">${nearOf(t).map((n) => `<li><a href="${pathOf(n)}">${esc(n.name)}</a></li>`).join("")}</ul>`;
 
   for (const key of Object.keys(COUNTY)) {
     const C = COUNTY[key];

@@ -1,6 +1,7 @@
 // About, vendor packet, privacy policy and terms of service pages.
 // Rendered with the same layout as the landing pages in seo.js.
 const { layout, business, telHref, base, esc } = require("./seo");
+const crumbLd = (url, items) => ({ "@type": "BreadcrumbList", itemListElement: items.map(([name, path], i) => ({ "@type": "ListItem", position: i + 1, name, item: url + path })) });
 
 const UPDATED = "October 3, 2026";
 const FOUNDER = { name: "Matthew Coleman", role: "Founder & Principal", photo: "/img/matthew-coleman.jpg" };
@@ -262,7 +263,7 @@ function register(app) {
         </script>`,
         ctaTitle: "Ready to send your first file?",
       },
-      schema: [{ "@type": "WebPage", name: "Vendor packet", url: url + "/notary/vendors" }],
+      schema: [{ "@type": "WebPage", name: "Vendor packet", url: url + "/notary/vendors" }, crumbLd(url, crumbs)],
     }));
   });
 
@@ -568,7 +569,7 @@ function register(app) {
         </script>`,
         ctaTitle: "Questions about training? Call the desk.",
       },
-      schema: [{ "@type": "WebPage", name: "Notary training", url: url + "/notary/training" }],
+      schema: [{ "@type": "WebPage", name: "Notary training", url: url + "/notary/training" }, crumbLd(url, crumbs)],
     }));
   });
 
@@ -618,7 +619,7 @@ function register(app) {
           ["Contact", p(`MCC Solutions · ${email} · <a href="${telHref(biz.phone)}">${esc(biz.phone)}</a>`)],
         ]),
       },
-      schema: [],
+      schema: [{ "@type": "WebPage", name: "Privacy policy", url: base(req) + "/privacy", dateModified: new Date(UPDATED).toISOString().slice(0, 10) }],
     }));
   });
 
@@ -662,7 +663,7 @@ function register(app) {
           ["Contact", p(`MCC Solutions · ${email} · <a href="${telHref(biz.phone)}">${esc(biz.phone)}</a>`)],
         ]),
       },
-      schema: [],
+      schema: [{ "@type": "WebPage", name: "Terms of service", url: base(req) + "/terms", dateModified: new Date(UPDATED).toISOString().slice(0, 10) }],
     }));
   });
 }

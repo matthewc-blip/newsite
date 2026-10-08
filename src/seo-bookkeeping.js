@@ -1,5 +1,6 @@
 // Bookkeeping software pages and how-to guides. Shown (and in the sitemap) once bookkeeping is opened in Settings.
 const { fit } = require("./titles");
+const lb = require("./linkblocks");
 const { SOFTWARE, GUIDES } = require("./bk-content");
 const { getSettings } = require("./db");
 
@@ -49,7 +50,7 @@ function register(app, c) {
           <p style="margin-top:28px;color:var(--ink-2)">Not sure which program fits? Read <a href="${gPath(GD["how-to-switch-accounting-software"])}">how to switch accounting software</a> or <a href="/bookkeeping/#interest">tell us about your business</a>.</p></div></section>`,
         ctaTitle: "Tell us what you use. We'll tell you what it needs.", ...CTA,
       },
-      schema: [crumbSchema(url, crumbs)],
+      schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Bookkeeping by software", url: url + SW_HUB, mainEntity: { "@type": "ItemList", itemListElement: SOFTWARE.map((s, i) => ({ "@type": "ListItem", position: i + 1, url: url + swPath(s), name: s.name })) } }],
     }));
   });
 
@@ -93,7 +94,7 @@ function register(app, c) {
     const biz = await business(); const url = base(req); const path = gPath(g); const noindex = !(await open());
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Guides", HUB], [g.title, path]];
     const sws = (g.software || []).map((x) => SW[x]).filter(Boolean);
-    const more = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 4);
+    const more = lb.cyclic(GUIDES, g, 4);
     const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
     res.send(layout({
       req, biz, path, crumbs, noindex, title: fit(g.title), description: g.description,
@@ -108,6 +109,7 @@ function register(app, c) {
             <a class="svc" href="/bookkeeping/"><h3>Monthly bookkeeping</h3><p>Categorizing, reconciling and monthly reports, with cleanup, payroll and NJ filings available.</p><span class="more">Bookkeeping →</span></a>
             ${sws.map((s) => `<a class="svc" href="${swPath(s)}"><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><span class="more">${esc(s.short)} →</span></a>`).join("")}
             <p class="eyebrow" style="margin-top:12px">More guides</p><ul>${more.map((m) => `<li><a href="${gPath(m)}">${esc(m.title)}</a></li>`).join("")}</ul>
+            <p class="eyebrow" style="margin-top:12px">Free tool</p><ul><li><a href="${CHECKUP}">Bookkeeping health check</a></li></ul>
             <a class="btn btn-ghost" href="${HUB}">All guides</a></div></aside>
         </div></section>`,
         ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,

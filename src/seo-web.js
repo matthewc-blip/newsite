@@ -1,6 +1,7 @@
 // Websites and local SEO: service pages and how-to guides under /websites/.
 const { SERVICES, GUIDES } = require("./web-content");
 const { fit } = require("./titles");
+const lb = require("./linkblocks");
 
 const HUB = "/websites/guides";
 const SV_HUB = "/websites/services";
@@ -59,7 +60,7 @@ function register(app, c) {
           <p style="margin-top:28px;color:var(--ink-2)">Not sure where to start? Read <a href="${gPath(GD["local-seo-checklist-for-small-business"])}">our local SEO checklist</a> or <a href="/websites/#quote">tell us about your business</a>.</p></div></section>`,
         ctaTitle: "Tell us what you need. We'll quote it in writing.", ...CTA,
       },
-      schema: [crumbSchema(url, crumbs)],
+      schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Website and local SEO services", url: url + SV_HUB, mainEntity: { "@type": "ItemList", itemListElement: SERVICES.map((s, i) => ({ "@type": "ListItem", position: i + 1, url: url + svPath(s), name: s.name })) } }],
     }));
   });
 
@@ -103,7 +104,7 @@ function register(app, c) {
     const biz = await business(); const url = base(req); const path = gPath(g);
     const crumbs = [["MCC Solutions", "/"], ["Websites", "/websites/"], ["Guides", HUB], [g.title, path]];
     const svcs = (g.services || []).map((x) => SV[x]).filter(Boolean);
-    const more = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 4);
+    const more = lb.cyclic(GUIDES, g, 4);
     const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
     res.send(layout({
       req, biz, path, crumbs, title: fit(g.title), description: g.description,
@@ -117,6 +118,7 @@ function register(app, c) {
           <aside class="guide-aside"><div class="stack"><p class="eyebrow">Let us handle it</p>
             ${svcs.map((s) => `<a class="svc" href="${svPath(s)}"><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><span class="more">${esc(s.short)} →</span></a>`).join("")}
             <p class="eyebrow" style="margin-top:12px">More guides</p><ul>${more.map((m) => `<li><a href="${gPath(m)}">${esc(m.title)}</a></li>`).join("")}</ul>
+            <p class="eyebrow" style="margin-top:12px">Free tools</p><ul><li><a href="${CHECKER}">Website basics check</a></li><li><a href="${QUIZ}">Is your website working for you? quiz</a></li></ul>
             <a class="btn btn-ghost" href="${HUB}">All guides</a></div></aside>
         </div></section>`,
         ctaTitle: "Rather have us handle it? Ask for a quote.", ...CTA,
