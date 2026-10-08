@@ -97,6 +97,11 @@ const DEFAULT_SETTINGS = {
     { id: "courier", label: "Courier the originals", price: 60, max: 1, services: ["mobile"], note: "Pickup or drop-off within 20 miles" },
     { id: "apostille", label: "Apostille handling", price: 150, max: 5, services: ["mobile", "ron"], note: "Per document; the state fee is billed at cost" },
   ],
+  // One reminder email to someone who gave their contact details in the booking form and did not finish.
+  followups: {
+    enabled: true,
+    delayHours: 2,              // wait this long before the reminder
+  },
   // Google review requests emailed after a completed job.
   reviews: {
     enabled: false,             // turn on once googleUrl is set

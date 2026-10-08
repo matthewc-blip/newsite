@@ -762,6 +762,7 @@ documents.register(app, { requireAdmin, requireNotary: notary.requireNotary, loa
 clients.register(app, { requireAdmin, insertBooking, readBookingInput });
 billing.register(app, { requireAdmin, requireClient: clients.requireClient, loadClient: clients.loadClient });
 require("./src/reviews").register(app, { requireAdmin });
+require("./src/followups").register(app, { requireAdmin });
 bookkeeping.register(app, { requireAdmin });
 require("./src/requests").register(app, { requireAdmin, requireNotary: notary.requireNotary, loadMe: notary.loadMe });
 
@@ -802,7 +803,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   init()
-    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/reviews").startJob(); })
+    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/reviews").startJob(); require("./src/followups").startJob(); })
     .catch((e) => { console.error("Could not connect to the database:", e.message); process.exit(1); });
 }
 module.exports = app;

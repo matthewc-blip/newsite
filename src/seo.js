@@ -80,6 +80,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
 <script src="/js/ga.js" async></script>
 <script src="/js/nudge.js" defer></script>
 <script src="/js/engage.js" defer></script>
+<script src="/js/callback.js" defer></script>
 </head>
 <body class="seo">
 <div class="strip"><div class="wrap">
@@ -109,6 +110,12 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
   <section class="band cta-band"><div class="wrap">
     <h2>${esc(body.ctaTitle || "Need a notary? Send it to the desk.")}</h2>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn btn-primary" href="${esc(body.ctaHref || "/notary/#order")}">${esc(body.ctaLabel || "Book Now")}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call ${phone}</a></div>
+    <form data-callback class="cb" style="margin-top:18px;max-width:560px" aria-label="Request a call back">
+      <p style="margin:0 0 8px;font-weight:700">Rather talk first? Leave your number and we'll call you.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input name="name" autocomplete="name" placeholder="Your name" aria-label="Your name" maxlength="120" style="flex:1 1 150px;min-width:0;padding:11px 12px;font:inherit;border:1px solid #8aa196;border-radius:4px"><input name="phone" type="tel" autocomplete="tel" placeholder="Phone" aria-label="Phone number" maxlength="40" style="flex:1 1 150px;min-width:0;padding:11px 12px;font:inherit;border:1px solid #8aa196;border-radius:4px"><button class="btn btn-primary" type="submit">Call me</button></div>
+      <div aria-hidden="true" style="position:absolute;left:-9999px"><input name="website" tabindex="-1" autocomplete="off"></div>
+      <p class="cb-msg" role="status" style="margin:8px 0 0;font-size:.9rem"></p>
+    </form>
   </div></section>
 </main>
 <footer><div class="wrap">

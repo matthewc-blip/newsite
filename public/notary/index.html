@@ -24,6 +24,7 @@
 <script src="/js/ga.js" async></script>
 <script src="/js/nudge.js" defer></script>
 <script src="/js/engage.js" defer></script>
+<script src="/js/callback.js" defer></script>
 </head>
 <body>
 <div class="strip"><div class="wrap">
@@ -95,6 +96,24 @@
       <div><strong>2-step</strong><span>QC on every package: agent check, then desk review</span></div>
       <div><strong>1 contact</strong><span>A named coordinator owns your file start to finish</span></div>
     </div>
+  </div></section>
+
+  <section class="band" id="how"><div class="wrap">
+    <div class="sec-head"><p class="eyebrow">What to expect</p><h2>What happens at your appointment</h2></div>
+    <ol class="steps" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <li><h3>We confirm</h3><p>You request a time. We email to confirm it and tell you who is coming. No time is guaranteed until you get that email.</p></li>
+      <li><h3>We arrive and check ID</h3><p>The notary meets you, checks a photo ID for every signer, and confirms everyone understands what they're signing. Bring the document unsigned.</p></li>
+      <li><h3>You sign, we stamp</h3><p>You sign in front of the notary. They complete the notarial certificate, stamp it and hand it back. Loan packages are scanned and returned for you.</p></li>
+      <li><h3>You pay after</h3><p>Your card, if you save one, is charged only after the appointment, once the final fee is confirmed. You get a receipt by email.</p></li>
+    </ol>
+    <p class="callout" style="margin-top:22px"><b>Compare the cost to the alternative.</b> A document rejected for a missing notarization, or a closing pushed back a day, usually costs more than a notary visit. See <a href="/notary/mobile-notary">starting prices</a>. The desk confirms the fee, plus any state notarial fees, before anyone comes to you.</p>
+    <form data-callback class="cb" style="margin-top:22px;max-width:620px" aria-label="Request a call back">
+      <p style="margin:0 0 8px;font-weight:700">Not ready to book? Leave your number and we'll call you.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input name="name" autocomplete="name" placeholder="Your name" aria-label="Your name" maxlength="120" style="flex:1 1 150px;min-width:0;padding:11px 12px;font:inherit;border:1px solid var(--line);border-radius:4px"><input name="phone" type="tel" autocomplete="tel" placeholder="Phone" aria-label="Phone number" maxlength="40" style="flex:1 1 150px;min-width:0;padding:11px 12px;font:inherit;border:1px solid var(--line);border-radius:4px"></div>
+      <input name="need" placeholder="What do you need notarized? (optional)" aria-label="What you need" maxlength="400" style="width:100%;box-sizing:border-box;margin-top:8px;padding:11px 12px;font:inherit;border:1px solid var(--line);border-radius:4px">
+      <div aria-hidden="true" style="position:absolute;left:-9999px"><input name="website" tabindex="-1" autocomplete="off"></div>
+      <div style="margin-top:10px"><button class="btn btn-primary" type="submit">Call me</button> <span class="cb-msg" role="status" style="margin-left:8px;font-size:.9rem"></span></div>
+    </form>
   </div></section>
 
   <section class="band alt"><div class="wrap">
@@ -620,6 +639,7 @@
             <div class="field"><label for="b-file">File or loan number <span class="opt">(optional)</span></label><input id="b-file" name="fileNumber" class="mono" placeholder="PT-25-0418"></div>
             <div class="field full"><label for="b-notes">Anything the notary should know?</label><textarea id="b-notes" name="notes" placeholder="Gate code 4412. Second signer arrives at 6:45. Return FedEx label is in the package."></textarea></div>
             <div class="field full"><label for="b-heard">How did you find us? <span class="opt">(optional)</span></label><select id="b-heard" name="heardFrom"><option value="">Choose one…</option><option value="google">Google search</option><option value="maps">Google Maps or Business Profile</option><option value="ai">ChatGPT or another AI assistant</option><option value="linkedin">LinkedIn</option><option value="social">Facebook or Instagram</option><option value="referral">Friend, family or colleague</option><option value="professional">Attorney, title company or lender</option><option value="repeat">I've used MCC Solutions before</option><option value="mailer">Postcard or flyer</option><option value="other">Other</option></select></div><div class="field full"><label for="b-heardnote">Who referred you, or tell us more <span class="opt">(optional)</span></label><input id="b-heardnote" name="heardNote" maxlength="120"></div>
+            <p class="field full" style="margin:0;color:var(--muted);font-size:.88rem">If you start a request and don&rsquo;t finish it, we may send you one reminder email.</p>
             <div class="hp" aria-hidden="true"><label for="b-website">Website</label><input id="b-website" name="website" tabindex="-1" autocomplete="off"></div>
           </fieldset>
         </div>

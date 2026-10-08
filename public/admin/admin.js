@@ -1102,6 +1102,11 @@
             <div class="field"><label>Ask again after (days)</label><input type="number" min="30" id="rvRepeat" value="${s.reviews?.repeatDays ?? 180}"></div>
           </div>
         </div>
+        <div class="set-card"><h3>Unfinished bookings</h3>
+          <p style="font-size:.86rem;color:var(--ink-2)">If someone fills in their contact details on the booking form but never submits, they get one reminder email. The form tells them this may happen. One reminder per person per 30 days, with an unsubscribe link.</p>
+          <label class="switch"><input type="checkbox" id="fuOn" ${s.followups?.enabled !== false ? "checked" : ""}> Send one reminder email</label>
+          <div class="field"><label>Hours to wait first</label><input type="number" min="1" max="48" id="fuDelay" value="${s.followups?.delayHours ?? 2}"></div>
+        </div>
         <div class="set-card"><h3>Closed dates</h3>
           <ul class="blackouts" id="blackouts">${(s.blackouts || []).map((b, i) => `<li><span>${esc(b.date)} · ${esc(b.service === "all" ? "All services" : SVC[b.service])}${b.note ? " · " + esc(b.note) : ""}</span><button class="linkbtn" data-rm="${i}">Remove</button></li>`).join("") || '<li style="color:var(--muted)">No closed dates.</li>'}</ul>
           <div class="num-grid"><div class="field"><label>Date</label><input type="date" id="boDate"></div><div class="field"><label>Service</label><select id="boSvc"><option value="all">All</option><option value="mobile">Mobile</option><option value="ron">RON</option><option value="rin">RIN</option></select></div></div>
@@ -1147,6 +1152,7 @@
       includedAccounts: num("#bkInc") ?? 2, extraAccount: num("#bkExtra") ?? 0, payroll: num("#bkPay") ?? 0,
       extras: { payrollBase: num("#bkPayB") ?? 0, payrollPerEmployee: num("#bkPayE") ?? 0, filingsMonthly: num("#bkFil") ?? 0, formation: num("#bkForm") ?? 0 } };
     s.reviews = { enabled: $("#rvOn").checked, googleUrl: $("#rvUrl").value.trim(), delayHours: num("#rvDelay") ?? 3, repeatDays: num("#rvRepeat") || 180 };
+    s.followups = { enabled: $("#fuOn").checked, delayHours: Math.min(48, Math.max(1, num("#fuDelay") ?? 2)) };
     s.coverage = { liveStates: $("#liveStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2) };
     s.rinStates = $("#rinStates").value.toUpperCase().split(/[^A-Z]+/).filter((x) => x.length === 2);
     $$("[data-f]").forEach((i) => {

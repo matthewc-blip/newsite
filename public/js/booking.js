@@ -150,6 +150,11 @@
 
   $("#bNext").addEventListener("click", () => {
     if (!validate(st.step)) return;
+    if (st.step === 4) {
+      const v = (id) => $(id).value.trim();
+      fetch("/api/booking-draft", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+        body: JSON.stringify({ name: v("#b-cname"), email: v("#b-cemail"), service: st.service, category: v("#b-category"), website: v("#b-website") }) }).catch(() => {});
+    }
     if (st.step < 5) showStep(st.step + 1);
     else submit();
   });

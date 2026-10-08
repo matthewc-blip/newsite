@@ -500,3 +500,17 @@ alter table messages add column if not exists heard_from text;
 alter table messages add column if not exists heard_note text;
 alter table service_requests add column if not exists heard_from text;
 alter table service_requests add column if not exists heard_note text;
+
+-- ===== Unfinished-booking reminder and callback requests (safe to re-run) =====
+create table if not exists booking_drafts (
+  email text primary key,
+  name text, service text, category text,
+  created_at timestamptz default now(),
+  reminded_at timestamptz
+);
+create table if not exists followup_optouts (
+  email text primary key,
+  at timestamptz default now()
+);
+alter table booking_drafts enable row level security;
+alter table followup_optouts enable row level security;
