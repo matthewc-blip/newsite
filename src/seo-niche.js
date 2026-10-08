@@ -190,7 +190,7 @@ function register(app, c, bkOpen) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema } = c;
   const mount = (pg, isBk) => app.get(pg.path, async (req, res) => {
     const biz = await business(); const url = base(req);
-    const noindex = isBk ? !(await bkOpen()) : false;
+    const noindex = false;
     const crumbs = isBk ? [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], [pg.h1, pg.path]] : [["MCC Solutions", "/"], ["Notary", "/notary/"], [pg.h1, pg.path]];
     const cta = isBk ? ["/bookkeeping/#interest", "Get a Quote"] : ["/notary/#order", "Request an appointment"];
     res.send(layout({
