@@ -463,26 +463,29 @@ function register(app) {
     const biz = await business();
     const url = base(req);
     const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Become a notary or signing agent", "/notary/become-a-notary"]];
-    const jobDesc = "<p>MCC Solutions dispatches mobile notary, loan signing and remote online notarization work across New Jersey. We are looking for commissioned notaries and loan signing agents to take assignments as independent contractors.</p>"
-      + "<p><b>What you will do:</b> accept signings near you from the MCC portal, travel to the signer (or join a remote session), notarize and complete the package, then upload scanbacks and return the documents. The pay for each job is shown before you accept.</p>"
-      + "<p><b>Requirements:</b></p><ul><li>An active notary commission (New Jersey, or your own state for remote work)</li><li>Errors and omissions (E&amp;O) insurance</li><li>A background check completed within the last 12 months</li><li>A W-9 and a signed independent contractor agreement</li><li>A home ZIP code and the distance you are willing to travel</li><li>A smartphone and email, and the ability to print loan documents for in-person signings</li></ul>"
-      + "<p>This is independent contractor work, paid per assignment, with a 1099 at year end. You choose which jobs to accept.</p>";
+    const jobDesc = "<p>MCC Solutions is a Cranford, NJ firm that dispatches mobile notary, loan signing and remote online notarization (RON) work across New Jersey. We are taking on commissioned notaries and loan signing agents as independent contractors.</p>"
+      + "<p><b>What you will do:</b> accept signings near you from the MCC portal, travel to the signer's home, office, bank or hospital (or run a RON session on the Proof platform), notarize and complete the package, then upload scanbacks and return the documents. Your pay is shown before you accept each job.</p>"
+      + "<p><b>Pay:</b> paid per assignment at 50% of the customer's service fee: $37.50 for a mobile notary visit, $75 for a loan signing and $62.50 for a hospital or care-facility visit.</p>"
+      + "<p><b>Requirements:</b></p><ul><li>An active notary commission (New Jersey, or your own state for remote work)</li><li>Errors and omissions (E&amp;O) insurance with at least $100,000 in coverage</li><li>A background check completed within the last 12 months</li><li>A W-9 and a signed independent contractor agreement</li><li>A home ZIP code and the distance you are willing to travel</li><li>A smartphone and email, and the ability to print loan documents for in-person signings</li><li>For RON work: approval on the Proof platform, a computer with a webcam and microphone, and the remote notarization notice to the NJ Treasurer</li></ul>"
+      + "<p>This is independent contractor work with a 1099 at year end. You choose which jobs to accept, with no minimums. RON is optional.</p>";
     res.send(layout({
       req, biz, path: "/notary/become-a-notary", crumbs,
       title: "Become a Notary or Loan Signing Agent in New Jersey | MCC",
-      description: "Take mobile notary and loan signing assignments across New Jersey as an independent contractor. See the requirements and apply. Pay is shown on every job before you accept.",
+      description: "Take mobile notary, loan signing and RON assignments across New Jersey as an independent contractor. Paid per job at 50% of the service fee, shown before you accept. See the requirements and apply.",
       body: {
-        hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Take notary and loan signing jobs near you</h1><p class="lede" style="margin-top:14px">MCC Solutions sends mobile notary, loan signing and remote notarization assignments to commissioned notaries across New Jersey. You accept the jobs that fit your schedule and your area, and the pay is shown before you say yes.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#notaries">Apply now</a></div>`,
+        hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Take notary and loan signing jobs near you</h1><p class="lede" style="margin-top:14px">MCC Solutions sends mobile notary, loan signing and remote online notarization (RON) assignments to commissioned notaries across New Jersey. You accept the jobs that fit your schedule and your area, and the pay is shown before you say yes.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#notaries">Apply now</a></div>`,
         main: `<section class="band"><div class="wrap split">
           <div class="stack"><p class="eyebrow">What you'll need</p><h2>Requirements</h2><ul class="checks">
             <li>An active notary commission (New Jersey, or your own state for remote work)</li>
-            <li>Errors and omissions (E&amp;O) insurance</li>
+            <li>Errors and omissions (E&amp;O) insurance, $100,000 minimum</li>
             <li>A background check completed in the last 12 months</li>
             <li>A W-9, and a signed independent contractor agreement</li>
             <li>Your home ZIP and how far you're willing to travel</li>
             <li>A smartphone and email, plus the ability to print loan documents for in-person signings</li>
             <li>Loan signing agent certification, if you want loan work</li>
+            <li>For RON work: approval on the Proof platform, a computer with a webcam and microphone, and the remote notarization notice to the NJ Treasurer filed before your first remote act</li>
           </ul>
+          <h3 style="margin-top:20px">What it pays</h3><p>Paid per assignment at 50% of the customer's service fee: <b>$37.50</b> for a mobile notary visit, <b>$75</b> for a loan signing and <b>$62.50</b> for a hospital or care-facility visit. Your exact pay is shown before you accept each job, including RON sessions. RON is optional; you can take in-person work, remote work or both.</p>
           <p style="color:var(--ink-2)">We don't give legal or financial advice at signings, and neither do you. Never notarize without a proper ID check.</p></div>
           <div class="stack"><p class="eyebrow">How it works</p><h2>From application to payment</h2><ol class="steps" style="grid-template-columns:1fr">
             <li><h3>Apply</h3><p>Takes a couple of minutes. We review applications within 3 business days.</p></li>
@@ -501,7 +504,7 @@ function register(app) {
         </div></section>`,
         ctaTitle: "Questions about joining? Call the desk.",
       },
-      schema: [{ "@type": "JobPosting", title: "Mobile Notary / Loan Signing Agent (independent contractor)", description: jobDesc, employmentType: "CONTRACTOR", datePosted: "2026-10-05", validThrough: "2027-04-05T23:59:59-04:00", directApply: false, hiringOrganization: { "@type": "Organization", name: "MCC Solutions", sameAs: url + "/", logo: url + "/favicon.svg" }, jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } }, industry: "Notary and signing services" }],
+      schema: [{ "@type": "JobPosting", title: "Mobile Notary / Loan Signing Agent / Remote Online Notary (independent contractor)", description: jobDesc, employmentType: "CONTRACTOR", datePosted: "2026-10-05", validThrough: "2027-04-05T23:59:59-04:00", directApply: false, hiringOrganization: { "@type": "Organization", name: "MCC Solutions", sameAs: url + "/", logo: url + "/favicon.svg" }, jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } }, industry: "Notary and signing services" }],
     }));
   });
 
