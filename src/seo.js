@@ -79,6 +79,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
 <script type="application/ld+json">${json}</script>
 <script src="/js/ga.js" async></script>
 <script src="/js/nudge.js" defer></script>
+<script src="/js/engage.js" defer></script>
 </head>
 <body class="seo">
 <div class="strip"><div class="wrap">
@@ -207,6 +208,7 @@ function register(app) {
   require("./seo-bookkeeping").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-web").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-tools").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
+  require("./seo-seasonal").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   app.get(NJ_HUB, async (req, res) => {
     const biz = await business();
     const url = base(req);
@@ -383,7 +385,7 @@ function register(app) {
       body: {
         hero: `<p class="eyebrow">Documents</p><h1 style="margin-top:10px">Documents we notarize in New Jersey</h1><p class="lede" style="margin-top:14px">Find your document, see what to bring, and book a mobile or online notary. General information, not legal advice.</p>`,
         main: `<section class="band"><div class="wrap">${DOC_CATEGORIES.map((c) => `<h2 style="margin:36px 0 16px;font-size:1.5rem">${esc(c)}</h2><div class="grid g3">${DOCS.filter((d) => d.category === c).map((d) => `<a class="svc" href="${docPath(d)}"><h3>${esc(d.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</h3><p>${esc(d.description)}</p><span class="more">What to know →</span></a>`).join("")}</div>`).join("")}
-          <p style="margin-top:34px;color:var(--ink-2)">Get a <a href="/notary/appointment-checklist" style="color:var(--brass-ink);font-weight:600">printable checklist of what to bring</a>, or <a href="/notary/which-service" style="color:var(--brass-ink);font-weight:600">find out which service you need</a>.</p><p style="margin-top:14px;color:var(--ink-2)">Don't see your document? Most documents that need a signature witnessed can be notarized. <a href="${NJ_HUB}#services" style="color:var(--brass-ink);font-weight:600">See all our services</a> or call the desk.</p></div></section>`,
+          <p style="margin-top:34px;color:var(--ink-2)">Get a <a href="/notary/appointment-checklist" style="color:var(--brass-ink);font-weight:600">printable checklist of what to bring</a>, or <a href="/notary/which-service" style="color:var(--brass-ink);font-weight:600">find out which service you need</a>; see also <a href="/notary/travel-and-school-consent-forms" style="color:var(--brass-ink);font-weight:600">kids' travel and passport consent forms</a> and <a href="/notary/year-end-estate-planning-signings" style="color:var(--brass-ink);font-weight:600">year-end estate signings</a>.</p><p style="margin-top:14px;color:var(--ink-2)">Don't see your document? Most documents that need a signature witnessed can be notarized. <a href="${NJ_HUB}#services" style="color:var(--brass-ink);font-weight:600">See all our services</a> or call the desk.</p></div></section>`,
         ctaTitle: "Not sure what you need? Call the desk.",
       },
       schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Documents we notarize", url: url + DOCS_HUB, hasPart: DOCS.map((d) => ({ "@type": "WebPage", name: d.title, url: url + docPath(d) })) }],
@@ -422,7 +424,7 @@ function register(app) {
 
   app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...require("./seo-towns-em").paths(), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ...require("./seo-tools").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...require("./seo-towns-em").paths(), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ...require("./seo-tools").paths(), ...require("./seo-seasonal").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
     if ((await getSettings().catch(() => null))?.bookkeeping?.open) { paths.push(["/bookkeeping/", "0.7"]); TOWNS.forEach((t) => paths.push([townsMod.bookPath(t), "0.5"])); paths.push(...require("./seo-bookkeeping").paths()); }
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>

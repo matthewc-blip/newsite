@@ -91,6 +91,34 @@ function register(app, c) {
     }));
   });
 
+  /* ----- printable flyer with QR code (not indexed) ----- */
+  app.get("/notary/flyer", async (req, res) => {
+    const QR = require("qrcode");
+    const [biz, s] = await Promise.all([business(), getSettings().catch(() => null)]);
+    const url = base(req); const dest = `${url}/notary/?utm_source=flyer&utm_medium=print`;
+    const svg = await QR.toString(dest, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#10261e", light: "#ffffff" } });
+    const pr = (slug) => { const p = s && require("./prices").forSlug(s, slug); return p ? ` <b>from ${require("./prices").money(p.price)}</b>` : ""; };
+    res.set("X-Robots-Tag", "noindex");
+    res.send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>MCC Solutions flyer</title>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/site.css">
+<style>body{background:#e9ece9;margin:0}.sheet{width:8.5in;max-width:100%;min-height:11in;margin:20px auto;background:#fff;padding:.6in .65in;box-sizing:border-box;color:#10261e;font-family:'Public Sans',system-ui,sans-serif}
+.sheet h1{font-family:Archivo,'Helvetica Neue',Arial,sans-serif;font-size:2.5rem;line-height:1.1;margin:.1in 0 .12in}.sheet .k{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:#8c6017;font-weight:700}
+.sheet ul{list-style:none;padding:0;margin:.2in 0}.sheet li{padding:.09in 0;border-bottom:1px solid #d9dfda;font-size:1.1rem}.sheet li span{color:#4a5d53;font-size:.95rem;display:block}
+.row{display:flex;flex-wrap:wrap;gap:.3in;align-items:center;margin-top:.3in}.row>div:last-child{min-width:0;overflow-wrap:anywhere}.qr{width:2.1in;flex:none}.qr svg{width:100%;height:auto;display:block}.phone{font-family:Archivo,Arial,sans-serif;font-size:clamp(1.5rem,6vw,2rem);font-weight:800;white-space:nowrap;margin:.05in 0}
+.foot{margin-top:.35in;font-size:.8rem;color:#4a5d53;border-top:2px solid #d8a24a;padding-top:.12in}.bar{background:#10261e;color:#fff;padding:10px 16px;text-align:center;font-size:.9rem}.bar button{margin-left:12px;padding:6px 14px;font-weight:700;cursor:pointer}
+@media print{body{background:#fff}.bar{display:none}.sheet{margin:0;padding:.5in .6in;min-height:auto;width:auto}@page{size:letter;margin:0}}</style></head><body>
+<div class="bar">Print this page on letter paper (background graphics off is fine). <button type="button" onclick="window.print()">Print</button></div>
+<div class="sheet"><p class="k">${esc(biz.name)} · Cranford, NJ</p><h1>A notary who comes to you.</h1>
+<p style="font-size:1.15rem;margin:0">Commissioned New Jersey notary, NNA Certified Loan Signing Agent, $100K E&amp;O insured and background screened.</p>
+<ul><li><b>Mobile notary</b>${pr("mobile-notary")}<span>Home, office, bank or job site, plus state notarial fees</span></li>
+<li><b>Loan signings</b>${pr("loan-signing-agent")}<span>Purchase, refinance and HELOC closings, with scanbacks</span></li>
+<li><b>Hospital and care-facility visits</b>${pr("hospital-notary")}<span>Proxies, powers of attorney and directives at the bedside</span></li>
+<li><b>Notarize online</b><span>By video from anywhere, including ink-signed paper documents</span></li>
+<li><b>Apostilles, process serving and document recording</b><span>Ask us about anything that needs a signature, a stamp or a trip to a courthouse</span></li></ul>
+<div class="row"><div class="qr">${svg}</div><div><p class="k">Scan to request an appointment</p><p class="phone">${esc(biz.phone)}</p><p style="margin:.05in 0 0">${esc(biz.email)}<br>mcc-solutionsnj.com</p></div></div>
+<p class="foot">No appointment time is guaranteed until you receive a confirmation email from us. Starting prices only; the desk confirms the fee before the appointment. A notary cannot give legal advice.</p></div></body></html>`);
+  });
+
   /* ----- earnings calculator ----- */
   app.get(EARN, async (req, res) => {
     const biz = await business(); const url = base(req);

@@ -2,7 +2,7 @@
 // Counts only time the tab is visible, stays out of the way of forms and legal pages, and is easy to close.
 (function () {
   var path = location.pathname.replace(/\/+$/, "") || "/";
-  var SKIP = [/^\/notary$/, /^\/notary\/become-a-notary/, /^\/(privacy|terms|accessibility|legal|cookies)/, /^\/(admin|portal|client|manage)/];
+  var SKIP = [/^\/notary$/, /^\/notary\/become-a-notary/, /^\/notary\/(which-service|appointment-checklist)/, /^\/bookkeeping\/health-check/, /^\/websites\/(quiz|seo-checker)/, /^\/(privacy|terms|accessibility|legal|cookies)/, /^\/(admin|portal|client|manage)/];
   if (SKIP.some(function (r) { return r.test(path); }) || /manage\.html$/.test(path)) return;
   var KEY = "mcc_nudge_seen", DAY = 864e5, seen;
   try { seen = Number(localStorage.getItem(KEY)) || 0; } catch (e) { seen = 0; }
@@ -13,10 +13,15 @@
   if (!/\d{3}/.test(phone)) phone = "(908) 444-6373";
 
   var C;
-  if (/^\/bookkeeping/.test(path)) C = { k: "Bookkeeping", h: "Want the books off your plate?", p: "Tell us what you use and what's behind. We reply with a plain quote, no pressure.", cta: "Get a quote", href: "/bookkeeping/#interest" };
+  if (/^\/bookkeeping/.test(path)) C = { k: "Bookkeeping", h: "Want the books off your plate?", p: "Matthew is a QuickBooks ProAdvisor. Tell us what you use and what's behind, and we reply with a plain quote, no pressure.", cta: "Get a quote", href: "/bookkeeping/#interest" };
   else if (/^\/websites/.test(path)) C = { k: "Websites & SEO", h: "Want a site that brings in calls?", p: "Tell us about your business and we'll reply with a clear price and a plan. No jargon.", cta: "Get a quote", href: "/websites/#quote" };
   else C = { k: "Notary", h: "Need something notarized?", p: "We come to you, or meet by video. Book online in about two minutes, or call and a real person will sort it out.", cta: "Book a notary", href: "/notary/#booker" };
 
+  // Leaving-soon version: shown once, to desktop visitors whose mouse heads for the browser bar after a few seconds on the page.
+  var X;
+  if (/^\/bookkeeping/.test(path)) X = { k: "Before you go", h: "How healthy are your books?", p: "Answer a few quick questions and get a plain-English list of what to fix first. Free, no sign-up to see it.", cta: "Take the health check", href: "/bookkeeping/health-check" };
+  else if (/^\/websites/.test(path)) X = { k: "Before you go", h: "Is your website working for you?", p: "A two-minute quiz and a free page check show what to fix first. No sign-up to see the results.", cta: "Try the free quiz", href: "/websites/quiz" };
+  else X = { k: "Before you go", h: "Not sure which service you need?", p: "Answer four quick questions and we'll point you to the right one, with what to bring.", cta: "Find my service", href: "/notary/which-service" };
   var ms = 0, last = Date.now(), timer, shown = false;
   function typing() { var a = document.activeElement; return a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); }
   function tick() {
@@ -26,6 +31,10 @@
     if (ms >= 20000 && !shown) { if (typing()) { ms = 15000; } else show(); }
   }
   timer = setInterval(tick, 1000);
+  document.addEventListener("mouseout", function (e) {
+    if (shown || e.relatedTarget || e.clientY > 0 || ms < 8000 || typing() || (window.matchMedia && matchMedia("(pointer:coarse)").matches)) return;
+    C = X; show();
+  });
   document.addEventListener("visibilitychange", function () { last = Date.now(); });
 
   function track(n) { try { if (window.mccTrack) window.mccTrack(n, { page_path: location.pathname }); } catch (e) {} }
