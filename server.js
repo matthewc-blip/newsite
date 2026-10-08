@@ -171,23 +171,6 @@ app.get("/api/availability/days", async (req, res) => {
   res.json({ timezone: s.business.timezone, days: await openDays(s, service, from, days) });
 });
 
-// Next open mobile slot, shown as a small line on public pages. Cached for a minute; it is the same data the booking form uses.
-let nextOpenCache = { at: 0, v: null };
-app.get("/api/next-open", async (req, res) => {
-  res.set("Cache-Control", "public, max-age=60");
-  if (Date.now() - nextOpenCache.at < 60000) return res.json(nextOpenCache.v);
-  let v = { slot: null };
-  try {
-    const s = await getSettings(); const tz = s.business.timezone; const today = dateInTz(new Date(), tz);
-    for (let i = 0; i < 14 && !v.slot; i++) {
-      const date = addDays(today, i); const slots = await slotsForDate(s, "mobile", date);
-      if (slots.length) v = { slot: slots[0].start, timezone: tz };
-    }
-  } catch (e) { console.error("next-open:", e.message); }
-  nextOpenCache = { at: Date.now(), v };
-  res.json(v);
-});
-
 function readBookingInput(body, { admin = false } = {}) {
   const errors = {};
   const b = {

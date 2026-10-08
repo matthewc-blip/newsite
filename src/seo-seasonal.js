@@ -45,7 +45,7 @@ function register(app, c) {
       res.send(layout({
         req, biz, path: pg.path, crumbs, title: fit(pg.title, "MCC Solutions"), description: pg.description,
         body: {
-          hero: `<p class="eyebrow">${pg.eyebrow}</p><h1 style="margin-top:10px">${pg.h1}</h1><p class="lede" style="margin-top:14px">${pg.lede}</p><div class="hero-ctas" style="margin-top:18px"><a class="btn btn-primary" href="/notary/#order">Request an appointment</a></div><p data-next-open hidden style="margin:14px 0 0;font-weight:600"></p>`,
+          hero: `<p class="eyebrow">${pg.eyebrow}</p><h1 style="margin-top:10px">${pg.h1}</h1><p class="lede" style="margin-top:14px">${pg.lede}</p><div class="hero-ctas" style="margin-top:18px"><a class="btn btn-primary" href="/notary/#order">Request an appointment</a></div>`,
           main: `<section class="band"><div class="wrap" style="max-width:860px">${pg.sections.map(([h, ps]) => `<h2 style="margin:28px 0 10px;font-size:1.5rem">${h}</h2>${ps.map((t) => `<p style="margin:0 0 12px">${t}</p>`).join("")}`).join("")}
             <h2 style="margin:28px 0 10px;font-size:1.5rem">Related</h2><ul>${pg.links.map(([t, h]) => `<li><a href="${h}">${t}</a></li>`).join("")}</ul>
             <p style="color:var(--muted);font-size:.9rem;margin-top:22px">General information, not legal advice. Updated October 2026.</p></div></section>

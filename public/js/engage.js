@@ -1,6 +1,5 @@
 // Small attention helpers for public pages:
 //  1. A call/book bar pinned to the bottom of the screen on phones.
-//  2. "Next open" times pulled from the real booking calendar (the bar, and any element with data-next-open).
 // Quiet by design: no animation, nothing on admin, portal or legal pages, and it hides itself on the booking form.
 (function () {
   var path = location.pathname.replace(/\/+$/, "") || "/";
@@ -12,27 +11,10 @@
   function track(n, p) { try { if (window.mccTrack) window.mccTrack(n, p || { page_path: location.pathname }); } catch (e) {} }
 
   var C;
-  if (/^\/bookkeeping/.test(path)) C = { label: "Get a quote", href: "/bookkeeping/#interest", next: false };
-  else if (/^\/websites/.test(path)) C = { label: "Get a quote", href: "/websites/#quote", next: false };
+  if (/^\/bookkeeping/.test(path)) C = { label: "Get a quote", href: "/bookkeeping/#interest" };
+  else if (/^\/websites/.test(path)) C = { label: "Get a quote", href: "/websites/#quote" };
   else if (/^\/notary\/become-a/.test(path)) C = null;
-  else C = { label: "Book now", href: path === "/notary" ? "#order" : "/notary/#order", next: true };
-
-  var nextText = "";
-  function fmt(iso, tz) {
-    try {
-      var d = new Date(iso), now = new Date();
-      var day = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "numeric", day: "numeric" });
-      var t = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d);
-      var tomorrow = new Date(now.getTime() + 864e5);
-      var w = day.format(d) === day.format(now) ? "today" : day.format(d) === day.format(tomorrow) ? "tomorrow" : new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric" }).format(d);
-      return w + " at " + t;
-    } catch (e) { return ""; }
-  }
-  function applyNext() {
-    document.querySelectorAll("[data-next-open]").forEach(function (e) { if (nextText) { e.textContent = "Next open time: " + nextText; e.hidden = false; } });
-    var n = document.getElementById("mccbar-next"); if (n && nextText) { n.textContent = "Next open: " + nextText; n.hidden = false; }
-  }
-  fetch("/api/next-open").then(function (r) { return r.json(); }).then(function (j) { if (j && j.slot) { nextText = fmt(j.slot, j.timezone || "America/New_York"); applyNext(); } }).catch(function () {});
+  else C = { label: "Book now", href: path === "/notary" ? "#order" : "/notary/#order" };
 
   if (!C) return;
   var css = document.createElement("style");
@@ -43,12 +25,12 @@
     + ".mccbar a:focus-visible{outline:2px solid #fff;outline-offset:2px}body.has-mccbar{padding-bottom:84px}.mccn{bottom:92px!important}}@media print{.mccbar{display:none!important}}";
   document.head.appendChild(css);
   var bar = document.createElement("div"); bar.className = "mccbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Contact");
-  bar.innerHTML = (C.next ? '<small id="mccbar-next" hidden></small>' : "") + '<div class="r"><a class="c"></a><a class="b"></a></div>';
+  bar.innerHTML = '<div class="r"><a class="c"></a><a class="b"></a></div>';
   var a1 = bar.querySelector(".c"), a2 = bar.querySelector(".b");
   a1.href = telHref; a1.textContent = "Call"; a1.setAttribute("aria-label", "Call " + phone);
   a2.href = C.href; a2.textContent = C.label;
   a1.addEventListener("click", function () { track("bar_call"); }); a2.addEventListener("click", function () { track("bar_book"); });
   document.body.appendChild(bar); document.body.classList.add("has-mccbar");
   function sync() { bar.hidden = /^#(order|booker)/.test(location.hash) && path === "/notary"; }
-  window.addEventListener("hashchange", sync); sync(); applyNext();
+  window.addEventListener("hashchange", sync); sync();
 })();
