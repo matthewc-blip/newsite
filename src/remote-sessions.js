@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const { db, getSettings } = require("./db");
 const { str, emailOk } = require("./util");
 const mail = require("./email");
+const archive = require("./archive");
+const { PassThrough, Readable } = require("stream");
 
 const E = process.env;
 const zoomOn = () => !!(E.ZOOM_ACCOUNT_ID && E.ZOOM_CLIENT_ID && E.ZOOM_CLIENT_SECRET);
@@ -55,26 +57,45 @@ const KINDS = ["recording", "transcript", "signed_paper", "notarized_copy", "oth
 async function addHash(sessionId, kind, filename, size, sha256, source) {
   return db.one("insert into remote_hashes (session_id,kind,filename,size_bytes,sha256,source) values ($1,$2,$3,$4,$5,$6) returning *", [sessionId, kind, filename || null, size == null ? null : Number(size), sha256, source]);
 }
-async function hashZoomFile(url) {
+// Downloads one Zoom file once, hashing it as it streams. When R2 is connected the same bytes are copied into the bucket.
+async function hashZoomFile(url, store) {
   const r = await fetch(url, { headers: { Authorization: `Bearer ${await zoomToken()}` }, redirect: "follow" });
   if (!r.ok || !r.body) throw new Error("Zoom download failed: " + r.status);
   const h = crypto.createHash("sha256"); let n = 0;
-  for await (const chunk of r.body) { h.update(chunk); n += chunk.length; }
-  return { sha256: h.digest("hex"), size: n };
+  const tap = new PassThrough();
+  const src = Readable.fromWeb(r.body);
+  src.on("data", (c) => { h.update(c); n += c.length; });
+  src.on("error", (e) => tap.destroy(e));
+  src.pipe(tap);
+  let key = null;
+  if (store && archive.r2On()) {
+    try { key = await archive.putStream(store.key, tap, { contentType: store.contentType, metadata: store.metadata }); }
+    catch (e) { console.error("R2 upload failed:", e.message); tap.resume(); await new Promise((ok) => src.once("end", ok).once("close", ok)); }
+  } else { for await (const _ of tap) { /* drain */ } }
+  return { sha256: h.digest("hex"), size: n, key };
 }
 async function hashRecording(sessionId, files) {
   const done = [];
+  const sess = archive.r2On() ? await get(sessionId) : null;
   for (const f of files || []) {
     if (!f.download_url || (f.status && f.status !== "completed")) continue;
     const ext = String(f.file_type || "").toUpperCase();
     const kind = ext === "TRANSCRIPT" || ext === "VTT" ? "transcript" : "recording";
+    const name = `${f.recording_type || "recording"}.${ext.toLowerCase() || "bin"}`;
     try {
-      const { sha256, size } = await hashZoomFile(f.download_url);
-      const row = await addHash(sessionId, kind, `${f.recording_type || "recording"}.${ext.toLowerCase() || "bin"}`, size, sha256, "zoom");
+      const store = sess ? { key: archive.keyFor(sess.ref, name), contentType: ext === "MP4" ? "video/mp4" : undefined, metadata: { session: String(sess.ref) } } : null;
+      const { sha256, size, key } = await hashZoomFile(f.download_url, store);
+      let row = await addHash(sessionId, kind, name, size, sha256, "zoom");
+      if (key) {
+        // Read the stored copy back and confirm it matches before calling it archived.
+        let ok = false;
+        try { const back = await archive.sha256Of(key); ok = back.sha256 === sha256 && back.size === size; } catch (e) { console.error("R2 verify failed:", e.message); }
+        row = await db.one("update remote_hashes set stored_key=$2, stored_at=now(), stored_verified=$3, retain_until=$4 where id=$1 returning *", [row.id, key, ok, archive.retainUntil()]);
+      }
       done.push(row);
     } catch (e) { console.error("Recording fingerprint failed:", e.message); }
   }
-  if (done.length) await mail.deskNotice("Recording fingerprints saved", done.map((r) => `${r.filename}  ${r.size_bytes} bytes  SHA-256 ${r.sha256}`).join("\n") + "\n\nKeep this email as an independent, dated copy.");
+  if (done.length) await mail.deskNotice("Recording fingerprints saved", done.map((r) => `${r.filename}  ${r.size_bytes} bytes  SHA-256 ${r.sha256}` + (r.stored_key ? `\n   Archived: ${r.stored_key} (${r.stored_verified ? "read back and matched" : "UPLOADED BUT NOT VERIFIED - check it"})` : "")).join("\n") + "\n\nKeep this email as an independent, dated copy." + (archive.r2On() ? "" : "\nLong-term storage is not connected: these recordings exist only in Zoom."));
   return done;
 }
 
@@ -287,4 +308,4 @@ function register(app, { requireAdmin }) {
   app.delete("/api/admin/remote/:id", requireAdmin, wrap(async (req) => { await db.run("delete from remote_sessions where id=$1 and completed_at is null", [Number(req.params.id) || 0]); return { ok: true }; }));
 }
 
-module.exports = { register, startJob, zoomWebhook, personaWebhook, runAlerts, hashRecording, CHECKS };
+module.exports = { register, startJob, zoomWebhook, personaWebhook, runAlerts, hashRecording, hashZoomFile, CHECKS };

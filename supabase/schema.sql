@@ -556,5 +556,9 @@ create table if not exists remote_hashes (
   source text default 'manual', -- zoom (hashed by the server when Zoom finished recording) or manual
   created_at timestamptz default now()
 );
+alter table remote_hashes add column if not exists stored_key text;          -- object key in the R2 bucket
+alter table remote_hashes add column if not exists stored_at timestamptz;
+alter table remote_hashes add column if not exists stored_verified boolean;   -- stored copy was read back and matched the fingerprint
+alter table remote_hashes add column if not exists retain_until date;         -- 10-year retention target (the bucket lock enforces it)
 create index if not exists remote_hashes_session on remote_hashes(session_id);
 alter table remote_hashes enable row level security;
