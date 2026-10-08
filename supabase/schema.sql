@@ -514,3 +514,33 @@ create table if not exists followup_optouts (
 );
 alter table booking_drafts enable row level security;
 alter table followup_optouts enable row level security;
+
+-- ===== Remote sessions: Zoom meeting + Persona ID check + 3-day paper deadline (safe to re-run) =====
+create table if not exists remote_sessions (
+  id serial primary key,
+  ref text unique not null,
+  booking_id integer,
+  signer_name text not null,
+  signer_email text,
+  signer_phone text,
+  signer_location text,
+  doc_title text,
+  act text default 'jurat',
+  scheduled_at timestamptz,
+  status text default 'scheduled',
+  zoom_meeting_id text, zoom_join_url text, zoom_start_url text, zoom_passcode text,
+  persona_inquiry_id text, persona_status text, persona_link text, persona_checked_at timestamptz,
+  id_method text,
+  witness_name text,
+  recording_ref text, recording_url text, recording_passcode text, recording_at timestamptz,
+  session_ended_at timestamptz,
+  paper_due_at timestamptz,
+  paper_received_at timestamptz,
+  tracking text,
+  checklist jsonb default '{}'::jsonb,
+  notes text,
+  deadline_alerted boolean default false,
+  completed_at timestamptz,
+  created_at timestamptz default now()
+);
+alter table remote_sessions enable row level security;

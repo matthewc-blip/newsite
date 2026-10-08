@@ -120,6 +120,7 @@
     if (t === "payouts") loadPayouts();
     if (t === "clients") loadClients();
     if (t === "billing") loadBilling();
+    if (t === "remote") loadRemote();
     if (t === "requests") loadRequests();
   }
 
@@ -718,6 +719,64 @@
     if (!m) { m = document.createElement("p"); m.className = "form-msg"; el.appendChild(m); }
     m.textContent = text;
   }
+
+  /* ---------- remote sessions ---------- */
+  const IDM = { persona: "Persona ID and selfie", kba: "Third-party KBA", witness: "Credible witness", personal: "Personal knowledge" };
+  const PSTAT = { approved: "p-ok", completed: "p-ok", failed: "p-warn", declined: "p-warn", expired: "p-warn", needs_review: "p-warn" };
+  let REM = null;
+  async function loadRemote() {
+    REM = await api("/api/admin/remote");
+    $("#remState").innerHTML = `<span class="pill ${REM.zoom ? "p-ok" : "p-info"}">Zoom ${REM.zoom ? "connected" : "not connected · paste a link"}</span> <span class="pill ${REM.persona ? "p-ok" : "p-info"}">Persona ${REM.persona ? "connected" : "not connected · mark by hand"}</span>`;
+    renderRemote();
+  }
+  function renderRemote() {
+    const open = REM.sessions.filter((s) => s.status !== "completed");
+    const late = open.filter((s) => s.hoursLeft != null && s.hoursLeft < 24).length;
+    const bd = $("#badgeRemote"); bd.hidden = !late; bd.textContent = late;
+    $("#remList").innerHTML = REM.sessions.map((s) => {
+      const c = s.checklist || {}, done = REM.checks.filter(([k]) => c[k]).length;
+      const due = s.paper_due_at && !s.paper_received_at ? `<span class="pill ${s.hoursLeft < 0 ? "p-warn" : s.hoursLeft < 24 ? "p-warn" : "p-info"}">Paper due ${s.hoursLeft < 0 ? Math.abs(s.hoursLeft) + "h OVERDUE" : "in " + s.hoursLeft + "h"}</span>` : s.paper_received_at ? '<span class="pill p-ok">Paper received</span>' : "";
+      return `<div class="card" data-rs="${s.id}"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(s.signer_name)}</h3><span class="pill ${s.status === "completed" ? "p-ok" : "p-info"}">${esc(s.status.replace("_", " "))}</span></div>
+        <p class="meta">${esc(s.ref)} · ${esc(s.doc_title || "No document named")} · ${esc(s.act)}${s.signer_location ? " · " + esc(s.signer_location) : ""}${s.scheduled_at ? "<br>" + esc(full(s.scheduled_at)) : ""}</p>
+        <p style="margin:8px 0">${due} ${s.persona_status ? `<span class="pill ${PSTAT[s.persona_status] || "p-info"}">ID check: ${esc(s.persona_status)}</span>` : ""} ${s.recording_url ? '<span class="pill p-ok">Recording ready</span>' : ""} ${s.id_method ? `<span class="pill p-info">${esc(IDM[s.id_method] || s.id_method)}</span>` : ""}</p>
+        ${s.zoom_join_url ? `<p style="font-size:.88rem;word-break:break-all"><a href="${esc(s.zoom_start_url || s.zoom_join_url)}" target="_blank" rel="noopener">${s.zoom_start_url ? "Start meeting" : "Zoom link"}</a> · <button class="linkbtn" data-rcopy="${esc(s.zoom_join_url)}">Copy join link</button></p>` : ""}
+        ${s.persona_link ? `<p style="font-size:.88rem"><button class="linkbtn" data-rcopy="${esc(s.persona_link)}">Copy ID check link</button></p>` : ""}
+        ${s.recording_url ? `<p style="font-size:.88rem"><a href="${esc(s.recording_url)}" target="_blank" rel="noopener">Open recording</a>${s.recording_passcode ? " · passcode " + esc(s.recording_passcode) : ""}</p>` : ""}
+        <details style="margin:8px 0"><summary>Checklist (${done}/${REM.checks.length})</summary>${REM.checks.map(([k, l]) => `<label style="display:flex;gap:8px;margin:6px 0;font-size:.9rem"><input type="checkbox" data-rck="${s.id}:${k}" ${c[k] ? "checked" : ""}> ${esc(l)}</label>`).join("")}</details>
+        <label style="font-size:.86rem">Tracking number for the signed paper <input data-rtrack="${s.id}" value="${esc(s.tracking || "")}" style="width:100%"></label>
+        <div class="actions" style="margin-top:10px;flex-wrap:wrap">
+          ${!s.zoom_join_url && REM.zoom ? `<button class="btn btn-ghost btn-sm" data-ract="zoom" data-id="${s.id}">Create Zoom</button>` : ""}
+          ${REM.persona ? `<button class="btn btn-ghost btn-sm" data-ract="persona" data-id="${s.id}">${s.persona_inquiry_id ? "New ID check link" : "Start ID check"}</button>` : ""}
+          ${s.persona_inquiry_id ? `<button class="btn btn-ghost btn-sm" data-ract="persona/refresh" data-id="${s.id}">Refresh ID result</button>` : ""}
+          ${s.signer_email && s.zoom_join_url ? `<button class="btn btn-ghost btn-sm" data-ract="invite" data-id="${s.id}">Email signer</button>` : ""}
+          <a class="btn btn-ghost btn-sm" href="/api/admin/remote/${s.id}/declaration" target="_blank" rel="noopener">Declaration</a>
+          ${!s.session_ended_at ? `<button class="btn btn-ghost btn-sm" data-rend="${s.id}">Session ended</button>` : ""}
+          ${s.session_ended_at && !s.paper_received_at ? `<button class="btn btn-ghost btn-sm" data-rpaper="${s.id}">Paper received</button>` : ""}
+          ${s.status !== "completed" ? `<button class="btn btn-primary btn-sm" data-rdone="${s.id}">Complete</button>` : ""}
+        </div></div>`;
+    }).join("") || '<div class="empty-state" style="grid-column:1/-1">No remote sessions yet. Create one to get a Zoom link, an ID check and a 3-day paper clock.</div>';
+    const msg = (t, bad) => { const m = $("#remMsg"); m.textContent = t; m.className = "form-msg" + (bad ? "" : " ok"); };
+    const post = async (path, body, ok) => { try { await api("/api/admin/remote/" + path, { method: "POST", body: body || {} }); await loadRemote(); msg(ok || "Saved."); } catch (e) { msg(e.message, true); } };
+    $$("[data-ract]").forEach((b) => (b.onclick = async () => { b.disabled = true; await post(`${b.dataset.id}/${b.dataset.ract}`, {}, b.dataset.ract === "invite" ? "Email sent (or logged if email is off)." : "Done."); b.disabled = false; }));
+    $$("[data-rend]").forEach((b) => (b.onclick = () => post(b.dataset.rend, { endSession: true }, "Session ended. The 3-day clock is running.")));
+    $$("[data-rpaper]").forEach((b) => (b.onclick = () => post(b.dataset.rpaper, { paperReceived: true }, "Paper marked received. Now complete your certificate.")));
+    $$("[data-rdone]").forEach((b) => (b.onclick = () => post(b.dataset.rdone, { complete: true }, "Session completed.")));
+    $$("[data-rcopy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.rcopy).then(() => msg("Copied.")); }));
+    $$("[data-rck]").forEach((b) => (b.onchange = async () => {
+      const [id, k] = b.dataset.rck.split(":"), s = REM.sessions.find((x) => String(x.id) === id), cl = { ...(s.checklist || {}), [k]: b.checked };
+      try { const r = await api("/api/admin/remote/" + id, { method: "POST", body: { checklist: cl } }); s.checklist = r.session.checklist; } catch (e) { msg(e.message, true); }
+    }));
+    $$("[data-rtrack]").forEach((b) => (b.onchange = () => post(b.dataset.rtrack, { tracking: b.value })));
+  }
+  $("#remNew")?.addEventListener("click", () => { $("#rsErr").textContent = ""; $("#remDlg").showModal(); });
+  $("#rsCancel")?.addEventListener("click", () => $("#remDlg").close());
+  $("#rsSave")?.addEventListener("click", async () => {
+    try {
+      const when = $("#rsWhen").value ? new Date($("#rsWhen").value).toISOString() : null;
+      await api("/api/admin/remote", { method: "POST", body: { signerName: $("#rsName").value, signerEmail: $("#rsEmail").value, signerPhone: $("#rsPhone").value, signerLocation: $("#rsLoc").value, docTitle: $("#rsDoc").value, act: $("#rsAct").value, scheduledAt: when, idMethod: $("#rsId").value, zoomUrl: $("#rsZoom").value } });
+      $("#remDlg").close(); await loadRemote();
+    } catch (e) { $("#rsErr").textContent = e.message; }
+  });
 
   /* ---------- billing ---------- */
   const usd = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

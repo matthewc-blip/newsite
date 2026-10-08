@@ -96,6 +96,8 @@ app.get(Object.keys(STATIC_CANON), (req, res, next) => {
 });
 // Stripe webhooks need the raw body for signature checks, so this route comes before the JSON parser.
 app.post("/api/webhooks/stripe", express.raw({ type: "application/json", limit: "1mb" }), (req, res) => require("./src/billing").handleStripeWebhook(req, res));
+app.post("/api/webhooks/zoom", express.raw({ type: "*/*", limit: "1mb" }), (req, res) => require("./src/remote-sessions").zoomWebhook(req, res));
+app.post("/api/webhooks/persona", express.raw({ type: "*/*", limit: "1mb" }), (req, res) => require("./src/remote-sessions").personaWebhook(req, res));
 app.use(express.json({ limit: "100kb" }));
 
 /* ---------------- helpers ---------------- */
@@ -746,6 +748,7 @@ clients.register(app, { requireAdmin, insertBooking, readBookingInput });
 billing.register(app, { requireAdmin, requireClient: clients.requireClient, loadClient: clients.loadClient });
 require("./src/reviews").register(app, { requireAdmin });
 require("./src/followups").register(app, { requireAdmin });
+require("./src/remote-sessions").register(app, { requireAdmin });
 bookkeeping.register(app, { requireAdmin });
 require("./src/requests").register(app, { requireAdmin, requireNotary: notary.requireNotary, loadMe: notary.loadMe });
 
@@ -786,7 +789,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   init()
-    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/reviews").startJob(); require("./src/followups").startJob(); })
+    .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/reviews").startJob(); require("./src/followups").startJob(); require("./src/remote-sessions").startJob(); })
     .catch((e) => { console.error("Could not connect to the database:", e.message); process.exit(1); });
 }
 module.exports = app;

@@ -39,6 +39,22 @@
   </div>
 </div>
 
+<dialog id="remDlg" style="max-width:520px;width:calc(100% - 32px);border:1px solid var(--line);border-radius:10px;padding:22px">
+  <h3 style="margin:0 0 12px">New remote session</h3>
+  <div class="form-grid" style="display:grid;gap:10px">
+    <label>Signer name<input id="rsName"></label>
+    <label>Signer email<input id="rsEmail" type="email"></label>
+    <label>Signer phone<input id="rsPhone"></label>
+    <label>Signer's location (city, state)<input id="rsLoc" placeholder="Chicago, IL"></label>
+    <label>Document<input id="rsDoc" placeholder="BA-62 Affidavit of Surviving Spouse"></label>
+    <label>Notarial act<select id="rsAct"><option value="jurat">Jurat (sworn)</option><option value="acknowledgment">Acknowledgment</option></select></label>
+    <label>Date and time (<span class="bizTz"></span>)<input id="rsWhen" type="datetime-local"></label>
+    <label>ID method<select id="rsId"><option value="">Choose later</option><option value="persona">Persona ID and selfie check</option><option value="kba">Third-party KBA</option><option value="witness">Credible witness</option><option value="personal">Personal knowledge</option></select></label>
+    <label>Your own Zoom link (optional; leave blank to create one)<input id="rsZoom" placeholder="https://zoom.us/j/..."></label>
+  </div>
+  <p class="form-msg" id="rsErr"></p>
+  <div class="actions" style="margin-top:12px"><button class="btn btn-primary btn-sm" id="rsSave">Create</button><button class="btn btn-ghost btn-sm" id="rsCancel">Cancel</button></div>
+</dialog>
 <dialog id="resetDlg" style="max-width:480px;width:calc(100% - 32px);border:1px solid var(--line);border-radius:10px;padding:22px">
   <form method="dialog" id="resetForm">
     <h3 id="rdTitle">Reset passkeys</h3>
@@ -63,6 +79,7 @@
       <button data-tab="notaries">Team <span class="badge" id="badgeCred" hidden></span></button>
       <button data-tab="payouts">Payouts</button>
       <button data-tab="clients">Clients</button>
+      <button data-tab="remote">Remote <span class="badge" id="badgeRemote" hidden></span></button>
       <button data-tab="billing">Billing</button>
       <button data-tab="bookkeeping">Bookkeeping <span class="badge" id="badgeBk" hidden></span></button>
       <button data-tab="applications">Applications <span class="badge" id="badgeApps" hidden></span></button>
@@ -126,6 +143,14 @@
     <div id="payoutGroups"></div>
     <h3 style="margin:30px 0 10px">Recently paid</h3>
     <div class="tbl-wrap"><table><thead><tr><th>Paid</th><th>Notary</th><th>Job</th><th>Fee</th><th></th></tr></thead><tbody id="paidRows"></tbody></table></div>
+  </section>
+
+  <!-- REMOTE SESSIONS -->
+  <section class="tab" data-tab="remote" hidden>
+    <div class="toolbar"><h2 class="tab-title">Remote sessions</h2><span id="remState"></span><button class="btn btn-primary btn-sm" id="remNew">New Session</button></div>
+    <p style="color:var(--muted);font-size:.9rem;margin:0 0 14px">Ink-signed remote notarization: video call, ID check, recording, and the 3-day deadline for the signed paper. Confirm your ID method and setup with the NJ Treasury before your first paid session.</p>
+    <div class="cards" id="remList"></div>
+    <p class="form-msg" id="remMsg"></p>
   </section>
 
   <!-- BILLING -->
