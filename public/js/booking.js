@@ -401,6 +401,11 @@
     $("#doneManage").href = res.manageUrl;
     const cardBox = $("#doneCard");
     cardBox.hidden = !b.cardRequested;
+    if (b.cardRequired) {
+      $("#doneTitle").textContent = `Booking ${b.ref} received. One last step`;
+      $("#doneText").textContent = `A card is required to confirm your appointment. It's charged only after your appointment, once the final fee is confirmed. Taking you to secure checkout…`;
+      setTimeout(() => $("#doneCardBtn").click(), 1500);
+    }
     $("#doneCardBtn").onclick = async () => {
       const btn = $("#doneCardBtn"), m = $("#doneCardMsg");
       btn.disabled = true; m.textContent = "";

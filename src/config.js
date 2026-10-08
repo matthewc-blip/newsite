@@ -76,7 +76,7 @@ const DEFAULT_SETTINGS = {
     stripeAch: true,            // Stripe: let clients pay by ACH bank debit (0.8%, max $5) as well as card
     ccEmails: [],               // copy these addresses on every invoice
     defaultNotarialFees: { NJ: { financing: 25, transfer: 15 } }, // per-state caps used as the notarial line
-    cardAtBooking: "ask",       // "ask": individuals are asked to save a card when they book (Stripe); "off": never
+    cardAtBooking: "ask",       // "ask": individuals are asked to save a card when they book (Stripe); "required": a saved card is needed to confirm; "off": never
     autoChargeCards: true,      // charge the saved card automatically when the job is marked completed
     minMarginPct: 20,           // block notary fees that leave MCC less than this % of the client fee (0 = off)
     autoFeesForAccounts: true,  // add rush / after-hours / weekend fees automatically on business-account orders too

@@ -86,6 +86,7 @@
       $("#cardBtn").textContent = "Use a different card";
     } else {
       cb.hidden = !b.cardRequested;
+      if (b.cardRequired) { $("#cardHead").textContent = "Card required to confirm your appointment"; $("#cardText").textContent = "Save a card to hold your appointment. It's charged only after the appointment, once the final fee is confirmed."; }
     }
     $("#cref").textContent = b.ref;
     const ln = $("#lateNote"); ln.hidden = b.lateCancelFee == null;
@@ -104,7 +105,7 @@
       if (c.ok && cj.booking) { render(cj.booking); if (cj.booking.card) msg("Card saved. You're all set; we'll charge it after your appointment.", true); }
       history.replaceState(null, "", `?ref=${encodeURIComponent(ref)}&token=${encodeURIComponent(token)}`);
     } else if (q.get("card") === "skipped") {
-      msg("No card added. You can add one here any time before your appointment.");
+      msg(q.get("card") && document.querySelector("#cardHead").textContent.startsWith("Card required") ? "No card saved yet. A card is required to confirm your appointment." : "No card added. You can add one here any time before your appointment.");
       history.replaceState(null, "", `?ref=${encodeURIComponent(ref)}&token=${encodeURIComponent(token)}`);
     }
   } catch (e) { $("#title").textContent = "Booking not found"; msg(e.message); }

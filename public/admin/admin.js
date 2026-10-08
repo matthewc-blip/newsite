@@ -314,7 +314,7 @@
       })()}
       ${cardsOn && !b.client_account_id ? `<div class="dsec"><h4>Card payment</h4>${(() => {
         const price = b.quoted_fee ?? b.est_fee;
-        if (!b.stripe_payment_method_id) return `<p style="color:var(--muted);font-size:.9rem">No card on file. Individual customers are asked to save one when they book.</p>
+        if (!b.stripe_payment_method_id) return `<p style="color:var(--muted);font-size:.9rem">No card on file.${b.status === "requested" ? " A card is required before this can be confirmed." : ""} Individual customers are asked to save one when they book.</p>
           <button class="btn btn-ghost btn-sm" id="dCardLink" type="button" style="margin-top:8px">Email card link to customer</button>`;
         const card = `<p><span class="pill p-ok">${esc((b.card_brand || "card").replace(/^./, (c) => c.toUpperCase()))} ending ${esc(b.card_last4 || "")}</span> <span style="font-size:.85rem;color:var(--muted)">saved ${esc(full(b.card_saved_at).replace(/, \d{4}/, ""))}</span></p>`;
         if (binv) return card + (binv.provider === "card" && binv.status === "paid" ? `<p style="font-size:.9rem;margin-top:6px">Paid by card · ${esc(binv.number)}</p>` : binv.error ? `<p class="form-msg" style="margin-top:6px">${esc(binv.error)}</p>` : "");
@@ -340,6 +340,7 @@
           if (v !== null && v.trim() !== "") return patch({ ...body, quoted_fee: v.trim() }, okText);
           if ($("#dFee")) $("#dFee").focus();
         }
+        if (e.code === "card" && !body.override_card && confirm(e.message + "\n\nConfirm anyway? The override is recorded in the booking history.")) return patch({ ...body, override_card: true }, okText + " (card override)");
         if (e.code === "margin" && !body.override_margin && confirm(e.message + "\n\nSave anyway? The override is recorded in the booking history.")) return patch({ ...body, override_margin: true }, okText + " (margin override)");
         $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message;
       }
@@ -1035,7 +1036,7 @@
           <div class="field"><label>Late fee on overdue business invoices (% a month, 0 = off)</label><input type="number" min="0" max="5" step="0.1" id="biLate" value="${s.billing.lateFeePct ?? 1.5}"></div>
           <label class="switch"><input type="checkbox" id="biAutoFeesAcct" ${s.billing.autoFeesForAccounts !== false ? "checked" : ""}> Add rush, after-hours and weekend fees automatically on business-account orders too</label>
           <h4 style="margin-top:14px">Card on file (individual customers)</h4>
-          <label class="switch"><input type="checkbox" id="biCards" ${(s.billing.cardAtBooking || "ask") !== "off" ? "checked" : ""}> Ask individuals to save a card when they book (needs Stripe)</label>
+          <div class="field"><label>Card at booking (needs Stripe)</label><select id="biCards">${[["required", "Required: a saved card is needed to confirm"], ["ask", "Ask: offered, but optional"], ["off", "Off"]].map(([v, t]) => `<option value="${v}" ${(s.billing.cardAtBooking || "ask") === v ? "selected" : ""}>${t}</option>`).join("")}</select></div>
           <label class="switch"><input type="checkbox" id="biAutoCharge" ${s.billing.autoChargeCards !== false ? "checked" : ""}> Charge the saved card automatically when a job is marked completed</label>
         </div>
         <div class="set-card"><h3>Checkout add-ons</h3>
@@ -1123,7 +1124,7 @@
     s.notaryFees = { mobile: { loan: num("#nfLoan"), general: num("#nfGen") }, ron: num("#nfRon"), rin: num("#nfRin") };
     s.billing = { ...s.billing, termsDays: num("#biTerms") ?? 30, individualTermsDays: num("#biInd") ?? 0,
       stripeAch: $("#biStripeAch").checked, ccEmails: $("#biCc").value.split(/[,\s]+/).filter(Boolean),
-      cardAtBooking: $("#biCards").checked ? "ask" : "off", autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20,
+      cardAtBooking: $("#biCards").value, autoChargeCards: $("#biAutoCharge").checked, minMarginPct: num("#biMargin") ?? 20,
       lateFeePct: num("#biLate") ?? 0, autoFeesForAccounts: $("#biAutoFeesAcct").checked };
     s.requestFees = (s.requestFees || []).map((f, i) => ({ ...f, enabled: $(`[data-rf-on="${i}"]`) ? $(`[data-rf-on="${i}"]`).checked : f.enabled !== false,
       price: $(`[data-rf-price="${i}"]`) ? Math.max(0, Number($(`[data-rf-price="${i}"]`).value) || 0) : f.price,

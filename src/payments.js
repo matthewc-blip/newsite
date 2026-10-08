@@ -18,6 +18,13 @@ function cardsOn(settings) {
 function wantsCard(b, settings) {
   return cardsOn(settings) && !b.client_account_id && OPEN.includes(b.status) && !b.stripe_payment_method_id;
 }
+// "required": individuals must save a card to confirm; the desk can't confirm/assign without one (override available).
+function cardRequired(settings) {
+  return cardsOn(settings) && settings.billing?.cardAtBooking === "required";
+}
+function needsCardToConfirm(b, settings) {
+  return cardRequired(settings) && !b.client_account_id && !b.stripe_payment_method_id;
+}
 function cardView(b) {
   return b.stripe_payment_method_id ? { brand: b.card_brand || "card", last4: b.card_last4 || "" } : null;
 }
@@ -126,4 +133,4 @@ async function onCompleted(bookingId) {
   catch (e) { console.error(`Auto-charge for ${b.ref} failed:`, e.message); }
 }
 
-module.exports = { cardsOn, wantsCard, cardView, startCardSetup, recordFromSession, charge, onCompleted };
+module.exports = { cardRequired, needsCardToConfirm, cardsOn, wantsCard, cardView, startCardSetup, recordFromSession, charge, onCompleted };

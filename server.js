@@ -133,6 +133,7 @@ async function publicBooking(b, settings) {
     addons: addons.list(b).filter((a) => a.kind !== "fee").map((a) => ({ label: a.label, qty: a.qty, price: a.price })),
     fees: fees.ofKind(addons.list(b)).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
     cardRequested: payments.wantsCard(b, settings),
+    cardRequired: payments.cardRequired(settings) && payments.wantsCard(b, settings),
     lateCancelFee: (() => { const f = ["requested", "confirmed", "assigned"].includes(b.status) ? fees.lateCancel(settings, b) : null; return f ? f.price : null; })(),
   };
 }
@@ -529,6 +530,10 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
   const sets = {}, notes = [];
   if (req.body.status !== undefined) {
     if (!STATUSES.includes(req.body.status)) return res.status(400).json({ error: "Invalid status" });
+    if (["confirmed", "assigned"].includes(req.body.status) && req.body.status !== row.status && payments.needsCardToConfirm(row, settings)) {
+      if (!req.body.override_card) return res.status(400).json({ error: "This customer hasn't saved a card yet. Send them the card link first, or override.", code: "card" });
+      await logEvent(row.id, "desk", "Card requirement overridden: confirmed without a card on file");
+    }
     if (req.body.status !== row.status) { sets.status = req.body.status; notes.push(`Status: ${row.status} → ${req.body.status}`); }
   }
   let row2 = row;
