@@ -201,6 +201,7 @@ function requestForm(s) {
 
 function register(app) {
   require("./seo-towns").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
+  require("./seo-towns-em").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-bookkeeping").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-web").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   app.get(NJ_HUB, async (req, res) => {
@@ -256,6 +257,7 @@ function register(app) {
         <section class="band"><div class="wrap" style="max-width:860px">
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(c.name)} County notary questions</h2></div>
           ${faqHtml(faqs)}
+          ${(c.slug === "essex" || c.slug === "morris") ? (() => { const C = require("./seo-towns-em").COUNTY[c.slug]; return `<h3 style="margin-top:36px;margin-bottom:12px">All ${C.towns.length} ${esc(c.name)} County towns</h3><p style="color:var(--ink-2)">Pick your town for local details:</p><ul class="county-links">${C.towns.map((t) => `<li><a href="${require("./seo-towns-em").townPath(t)}">${esc(t.name)}</a></li>`).join("")}</ul>`; })() : ""}
           ${c.slug === "union" ? `<h3 style="margin-top:36px;margin-bottom:12px">All 21 Union County towns</h3><p style="color:var(--ink-2)">Pick your town for local details:</p><ul class="county-links">${TOWNS.map((t) => `<li><a href="${townsMod.notaryPath(t)}">${esc(t.name)}</a></li>`).join("")}</ul><p style="margin-top:12px;color:var(--ink-2)">Business owner? See <a href="/bookkeeping/">bookkeeping</a> and <a href="/websites/">websites and local SEO</a>, with a page for each town.</p>` : ""}
           <h3 style="margin-top:36px;margin-bottom:12px">Nearby counties</h3>${countyLinks(neighbors)}
         </div></section>`,
@@ -415,7 +417,7 @@ function register(app) {
 
   app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...require("./seo-towns-em").paths(), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
     if ((await getSettings().catch(() => null))?.bookkeeping?.open) { paths.push(["/bookkeeping/", "0.7"]); TOWNS.forEach((t) => paths.push([townsMod.bookPath(t), "0.5"])); paths.push(...require("./seo-bookkeeping").paths()); }
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
