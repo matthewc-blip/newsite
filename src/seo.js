@@ -77,6 +77,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
 <link rel="stylesheet" href="/css/site.css">
 <script type="application/ld+json">${json}</script>
 <script src="/js/ga.js" async></script>
+<script src="/js/nudge.js" defer></script>
 </head>
 <body class="seo">
 <div class="strip"><div class="wrap">
