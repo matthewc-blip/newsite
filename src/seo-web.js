@@ -20,7 +20,8 @@ const PRICES = {
 const priceBand = (pr) => pr ? `<section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">Pricing</p><h2>What it costs</h2></div><div class="price-list">${pr.rows.map(([n, a, d]) => `<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line,#ddd)"><div><b>${n}</b><br><span style="color:var(--ink-2)">${d}</span></div><div style="white-space:nowrap;font-weight:600">${a}</div></div>`).join("")}</div><p style="margin-top:14px;color:var(--ink-2)">${pr.note} Prices are starting points. We confirm a written quote before any work begins.</p></div></section>` : "";
 
 const CHECKER = "/websites/seo-checker";
-const paths = () => [[CHECKER, "0.7"], [HUB, "0.6"], [SV_HUB, "0.7"], ...SERVICES.map((s) => [svPath(s), "0.7"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
+const QUIZ = "/websites/quiz";
+const paths = () => [[CHECKER, "0.7"], [QUIZ, "0.7"], [HUB, "0.6"], [SV_HUB, "0.7"], ...SERVICES.map((s) => [svPath(s), "0.7"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
 
 function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
@@ -196,7 +197,7 @@ function register(app, c) {
           </div>
         </div></section>
         <section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this tool</h2></div>${faqHtml(faqs)}
-          <p style="margin-top:22px;color:var(--ink-2)">Want to understand the results? Read <a href="${HUB}">our plain-language SEO guides</a>, or see <a href="${SV_HUB}">what we do and what it costs</a>.</p></div></section>
+          <p style="margin-top:22px;color:var(--ink-2)">Want to understand the results? Read <a href="${HUB}">our plain-language SEO guides</a>, take the <a href="${QUIZ}">free website quiz</a>, or see <a href="${SV_HUB}">what we do and what it costs</a>.</p></div></section>
         <script>(function(){
           var $=function(i){return document.getElementById(i)},last=null,busy=false;
           var ICON={pass:"\\u2713",warn:"!",fail:"\\u2715"},LAB={pass:"Passing",warn:"Improve",fail:"Fix"},COL={pass:"var(--ok)",warn:"var(--warn)",fail:"#a33"};
@@ -238,6 +239,39 @@ function register(app, c) {
       ],
     }));
   });
+
+  /* ----- free website quiz ----- */
+  const webQuiz = require("./web-quiz");
+  const quizKit = require("./quiz-kit");
+  quizKit.registerApi(app, { engine: webQuiz, checkApi: "/api/websites/quiz", leadApi: "/api/websites/quiz/lead", topic: "Website & SEO", name: "Free website quiz",
+    tag: "Free website quiz", quoteUrl: "https://mcc-solutionsnj.com/websites/#quote", leadSubject: "Your website and local presence check", deskSubject: "Website quiz lead" });
+  app.get(QUIZ, async (req, res) => {
+    const biz = await business(); const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Websites & SEO", "/websites/"], ["Free quiz", QUIZ]];
+    const faqs = [
+      ["What is this?", "A short quiz about your website and your local presence: who owns your domain, how current and fast the site is, whether visitors can easily call or book, your Google Business Profile, reviews and how you measure results. You get a score and a plain-English list of what to fix first, with a guide for each."],
+      ["How is it different from the website basics check?", "The basics check loads one page and reads what's in its code. This quiz asks you about things no tool can see from outside, like who owns your domain and whether you ask for reviews. Use both."],
+      ["What does the score mean?", "It reflects only your answers. It doesn't look at your site, your rankings or your traffic, and it isn't a prediction of results or a ranking promise."],
+      ["Is my information saved?", "Your answers are scored when you see the results and are not stored. If you ask for the emailed report, we keep your name, email and answers so we can follow up about it. We don't add you to a mailing list."],
+    ];
+    res.send(layout({
+      req, biz, path: QUIZ, crumbs,
+      title: "Is Your Website Working for You? Free Quiz | MCC Solutions",
+      description: "Answer a few quick questions about your website and local presence and get a score with a plain-English list of what to fix first. Free, no sign-up to see results.",
+      body: {
+        hero: `<p class="eyebrow">Free quiz</p><h1 style="margin-top:10px">Is your website working for you?</h1><p class="lede" style="margin-top:14px">Answer a few quick questions about your website and how customers find you. See what to fix first, with a guide for each item. No sign-up to see the results.</p>`,
+        main: quizKit.mainHtml({ engine: webQuiz, checkApi: "/api/websites/quiz", leadApi: "/api/websites/quiz/lead", event: "web_quiz", allGood: "Nothing to fix based on your answers. Keep reviewing it every quarter.",
+          disclaimer: "This reflects only your answers. It doesn't look at your site, your rankings or your traffic.",
+          faqBand: `<section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this quiz</h2></div>${faqHtml(faqs)}
+          <p style="margin-top:22px;color:var(--ink-2)">Want a tool to read your page? Try the <a href="${CHECKER}">free website basics check</a>. Or see <a href="${HUB}">our plain-language guides</a> and <a href="${SV_HUB}">what we do and what it costs</a>.</p></div></section>` }),
+        ctaTitle: "Rather have us fix it? Ask for a quote.", ...CTA,
+      },
+      schema: [
+        { "@type": "WebApplication", name: "Is your website working for you? Free quiz", url: url + QUIZ, applicationCategory: "BusinessApplication", operatingSystem: "Any", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, provider: provider(url) },
+        faqSchema(faqs), crumbSchema(url, crumbs),
+      ],
+    }));
+  });
 }
 
-module.exports = { register, paths, HUB, SV_HUB, PRICES, CHECKER };
+module.exports = { register, paths, HUB, SV_HUB, PRICES, CHECKER, QUIZ };

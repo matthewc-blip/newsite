@@ -121,34 +121,9 @@ function register(app, c) {
 
   /* ----- free bookkeeping health check ----- */
   const checkup = require("./bk-checkup");
-  const { rateLimit, emailOk, str } = require("./util");
-  const heard = require("./heard");
-  app.post("/api/bookkeeping/checkup", rateLimit(30, 10 * 60000), (req, res) => {
-    const ans = checkup.cleanAnswers(req.body && req.body.answers);
-    const miss = checkup.missing(ans);
-    if (miss.length) return res.status(400).json({ error: "Answer every question to see your results.", missing: miss });
-    res.json({ result: checkup.evaluate(ans) });
-  });
-  app.post("/api/bookkeeping/checkup/lead", rateLimit(4, 10 * 60000), async (req, res) => {
-    const b = req.body || {};
-    if (b.website) return res.status(400).json({ error: "Rejected" });
-    const name = str(b.name, 120), email = str(b.email, 160), company = str(b.company, 160), note = str(b.note, 600);
-    if (!name) return res.status(400).json({ error: "Enter your name." });
-    if (!emailOk(email)) return res.status(400).json({ error: "Enter a valid email." });
-    const ans = checkup.cleanAnswers(b.answers);
-    if (checkup.missing(ans).length) return res.status(400).json({ error: "Answer every question first." });
-    const r = checkup.evaluate(ans); // scored again here: the report never comes from client-supplied results
-    const text = checkup.reportText(r);
-    const { db } = require("./db"); const mail = require("./email");
-    const hf = heard.clean(str(b.heardFrom, 20)) || "other";
-    try {
-      await db.run("INSERT INTO messages(name,email,topic,message,heard_from,heard_note) VALUES($1,$2,$3,$4,$5,$6)",
-        [name, email, "Bookkeeping", `Free bookkeeping health check${company ? ` for ${company}` : ""}: ${r.score}/100 (${r.level}).${note ? `\n\nTheir note: ${note}` : ""}\n\n${text}`, hf, "Free bookkeeping health check"]);
-      mail.deskNotice("Bookkeeping health check lead", `${name} <${email}>${company ? ` · ${company}` : ""} scored ${r.score}/100 (${r.level}): ${r.counts.fail} to fix, ${r.counts.warn} to improve.${note ? `\n\nNote: ${note}` : ""}\n\nThey were emailed the full report.`);
-      mail.send({ to: email, subject: `Your bookkeeping health check: ${r.score}/100`, text: `Hi ${name},\n\nHere is the report you asked for.\n\n${text}\n\nIf you'd like help with any of this, reply to this email or ask for a quote at https://mcc-solutionsnj.com/bookkeeping/#interest. We reply with a plain estimate and no obligation.\n\nMatthew Coleman\nMCC Solutions · Cranford, NJ` });
-      res.status(201).json({ ok: true });
-    } catch (e) { console.error("bk-checkup lead:", e); res.status(500).json({ error: "Something went wrong. Try again, or call the desk." }); }
-  });
+  const quizKit = require("./quiz-kit");
+  quizKit.registerApi(app, { engine: checkup, checkApi: "/api/bookkeeping/checkup", leadApi: "/api/bookkeeping/checkup/lead", topic: "Bookkeeping", name: "Free bookkeeping health check",
+    tag: "Free bookkeeping health check", quoteUrl: "https://mcc-solutionsnj.com/bookkeeping/#interest", leadSubject: "Your bookkeeping health check", deskSubject: "Bookkeeping health check lead" });
 
   app.get(CHECKUP, async (req, res) => {
     const biz = await business(); const url = base(req); const noindex = !(await open());
@@ -165,82 +140,10 @@ function register(app, c) {
       description: "Answer 12 quick questions about your books and get a score with a plain-English list of what to fix first. Free, no sign-up to see results.",
       body: {
         hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Free bookkeeping health check</h1><p class="lede" style="margin-top:14px">Answer a few quick questions about how your books are kept and see what to tackle first, with a guide for each item. No sign-up to see the results.</p>`,
-        main: `<section class="band"><div class="wrap" style="max-width:860px">
-          <div class="form-card" id="bk">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><p id="bk-step" style="margin:0;font-family:var(--f-mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass)"></p><p id="bk-grp" style="margin:0;color:var(--muted);font-size:.9rem"></p></div>
-            <div role="progressbar" id="bk-bar" aria-label="Quiz progress" aria-valuemin="0" aria-valuemax="100" style="height:6px;background:var(--line);border-radius:99px;margin:10px 0 22px;overflow:hidden"><div id="bk-fill" style="height:100%;width:0;background:var(--brass);transition:width .25s ease"></div></div>
-            <div id="bk-qs" aria-live="polite"></div>
-            <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:22px;flex-wrap:wrap"><button class="btn btn-ghost" type="button" id="bk-back">Back</button><span class="form-msg" id="bk-msg" role="alert"></span><button class="btn btn-primary" type="button" id="bk-next" disabled>Next</button></div>
-            <p style="margin-top:14px;color:var(--muted);font-size:.9rem">This reflects only your answers. It is general information, not tax, legal or accounting advice.</p></div>
-          <div id="bk-out" hidden>
-            <div class="form-card" style="margin-top:22px"><div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div id="bk-score" style="font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1"></div><div><b id="bk-head"></b><p id="bk-sub" style="margin:4px 0 0;color:var(--ink-2)"></p></div></div></div>
-            <p style="margin:14px 0 0"><button class="btn btn-ghost btn-sm" type="button" id="bk-retake">Retake the quiz</button></p><div id="bk-start" style="margin-top:22px"></div><div id="bk-list" style="margin-top:12px"></div>
-            <div class="form-card" style="margin-top:22px">
-              <h2 style="margin:0 0 6px;font-size:1.3rem">Want this report by email?</h2>
-              <p style="margin:0 0 14px;color:var(--ink-2)">We'll send the full list. If you'd like help, add a note and we'll reply with a plain estimate.</p>
-              <fieldset><div class="field"><label for="b-name">Your name</label><input id="b-name" autocomplete="name"></div><div class="field"><label for="b-email">Email</label><input id="b-email" type="email" autocomplete="email"></div>
-              <div class="field full"><label for="b-co">Business name <span class="opt">(optional)</span></label><input id="b-co" autocomplete="organization"></div>
-              <div class="field full"><label for="b-note">Anything we should know? <span class="opt">(optional)</span></label><textarea id="b-note" maxlength="600"></textarea></div>
-              <div aria-hidden="true" style="position:absolute;left:-9999px"><label for="b-web">Website</label><input id="b-web" tabindex="-1" autocomplete="off"></div></fieldset>
-              <button class="btn btn-primary" type="button" id="b-go">Email me the report</button> <span class="form-msg" id="b-msg" role="alert" style="margin-left:10px"></span>
-            </div>
-          </div>
-        </div></section>
-        <section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this tool</h2></div>${faqHtml(faqs)}
-          <p style="margin-top:22px;color:var(--ink-2)">More plain-language help: <a href="${HUB}">bookkeeping guides</a> or <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>
-        <script>(function(){
-          var Q=${JSON.stringify(checkup.publicQuestions()).replace(/</g, "\\u003c")},ans={},busy=false;
-          var $=function(i){return document.getElementById(i)};
-          function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
-          function post(u,b){return fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Something went wrong.");return j})})}
-          function vis(q){return !q.ask||ans[q.ask[0]]===q.ask[1]}
-          var idx=0;
-          function list(){return Q.filter(vis)}
-          function show(){var qs=list();if(idx>=qs.length)idx=qs.length-1;var q=qs[idx],root=$("bk-qs");root.textContent="";
-            $("bk-step").textContent="Question "+(idx+1)+" of "+qs.length;$("bk-grp").textContent=q.group;
-            var pct=Math.round(idx/qs.length*100);$("bk-fill").style.width=pct+"%";$("bk-bar").setAttribute("aria-valuenow",pct);
-            var f=el("fieldset");f.style.cssText="border:0;padding:0;margin:0;display:block";
-            var lg=el("legend",null,q.text);lg.style.cssText="font-family:var(--f-display);font-size:1.35rem;font-weight:700;line-height:1.3;letter-spacing:normal;text-transform:none;color:var(--ink);margin:0 0 16px;padding:0";lg.tabIndex=-1;f.appendChild(lg);
-            q.options.forEach(function(o,i){var id="q-"+q.id+"-"+i,on=ans[q.id]===o[0];
-              var l=el("label");l.setAttribute("for",id);l.style.cssText="display:flex;gap:12px;align-items:flex-start;justify-content:flex-start;text-align:left;padding:13px 14px;margin:0 0 10px;border:1px solid "+(on?"var(--brass)":"var(--line)")+";border-radius:6px;background:"+(on?"var(--brass-soft)":"var(--surface)")+";cursor:pointer;font-weight:400;font-size:1rem;letter-spacing:normal;text-transform:none;color:var(--ink)";
-              var r=el("input");r.type="radio";r.name=q.id;r.id=id;r.value=o[0];r.checked=on;r.style.cssText="width:auto;flex:none;margin:4px 0 0;padding:0";
-              r.addEventListener("change",function(){ans[q.id]=o[0];$("bk-msg").textContent="";show();var n=$("bk-next");n.disabled=false;var again=document.getElementById("q-"+q.id+"-"+i);if(again)again.focus()});
-              l.appendChild(r);l.appendChild(el("span",null,o[1]));f.appendChild(l)});
-            root.appendChild(f);
-            $("bk-back").style.visibility=idx===0?"hidden":"visible";
-            var last=idx===qs.length-1&&!(q.id==="payroll"&&ans.payroll==="yes");
-            $("bk-next").textContent=last?"See my results":"Next";$("bk-next").disabled=!ans[q.id];
-          }
-          function next(){var qs=list(),q=qs[idx];if(!ans[q.id]){$("bk-msg").textContent="Choose an answer to continue.";return}$("bk-msg").textContent="";
-            var after=list();if(idx<after.length-1){idx++;show();var lg=document.querySelector("#bk-qs legend");if(lg)lg.focus();return}
-            if(busy)return;busy=true;$("bk-next").disabled=true;var m=$("bk-msg");m.style.color="var(--muted)";m.textContent="Scoring\u2026";
-            post("/api/bookkeeping/checkup",{answers:ans}).then(function(j){m.textContent="";m.style.color="";$("bk").hidden=true;render(j.result)}).catch(function(err){m.style.color="";m.textContent=err.message}).then(function(){busy=false;$("bk-next").disabled=false})}
-          $("bk-next").addEventListener("click",next);
-          $("bk-back").addEventListener("click",function(){if(idx>0){idx--;show()}});
-          document.addEventListener("keydown",function(e){if(e.key==="Enter"&&!$("bk").hidden&&document.activeElement&&document.activeElement.type==="radio"&&ans[list()[idx].id]){e.preventDefault();next()}});
-          function retake(){ans={};idx=0;$("bk-out").hidden=true;$("bk").hidden=false;show();$("bk").scrollIntoView({behavior:"smooth",block:"start"})}
-          function card(i,tone){var row=el("div");row.style.cssText="padding:14px 0;border-bottom:1px solid var(--line)";
-            var t=el("b",null,i.question);row.appendChild(t);var a=el("p",null,"Your answer: "+i.answer);a.style.cssText="margin:3px 0 0;color:var(--muted)";row.appendChild(a);
-            var w=el("p",null,i.advice);w.style.cssText="margin:6px 0 0";row.appendChild(w);
-            if(i.guide){var p=el("p");p.style.margin="6px 0 0";var l=el("a",null,"Read the guide \\u2192");l.href=i.guide.href;p.appendChild(l);row.appendChild(p)}
-            return row}
-          function render(r){$("bk-out").hidden=false;var s=$("bk-score");s.textContent=r.score;s.style.color=r.score>=80?"var(--ok)":r.score>=50?"var(--warn)":"#a33";
-            $("bk-head").textContent="out of 100: "+r.level;$("bk-sub").textContent=r.counts.pass+" in good shape, "+r.counts.warn+" to improve, "+r.counts.fail+" to fix.";
-            var st=$("bk-start");st.textContent="";var ls=$("bk-list");ls.textContent="";
-            var by={};r.items.forEach(function(i){by[i.id]=i});
-            if(r.startHere.length){var h=el("h2",null,"Start here");h.style.fontSize="1.3rem";st.appendChild(h);r.startHere.forEach(function(id){st.appendChild(card(by[id]))})}
-            var rest=r.items.filter(function(i){return i.status!=="pass"&&r.startHere.indexOf(i.id)<0});
-            if(rest.length){var h2=el("h2",null,"Then work on");h2.style.cssText="font-size:1.3rem;margin-top:26px";ls.appendChild(h2);rest.forEach(function(i){ls.appendChild(card(i))})}
-            var ok=r.items.filter(function(i){return i.status==="pass"});
-            if(ok.length){var h3=el("h2",null,"Already in good shape");h3.style.cssText="font-size:1.3rem;margin-top:26px";ls.appendChild(h3);var u=el("ul","checks");ok.forEach(function(i){u.appendChild(el("li",null,i.question.replace(/\\?$/,"")+": "+i.answer))});ls.appendChild(u)}
-            if(!r.startHere.length&&!rest.length)st.appendChild(el("p",null,"Nothing to fix based on your answers. Keep the monthly routine going."));
-            $("bk-out").scrollIntoView({behavior:"smooth",block:"start"});if(window.mccTrack)window.mccTrack("bk_checkup_run",{score:r.score});}
-          $("b-go").addEventListener("click",function(){var m=$("b-msg");m.textContent="";m.style.color="";var n=$("b-name").value.trim(),em=$("b-email").value.trim();
-            if(!n||!em){m.textContent="Enter your name and email.";return}$("b-go").disabled=true;
-            post("/api/bookkeeping/checkup/lead",{answers:ans,name:n,email:em,company:$("b-co").value,note:$("b-note").value,website:$("b-web").value,heardFrom:"other"}).then(function(){m.style.color="var(--ok)";m.textContent="Sent. Check your inbox in a minute (and your spam folder).";if(window.mccTrack)window.mccTrack("generate_lead",{form:"bk_checkup"})}).catch(function(err){m.textContent=err.message;$("b-go").disabled=false})});
-          $("bk-retake").addEventListener("click",retake);
-          show();
-        })();</script>`,
+        main: quizKit.mainHtml({ engine: checkup, checkApi: "/api/bookkeeping/checkup", leadApi: "/api/bookkeeping/checkup/lead", event: "bk_checkup", allGood: "Nothing to fix based on your answers. Keep the monthly routine going.",
+          disclaimer: "This reflects only your answers. It is general information, not tax, legal or accounting advice.",
+          faqBand: `<section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this tool</h2></div>${faqHtml(faqs)}
+          <p style="margin-top:22px;color:var(--ink-2)">More plain-language help: <a href="${HUB}">bookkeeping guides</a> or <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>` }),
         ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,
       },
       schema: [
