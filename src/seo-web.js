@@ -19,7 +19,8 @@ const PRICES = {
 };
 const priceBand = (pr) => pr ? `<section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">Pricing</p><h2>What it costs</h2></div><div class="price-list">${pr.rows.map(([n, a, d]) => `<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line,#ddd)"><div><b>${n}</b><br><span style="color:var(--ink-2)">${d}</span></div><div style="white-space:nowrap;font-weight:600">${a}</div></div>`).join("")}</div><p style="margin-top:14px;color:var(--ink-2)">${pr.note} Prices are starting points. We confirm a written quote before any work begins.</p></div></section>` : "";
 
-const paths = () => [[HUB, "0.6"], [SV_HUB, "0.7"], ...SERVICES.map((s) => [svPath(s), "0.7"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
+const CHECKER = "/websites/seo-checker";
+const paths = () => [[CHECKER, "0.7"], [HUB, "0.6"], [SV_HUB, "0.7"], ...SERVICES.map((s) => [svPath(s), "0.7"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
 
 function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
@@ -125,6 +126,118 @@ function register(app, c) {
       ],
     }));
   });
+
+  /* ----- free SEO basics checker ----- */
+  const checker = require("./seo-checker");
+  const { rateLimit, emailOk, str } = require("./util");
+  const heard = require("./heard");
+  let inFlight = 0;
+  const runCheck = async (input) => {
+    if (inFlight >= 6) throw Object.assign(new Error("The checker is busy. Try again in a minute."), { user: true });
+    inFlight++;
+    try { return await checker.check(input); } finally { inFlight--; }
+  };
+  const failMsg = (res, e) => { if (!e.user) console.error("seo-checker:", e); return res.status(e.user ? 400 : 500).json({ error: e.user ? e.message : "Something went wrong checking that page. Try again." }); };
+  app.post("/api/seo-check", rateLimit(8, 10 * 60000), async (req, res) => {
+    try { res.json({ result: await runCheck(req.body && req.body.url) }); } catch (e) { failMsg(res, e); }
+  });
+  app.post("/api/seo-check/lead", rateLimit(4, 10 * 60000), async (req, res) => {
+    const b = req.body || {};
+    if (b.website) return res.status(400).json({ error: "Rejected" });
+    const name = str(b.name, 120), email = str(b.email, 160);
+    if (!name) return res.status(400).json({ error: "Enter your name." });
+    if (!emailOk(email)) return res.status(400).json({ error: "Enter a valid email." });
+    try {
+      const r = await runCheck(b.url); // re-run on the server: the report is never built from client-supplied results
+      const text = checker.reportText(r);
+      const { db } = require("./db"); const mail = require("./email");
+      const note = str(b.note, 600);
+      const hf = heard.clean(str(b.heardFrom, 20)) || "other";
+      await db.run("INSERT INTO messages(name,email,topic,message,heard_from,heard_note) VALUES($1,$2,$3,$4,$5,$6)",
+        [name, email, "Website & SEO", `Free SEO basics check for ${r.url}: score ${r.score}/100 (${r.counts.fail} to fix, ${r.counts.warn} to improve).${note ? `\n\nTheir note: ${note}` : ""}\n\n${text}`, hf, hf === "other" ? "Free SEO checker" : "SEO checker"]);
+      mail.deskNotice("SEO checker lead", `${name} <${email}> ran the checker on ${r.url}: ${r.score}/100, ${r.counts.fail} to fix, ${r.counts.warn} to improve.${note ? `\n\nNote: ${note}` : ""}\n\nThey were emailed the full report.`);
+      mail.send({ to: email, subject: `Your website basics check: ${r.score}/100`, text: `Hi ${name},\n\nHere is the report you asked for.\n\n${text}\n\nIf you'd like help with any of this, reply to this email or request a quote at https://mcc-solutionsnj.com/websites/#quote. A fixed written quote comes after a short call, with no obligation.\n\nMatthew Coleman\nMCC Solutions · Cranford, NJ`, html: undefined });
+      res.status(201).json({ ok: true });
+    } catch (e) { failMsg(res, e); }
+  });
+
+  app.get(CHECKER, async (req, res) => {
+    const biz = await business(); const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Websites & SEO", "/websites/"], ["Free website basics check", CHECKER]];
+    const faqs = [
+      ["What does this check?", "Technical on-page basics that are visible in your page's HTML: title, meta description, headings, mobile setup, HTTPS, indexing instructions, robots.txt, sitemap, structured data, image alt text, tap-to-call links and social previews."],
+      ["What doesn't it check?", "It doesn't know where you rank, how much traffic you get, how good your content is, your reviews, your backlinks or your Google Business Profile. A passing score is not a ranking promise."],
+      ["Does it store my website or my results?", "We don't save the page we fetch. If you ask for the emailed report, we keep your name, email and the address you checked so we can follow up about it."],
+      ["Will you contact me?", "We send the report you asked for. If you also added a note or want help, we reply once by email. We don't add you to a mailing list."],
+    ];
+    res.send(layout({
+      req, biz, path: CHECKER, crumbs,
+      title: "Free Website Basics Check for Small Businesses | MCC Solutions",
+      description: "Check your website's on-page SEO basics for free: title, description, mobile setup, HTTPS, sitemap and more, with plain-English fixes. No sign-up to see results.",
+      body: {
+        hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Free website basics check</h1><p class="lede" style="margin-top:14px">Enter your website address and see what search engines can read on the page, with a plain-English fix for each problem. No sign-up to see the results.</p>`,
+        main: `<section class="band"><div class="wrap" style="max-width:860px">
+          <form class="form-card" id="chk" novalidate>
+            <div class="field"><label for="chk-url">Your website address</label><input id="chk-url" name="url" inputmode="url" autocomplete="url" placeholder="yourbusiness.com" maxlength="300"></div>
+            <div style="margin-top:14px"><button class="btn btn-primary" type="submit" id="chk-go">Check my site</button> <span class="form-msg" id="chk-msg" role="alert" style="margin-left:10px"></span></div>
+            <p style="margin-top:12px;color:var(--muted);font-size:.9rem">We load the one page you enter, plus its robots.txt and sitemap. This checks technical basics only, not rankings, traffic or content quality.</p>
+          </form>
+          <div id="chk-out" hidden>
+            <div class="form-card" style="margin-top:22px"><div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div id="chk-score" style="font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1"></div><div><b id="chk-head"></b><p id="chk-sub" style="margin:4px 0 0;color:var(--ink-2)"></p></div></div></div>
+            <div id="chk-list" style="margin-top:22px"></div>
+            <div class="form-card" id="chk-lead" style="margin-top:22px">
+              <h2 style="margin:0 0 6px;font-size:1.3rem">Want this report by email?</h2>
+              <p style="margin:0 0 14px;color:var(--ink-2)">We'll send the full list with the fixes. If you'd like help, add a note and we'll reply with a plain-language plan and a fixed quote after a short call.</p>
+              <fieldset><div class="field"><label for="l-name">Your name</label><input id="l-name" autocomplete="name"></div><div class="field"><label for="l-email">Email</label><input id="l-email" type="email" autocomplete="email"></div>
+              <div class="field full"><label for="l-note">Anything we should know? <span class="opt">(optional)</span></label><textarea id="l-note" maxlength="600"></textarea></div>
+              <div class="hp" aria-hidden="true" style="position:absolute;left:-9999px"><label for="l-web">Website</label><input id="l-web" tabindex="-1" autocomplete="off"></div></fieldset>
+              <button class="btn btn-primary" type="button" id="l-go">Email me the report</button> <span class="form-msg" id="l-msg" role="alert" style="margin-left:10px"></span>
+            </div>
+          </div>
+        </div></section>
+        <section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this tool</h2></div>${faqHtml(faqs)}
+          <p style="margin-top:22px;color:var(--ink-2)">Want to understand the results? Read <a href="${HUB}">our plain-language SEO guides</a>, or see <a href="${SV_HUB}">what we do and what it costs</a>.</p></div></section>
+        <script>(function(){
+          var $=function(i){return document.getElementById(i)},last=null,busy=false;
+          var ICON={pass:"\\u2713",warn:"!",fail:"\\u2715"},LAB={pass:"Passing",warn:"Improve",fail:"Fix"},COL={pass:"var(--ok)",warn:"var(--warn)",fail:"#a33"};
+          function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+          function post(u,b){return fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Something went wrong.");return j})})}
+          function render(r){
+            $("chk-out").hidden=false;$("chk-score").textContent=r.score;$("chk-score").style.color=r.score>=80?"var(--ok)":r.score>=55?"var(--warn)":"#a33";
+            $("chk-head").textContent="out of 100 for "+r.url.replace(/^https?:\\/\\//,"").slice(0,70);
+            $("chk-sub").textContent=r.counts.pass+" passing, "+r.counts.warn+" to improve, "+r.counts.fail+" to fix"+(r.redirected?". We followed a redirect to this address.":".");
+            var list=$("chk-list");list.textContent="";var groups={};r.checks.forEach(function(c){(groups[c.group]=groups[c.group]||[]).push(c)});
+            Object.keys(groups).forEach(function(g){
+              list.appendChild(el("h3",null,g)).style.margin="22px 0 8px";
+              groups[g].forEach(function(c){
+                var row=el("div");row.style.cssText="display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)";
+                var ic=el("span",null,ICON[c.status]);ic.style.cssText="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:"+COL[c.status];ic.setAttribute("aria-label",LAB[c.status]);
+                var body=el("div");var t=el("b",null,c.label);body.appendChild(t);body.appendChild(el("p",null,c.detail)).style.cssText="margin:2px 0 0;color:var(--ink-2)";
+                if(c.fix){var f=el("p",null,"How to fix: "+c.fix);f.style.cssText="margin:6px 0 0;color:var(--ink)";body.appendChild(f)}
+                row.appendChild(ic);row.appendChild(body);list.appendChild(row)});
+            });
+            $("chk-out").scrollIntoView({behavior:"smooth",block:"start"});
+            if(window.mccTrack)window.mccTrack("seo_check_run",{score:r.score});
+          }
+          $("chk").addEventListener("submit",function(e){e.preventDefault();if(busy)return;var u=$("chk-url").value.trim(),m=$("chk-msg");m.textContent="";m.style.color="";
+            if(!u){m.textContent="Enter your website address.";return}
+            busy=true;$("chk-go").disabled=true;m.style.color="var(--muted)";m.textContent="Checking, this takes a few seconds\\u2026";
+            post("/api/seo-check",{url:u}).then(function(j){last=j.result;m.textContent="";render(last)}).catch(function(err){m.style.color="";m.textContent=err.message}).then(function(){busy=false;$("chk-go").disabled=false});
+          });
+          $("l-go").addEventListener("click",function(){var m=$("l-msg");m.textContent="";m.style.color="";if(!last){m.textContent="Run the check first.";return}
+            var n=$("l-name").value.trim(),em=$("l-email").value.trim();if(!n||!em){m.textContent="Enter your name and email.";return}
+            $("l-go").disabled=true;
+            post("/api/seo-check/lead",{url:last.requested,name:n,email:em,note:$("l-note").value,website:$("l-web").value,heardFrom:"other"}).then(function(){m.style.color="var(--ok)";m.textContent="Sent. Check your inbox in a minute (and your spam folder).";if(window.mccTrack)window.mccTrack("generate_lead",{form:"seo_checker"})}).catch(function(err){m.textContent=err.message;$("l-go").disabled=false});
+          });
+        })();</script>`,
+        ctaTitle: "Rather have us fix it? Ask for a quote.", ...CTA,
+      },
+      schema: [
+        { "@type": "WebApplication", name: "Free website basics check", url: url + CHECKER, applicationCategory: "BusinessApplication", operatingSystem: "Any", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, provider: provider(url) },
+        faqSchema(faqs), crumbSchema(url, crumbs),
+      ],
+    }));
+  });
 }
 
-module.exports = { register, paths, HUB, SV_HUB, PRICES };
+module.exports = { register, paths, HUB, SV_HUB, PRICES, CHECKER };
