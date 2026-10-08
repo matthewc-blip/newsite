@@ -2,6 +2,7 @@
 // Honest scope: MCC is based in Cranford (Union County). In-person visits here are confirmed per address, and remote online notarization is available statewide.
 const { getSettings } = require("./db");
 const prices = require("./prices");
+const snip = (long, short, max = 60) => (long.length <= max ? long : short);
 const { ESSEX, MORRIS, ALL } = require("./towns-essex-morris");
 const unionMod = require("./seo-towns");
 
@@ -39,8 +40,8 @@ function register(app, c) {
       ];
       res.send(layout({
         req, biz, path, crumbs,
-        title: `Notary in ${t.name}, NJ | Mobile & Remote Online | MCC`,
-        description: `Notary and loan signing help in ${t.name}, NJ${t.zips ? ` (${t.zips})` : ""}. Mobile visits where available, or sign online from home. Book online or call.`,
+        title: snip(`Notary in ${t.name}, NJ${mobile ? ` from ${prices.money(mobile.price)}` : ""} | Mobile & Online | MCC`, `Notary in ${t.name}, NJ | Mobile & Online | MCC`),
+        description: snip(`Notary and loan signing in ${t.name}, NJ${t.zips ? ` (${t.zips})` : ""}. ${mobile ? `Visits from ${prices.money(mobile.price)} plus state fee where available, or ` : "Mobile visits where available, or "}sign online from home. Book in 2 minutes or call.`, `Notary and loan signing in ${t.name}, NJ. ${mobile ? `Visits from ${prices.money(mobile.price)} plus state fee where available, or ` : "Mobile visits where available, or "}sign online from home. Book in 2 minutes or call.`, 160),
         body: {
           hero: `<p class="eyebrow">${esc(C.name)} County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Notary and loan signing help in ${esc(t.name)}, NJ</h1><p class="lede" style="margin-top:14px">MCC Solutions is a Cranford, NJ notary and signing firm. For ${esc(t.name)}, we offer mobile notary and loan signing visits where we have a notary available, and remote online notarization if you would rather sign from home.${mobile ? ` Mobile notary visits start at ${prices.money(mobile.price)}, plus state notarial fees.` : ""}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary in ${esc(t.name)}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
           main: `<section class="band"><div class="wrap split">

@@ -1,5 +1,6 @@
 // Websites and local SEO: service pages and how-to guides under /websites/.
 const { SERVICES, GUIDES } = require("./web-content");
+const { fit } = require("./titles");
 
 const HUB = "/websites/guides";
 const SV_HUB = "/websites/services";
@@ -68,7 +69,7 @@ function register(app, c) {
     const others = SERVICES.filter((x) => x.slug !== s.slug);
     res.send(layout({
       req, biz, path, crumbs,
-      title: `${s.title} | MCC Solutions`.slice(0, 70), description: s.description,
+      title: fit(s.title), description: s.description,
       body: {
         hero: `<p class="eyebrow">Websites &amp; local SEO · ${esc(s.name)}</p><h1 style="margin-top:10px">${esc(s.title)}</h1><p class="lede" style="margin-top:14px">${esc(s.intro)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/websites/#quote">Get a quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
@@ -103,7 +104,7 @@ function register(app, c) {
     const more = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 4);
     const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
     res.send(layout({
-      req, biz, path, crumbs, title: `${g.title} | MCC Solutions`.slice(0, 70), description: g.description,
+      req, biz, path, crumbs, title: fit(g.title), description: g.description,
       body: {
         hero: `<p class="eyebrow">Guide · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(g.title)}</h1><p class="lede" style="margin-top:14px">${esc(g.intro)}</p><p class="byline">By <a href="/about">Matthew Coleman</a>, MCC Solutions</p>`,
         main: `<section class="band"><div class="wrap guide-layout">

@@ -3,6 +3,9 @@
 // plus the service's real scope and prices. Nothing here claims results, reviews or clients we don't have.
 const { getSettings } = require("./db");
 const prices = require("./prices");
+const { fit } = require("./titles");
+// Use the long form of a title/description unless it would be cut off in search results.
+const snip = (long, short, max = 60) => (long.length <= max ? long : short);
 
 const T = (slug, name, kind, zips, line, anchors, notary, biz, near) => ({ slug, name, kind, zips, line, anchors, notary, biz, near });
 const TOWNS = [
@@ -145,8 +148,8 @@ function register(app, c) {
     ];
     res.send(layout({
       req, biz, path, crumbs,
-      title: `Mobile Notary in ${t.name}, NJ | Loan Signing Agent | MCC`,
-      description: `Mobile notary and loan signing agents in ${t.name}, NJ (${t.zips}). Home, office and hospital visits, same-day when available. Book online.`,
+      title: snip(`Mobile Notary in ${t.name}, NJ${mobile ? ` from ${prices.money(mobile.price)}` : ""} | Loan Signing | MCC`, `Mobile Notary in ${t.name}, NJ${mobile ? ` from ${prices.money(mobile.price)}` : ""} | Loan Signing`),
+      description: snip(`Mobile notary in ${t.name}, NJ (${t.zips})${mobile ? ` from ${prices.money(mobile.price)} plus state fee` : ""}. We come to your home, office or hospital, often same-day. Loan signings too. Book in 2 minutes.`, `Mobile notary in ${t.name}, NJ${mobile ? ` from ${prices.money(mobile.price)} plus state fee` : ""}. We come to you, often same-day. Loan signings too. Book in 2 minutes.`, 160),
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Mobile notary and loan signing agents in ${esc(t.name)}, NJ</h1><p class="lede" style="margin-top:14px">MCC Solutions is a Cranford, NJ firm that sends commissioned notaries and certified signing agents to ${esc(t.name)} homes, offices, hospitals and care facilities.${mobile ? ` Mobile notary visits start at ${prices.money(mobile.price)}, plus state notarial fees.` : ""}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary in ${esc(t.name)}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
@@ -194,7 +197,7 @@ function register(app, c) {
     ];
     res.send(layout({
       req, biz, path, crumbs, noindex: !(bk && bk.open),
-      title: `Bookkeeping for ${t.name}, NJ Small Businesses | MCC Solutions`,
+      title: fit(`Bookkeeping for ${t.name}, NJ Small Businesses`),
       description: `Monthly bookkeeping, cleanup, payroll and NJ filings for ${t.name}, NJ small businesses. Based in Cranford.${t1 ? ` Starting at $${t1}/month.` : ""}`,
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Bookkeeping for ${esc(t.name)}, NJ small businesses</h1><p class="lede" style="margin-top:14px">MCC Solutions keeps the books for small businesses in ${esc(t.name)} and across Union County: monthly bookkeeping, catch-up cleanup, payroll and NJ filings, from a firm based in nearby Cranford.${t1 ? ` Monthly bookkeeping starts at $${t1}.` : ""}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/bookkeeping/#interest">Get a bookkeeping quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
@@ -234,7 +237,7 @@ function register(app, c) {
     ];
     res.send(layout({
       req, biz, path, crumbs,
-      title: `Website Design & Local SEO for ${t.name}, NJ Businesses | MCC`,
+      title: fit(`Website Design & SEO for ${t.name}, NJ Businesses`),
       description: `Fast, mobile-first websites and local SEO for ${t.name}, NJ businesses. Fixed written quotes, you own your domain. Based in Cranford.`,
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Website design and local SEO for ${esc(t.name)}, NJ businesses</h1><p class="lede" style="margin-top:14px">MCC Solutions builds clear, fast websites and does the local SEO work that helps nearby customers find you. We are based in Cranford, close to ${esc(t.name)}, and every project starts with a fixed written quote.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/websites/#contact">Get a website quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,

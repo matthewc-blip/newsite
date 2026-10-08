@@ -3,6 +3,7 @@
 const { getSettings } = require("./db");
 const { COUNTIES, SERVICES } = require("./seo-data");
 const prices = require("./prices");
+const { fit } = require("./titles");
 const { EXTRA } = require("./seo-extra");
 const { GUIDES, guidePath, guidesFor } = require("./guides");
 const { DOCS, docPath, DOCS_HUB, DOC_CATEGORIES } = require("./doc-pages");
@@ -237,13 +238,15 @@ function register(app) {
     const biz = await business();
     const url = base(req);
     const path = countyPath(c);
+    const cs = await getSettings().catch(() => null);
+    const cm = cs ? prices.forSlug(cs, "mobile-notary") : null;
     const faqs = countyFaqs(c);
     const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["New Jersey", NJ_HUB], [`${c.name} County`, path]];
     const neighbors = c.neighbors.map((s) => bySlug[s]).filter(Boolean);
     res.send(layout({
       req, biz, path, crumbs,
       title: `Mobile Notary in ${c.name} County, NJ | Loan Signing Agent`,
-      description: `Mobile notary and loan signing agents in ${c.name} County, NJ, including ${c.towns[0]} and ${c.towns[1]}. Home, office and hospital visits. Book online.`,
+      description: `Mobile notary and loan signing in ${c.name} County, NJ, including ${c.towns[0]}${cm ? `. Visits from ${prices.money(cm.price)} plus state fee` : ""}. Home, office, hospital. Book in 2 minutes.`,
       body: {
         hero: `<p class="eyebrow">${esc(c.region)} · County seat: ${esc(c.seat)}</p><h1 style="margin-top:10px">Mobile notary and loan signing agents in ${esc(c.name)} County, NJ</h1><p class="lede" style="margin-top:14px">MCC Solutions sends commissioned notaries and certified signing agents to homes, offices, hospitals and care facilities across ${esc(c.name)} County, from ${esc(c.towns[0])} to ${esc(c.towns[c.towns.length - 1])}.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book in ${esc(c.name)} County</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
@@ -345,7 +348,7 @@ function register(app) {
       const svcs = g.services.map((sl) => SERVICES.find((x) => x.slug === sl)).filter(Boolean);
       const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
       res.send(layout({
-        req, biz, path, crumbs, title: `${g.title} | MCC Solutions`.slice(0, 70), description: g.description,
+        req, biz, path, crumbs, title: fit(g.title), description: g.description,
         body: {
           hero: `<p class="eyebrow">Guide · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(g.title)}</h1><p class="lede" style="margin-top:14px">${esc(g.intro)}</p><p class="byline">By <a href="/about">Matthew Coleman</a>, MCC Solutions</p>`,
           main: `<section class="band"><div class="wrap guide-layout">
@@ -374,7 +377,7 @@ function register(app) {
     const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Documents we notarize", DOCS_HUB]];
     res.send(layout({
       req, biz, path: DOCS_HUB, crumbs,
-      title: "Documents We Notarize in New Jersey: Deeds, Affidavits, Trusts & More | MCC",
+      title: "Documents We Notarize in NJ: Deeds, Affidavits, Trusts | MCC",
       description: "Plain-language pages for the documents New Jersey notaries are asked to handle: deeds, affidavits, living wills, trusts, contracts, bills of sale, apostilles and more.",
       body: {
         hero: `<p class="eyebrow">Documents</p><h1 style="margin-top:10px">Documents we notarize in New Jersey</h1><p class="lede" style="margin-top:14px">Find your document, see what to bring, and book a mobile or online notary. General information, not legal advice.</p>`,
@@ -395,7 +398,7 @@ function register(app) {
       const rel = (d.related || []).map((sl) => DOCS.find((x) => x.slug === sl)).filter(Boolean);
       const updated = new Date(d.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
       res.send(layout({
-        req, biz, path, crumbs, title: `${d.title.replace(" in New Jersey", " in NJ").replace("New Jersey", "NJ")} | MCC`, description: d.description,
+        req, biz, path, crumbs, title: fit(d.title.replace(" in New Jersey", " in NJ").replace("New Jersey", "NJ")), description: d.description,
         body: {
           hero: `<p class="eyebrow">${esc(d.category)} · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(d.title)}</h1><p class="lede" style="margin-top:14px">${esc(d.intro)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call ${esc(biz.phone)}</a></div>`,
           main: `<section class="band"><div class="wrap guide-layout">

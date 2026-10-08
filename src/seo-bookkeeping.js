@@ -1,4 +1,5 @@
 // Bookkeeping software pages and how-to guides. Shown (and in the sitemap) once bookkeeping is opened in Settings.
+const { fit } = require("./titles");
 const { SOFTWARE, GUIDES } = require("./bk-content");
 const { getSettings } = require("./db");
 
@@ -59,7 +60,7 @@ function register(app, c) {
     const others = SOFTWARE.filter((x) => x.slug !== s.slug);
     res.send(layout({
       req, biz, path, crumbs, noindex,
-      title: `${s.title} | MCC Solutions`.slice(0, 70), description: s.description,
+      title: fit(s.title), description: s.description,
       body: {
         hero: `<p class="eyebrow">Bookkeeping · ${esc(s.name)}</p><h1 style="margin-top:10px">${esc(s.title)}</h1><p class="lede" style="margin-top:14px">${esc(s.intro)}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/bookkeeping/#interest">Get a bookkeeping quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
@@ -94,7 +95,7 @@ function register(app, c) {
     const more = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 4);
     const updated = new Date(g.updated + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
     res.send(layout({
-      req, biz, path, crumbs, noindex, title: `${g.title} | MCC Solutions`.slice(0, 70), description: g.description,
+      req, biz, path, crumbs, noindex, title: fit(g.title), description: g.description,
       body: {
         hero: `<p class="eyebrow">Bookkeeping guide · Updated ${esc(updated)}</p><h1 style="margin-top:10px">${esc(g.title)}</h1><p class="lede" style="margin-top:14px">${esc(g.intro)}</p><p class="byline">By <a href="/about">Matthew Coleman</a>, MCC Solutions</p>`,
         main: `<section class="band"><div class="wrap guide-layout">
