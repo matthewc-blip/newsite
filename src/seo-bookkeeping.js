@@ -9,7 +9,8 @@ const swPath = (s) => `${SW_HUB}/${s.slug}`;
 const gPath = (g) => `${HUB}/${g.slug}`;
 const SW = Object.fromEntries(SOFTWARE.map((s) => [s.slug, s]));
 const GD = Object.fromEntries(GUIDES.map((g) => [g.slug, g]));
-const paths = () => [[HUB, "0.6"], [SW_HUB, "0.6"], ...SOFTWARE.map((s) => [swPath(s), "0.6"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
+const CHECKUP = "/bookkeeping/health-check";
+const paths = () => [[CHECKUP, "0.6"], [HUB, "0.6"], [SW_HUB, "0.6"], ...SOFTWARE.map((s) => [swPath(s), "0.6"]), ...GUIDES.map((g) => [gPath(g), "0.6"])];
 
 function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
@@ -28,7 +29,7 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Bookkeeping guides</p><h1 style="margin-top:10px">Plain answers to small business bookkeeping questions</h1><p class="lede" style="margin-top:14px">Short guides from the MCC Solutions desk for New Jersey business owners. General information, not tax or legal advice.</p>`,
         main: `<section class="band"><div class="wrap"><div class="grid g3">${GUIDES.map((g) => card(gPath(g), "GUIDE", g.title, g.description, "Read the guide")).join("")}</div>
-          <p style="margin-top:28px;color:var(--ink-2)">Looking for help with a specific program? See <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>`,
+          <p style="margin-top:28px;color:var(--ink-2)">Not sure where your books stand? Take the <a href="${CHECKUP}">free bookkeeping health check</a>. Looking for help with a specific program? See <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>`,
         ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,
       },
       schema: [crumbSchema(url, crumbs), { "@type": "CollectionPage", name: "Bookkeeping guides", url: url + HUB, hasPart: GUIDES.map((g) => ({ "@type": "Article", headline: g.title, url: url + gPath(g) })) }],
@@ -117,6 +118,121 @@ function register(app, c) {
       ],
     }));
   });
+
+  /* ----- free bookkeeping health check ----- */
+  const checkup = require("./bk-checkup");
+  const { rateLimit, emailOk, str } = require("./util");
+  const heard = require("./heard");
+  app.post("/api/bookkeeping/checkup", rateLimit(30, 10 * 60000), (req, res) => {
+    const ans = checkup.cleanAnswers(req.body && req.body.answers);
+    const miss = checkup.missing(ans);
+    if (miss.length) return res.status(400).json({ error: "Answer every question to see your results.", missing: miss });
+    res.json({ result: checkup.evaluate(ans) });
+  });
+  app.post("/api/bookkeeping/checkup/lead", rateLimit(4, 10 * 60000), async (req, res) => {
+    const b = req.body || {};
+    if (b.website) return res.status(400).json({ error: "Rejected" });
+    const name = str(b.name, 120), email = str(b.email, 160), company = str(b.company, 160), note = str(b.note, 600);
+    if (!name) return res.status(400).json({ error: "Enter your name." });
+    if (!emailOk(email)) return res.status(400).json({ error: "Enter a valid email." });
+    const ans = checkup.cleanAnswers(b.answers);
+    if (checkup.missing(ans).length) return res.status(400).json({ error: "Answer every question first." });
+    const r = checkup.evaluate(ans); // scored again here: the report never comes from client-supplied results
+    const text = checkup.reportText(r);
+    const { db } = require("./db"); const mail = require("./email");
+    const hf = heard.clean(str(b.heardFrom, 20)) || "other";
+    try {
+      await db.run("INSERT INTO messages(name,email,topic,message,heard_from,heard_note) VALUES($1,$2,$3,$4,$5,$6)",
+        [name, email, "Bookkeeping", `Free bookkeeping health check${company ? ` for ${company}` : ""}: ${r.score}/100 (${r.level}).${note ? `\n\nTheir note: ${note}` : ""}\n\n${text}`, hf, "Free bookkeeping health check"]);
+      mail.deskNotice("Bookkeeping health check lead", `${name} <${email}>${company ? ` · ${company}` : ""} scored ${r.score}/100 (${r.level}): ${r.counts.fail} to fix, ${r.counts.warn} to improve.${note ? `\n\nNote: ${note}` : ""}\n\nThey were emailed the full report.`);
+      mail.send({ to: email, subject: `Your bookkeeping health check: ${r.score}/100`, text: `Hi ${name},\n\nHere is the report you asked for.\n\n${text}\n\nIf you'd like help with any of this, reply to this email or ask for a quote at https://mcc-solutionsnj.com/bookkeeping/#interest. We reply with a plain estimate and no obligation.\n\nMatthew Coleman\nMCC Solutions · Cranford, NJ` });
+      res.status(201).json({ ok: true });
+    } catch (e) { console.error("bk-checkup lead:", e); res.status(500).json({ error: "Something went wrong. Try again, or call the desk." }); }
+  });
+
+  app.get(CHECKUP, async (req, res) => {
+    const biz = await business(); const url = base(req); const noindex = !(await open());
+    const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Health check", CHECKUP]];
+    const faqs = [
+      ["What is this?", "A short set of questions about how your business keeps its books: separate accounts, reconciliation, records, payroll and sales tax filings, and year-end. You get a score and a plain-English list of what to tackle first, with a guide for each."],
+      ["What does the score mean?", "It reflects only your answers about habits. It can't tell how your business is doing financially, whether your filings are correct, or what you owe. It is general information, not tax, legal or accounting advice."],
+      ["Is my information saved?", "Your answers are scored when you see the results and are not stored. If you ask for the emailed report, we keep your name, email and answers so we can follow up about it."],
+      ["Will you contact me?", "We send the report you asked for. If you add a note or ask for help, we reply by email. We don't add you to a mailing list."],
+    ];
+    res.send(layout({
+      req, biz, path: CHECKUP, crumbs, noindex,
+      title: "Free Bookkeeping Health Check for Small Businesses | MCC Solutions",
+      description: "Answer 12 quick questions about your books and get a score with a plain-English list of what to fix first. Free, no sign-up to see results.",
+      body: {
+        hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Free bookkeeping health check</h1><p class="lede" style="margin-top:14px">Answer a few quick questions about how your books are kept and see what to tackle first, with a guide for each item. No sign-up to see the results.</p>`,
+        main: `<section class="band"><div class="wrap" style="max-width:860px">
+          <form class="form-card" id="bk" novalidate><div id="bk-qs"></div>
+            <div style="margin-top:18px"><button class="btn btn-primary" type="submit" id="bk-go">See my results</button> <span class="form-msg" id="bk-msg" role="alert" style="margin-left:10px"></span></div>
+            <p style="margin-top:12px;color:var(--muted);font-size:.9rem">This reflects only your answers. It is general information, not tax, legal or accounting advice.</p></form>
+          <div id="bk-out" hidden>
+            <div class="form-card" style="margin-top:22px"><div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div id="bk-score" style="font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1"></div><div><b id="bk-head"></b><p id="bk-sub" style="margin:4px 0 0;color:var(--ink-2)"></p></div></div></div>
+            <div id="bk-start" style="margin-top:22px"></div><div id="bk-list" style="margin-top:12px"></div>
+            <div class="form-card" style="margin-top:22px">
+              <h2 style="margin:0 0 6px;font-size:1.3rem">Want this report by email?</h2>
+              <p style="margin:0 0 14px;color:var(--ink-2)">We'll send the full list. If you'd like help, add a note and we'll reply with a plain estimate.</p>
+              <fieldset><div class="field"><label for="b-name">Your name</label><input id="b-name" autocomplete="name"></div><div class="field"><label for="b-email">Email</label><input id="b-email" type="email" autocomplete="email"></div>
+              <div class="field full"><label for="b-co">Business name <span class="opt">(optional)</span></label><input id="b-co" autocomplete="organization"></div>
+              <div class="field full"><label for="b-note">Anything we should know? <span class="opt">(optional)</span></label><textarea id="b-note" maxlength="600"></textarea></div>
+              <div aria-hidden="true" style="position:absolute;left:-9999px"><label for="b-web">Website</label><input id="b-web" tabindex="-1" autocomplete="off"></div></fieldset>
+              <button class="btn btn-primary" type="button" id="b-go">Email me the report</button> <span class="form-msg" id="b-msg" role="alert" style="margin-left:10px"></span>
+            </div>
+          </div>
+        </div></section>
+        <section class="band alt"><div class="wrap" style="max-width:860px"><div class="sec-head"><p class="eyebrow">FAQ</p><h2>About this tool</h2></div>${faqHtml(faqs)}
+          <p style="margin-top:22px;color:var(--ink-2)">More plain-language help: <a href="${HUB}">bookkeeping guides</a> or <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>
+        <script>(function(){
+          var Q=${JSON.stringify(checkup.publicQuestions()).replace(/</g, "\\u003c")},ans={},busy=false;
+          var $=function(i){return document.getElementById(i)};
+          function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+          function post(u,b){return fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Something went wrong.");return j})})}
+          function vis(q){return !q.ask||ans[q.ask[0]]===q.ask[1]}
+          function draw(){var root=$("bk-qs"),g="";root.textContent="";
+            Q.forEach(function(q){if(!vis(q)){delete ans[q.id];return}
+              if(q.group!==g){g=q.group;var h=el("h3",null,g);h.style.margin="24px 0 4px";root.appendChild(h)}
+              var f=el("fieldset");f.style.cssText="border:0;padding:0;margin:14px 0;display:block";var lg=el("legend",null,q.text);lg.style.cssText="font-family:inherit;font-size:1rem;font-weight:600;letter-spacing:normal;text-transform:none;color:var(--ink);margin-bottom:8px;padding:0";f.appendChild(lg);
+              q.options.forEach(function(o,i){var id="q-"+q.id+"-"+i;var l=el("label");l.setAttribute("for",id);l.style.cssText="display:flex;gap:10px;align-items:flex-start;justify-content:flex-start;text-align:left;padding:7px 0;cursor:pointer;font-weight:400;font-size:1rem;letter-spacing:normal;text-transform:none;color:var(--ink)";
+                var r=el("input");r.type="radio";r.name=q.id;r.id=id;r.value=o[0];r.checked=ans[q.id]===o[0];r.style.cssText="width:auto;flex:none;margin:4px 0 0;padding:0";
+                r.addEventListener("change",function(){ans[q.id]=o[0];var d=q.id==="payroll";if(d)draw()});
+                l.appendChild(r);l.appendChild(el("span",null,o[1]));f.appendChild(l)});
+              root.appendChild(f)});
+          }
+          function card(i,tone){var row=el("div");row.style.cssText="padding:14px 0;border-bottom:1px solid var(--line)";
+            var t=el("b",null,i.question);row.appendChild(t);var a=el("p",null,"Your answer: "+i.answer);a.style.cssText="margin:3px 0 0;color:var(--muted)";row.appendChild(a);
+            var w=el("p",null,i.advice);w.style.cssText="margin:6px 0 0";row.appendChild(w);
+            if(i.guide){var p=el("p");p.style.margin="6px 0 0";var l=el("a",null,"Read the guide \\u2192");l.href=i.guide.href;p.appendChild(l);row.appendChild(p)}
+            return row}
+          function render(r){$("bk-out").hidden=false;var s=$("bk-score");s.textContent=r.score;s.style.color=r.score>=80?"var(--ok)":r.score>=50?"var(--warn)":"#a33";
+            $("bk-head").textContent="out of 100: "+r.level;$("bk-sub").textContent=r.counts.pass+" in good shape, "+r.counts.warn+" to improve, "+r.counts.fail+" to fix.";
+            var st=$("bk-start");st.textContent="";var ls=$("bk-list");ls.textContent="";
+            var by={};r.items.forEach(function(i){by[i.id]=i});
+            if(r.startHere.length){var h=el("h2",null,"Start here");h.style.fontSize="1.3rem";st.appendChild(h);r.startHere.forEach(function(id){st.appendChild(card(by[id]))})}
+            var rest=r.items.filter(function(i){return i.status!=="pass"&&r.startHere.indexOf(i.id)<0});
+            if(rest.length){var h2=el("h2",null,"Then work on");h2.style.cssText="font-size:1.3rem;margin-top:26px";ls.appendChild(h2);rest.forEach(function(i){ls.appendChild(card(i))})}
+            var ok=r.items.filter(function(i){return i.status==="pass"});
+            if(ok.length){var h3=el("h2",null,"Already in good shape");h3.style.cssText="font-size:1.3rem;margin-top:26px";ls.appendChild(h3);var u=el("ul","checks");ok.forEach(function(i){u.appendChild(el("li",null,i.question.replace(/\\?$/,"")+": "+i.answer))});ls.appendChild(u)}
+            if(!r.startHere.length&&!rest.length)st.appendChild(el("p",null,"Nothing to fix based on your answers. Keep the monthly routine going."));
+            $("bk-out").scrollIntoView({behavior:"smooth",block:"start"});if(window.mccTrack)window.mccTrack("bk_checkup_run",{score:r.score});}
+          $("bk").addEventListener("submit",function(e){e.preventDefault();if(busy)return;var m=$("bk-msg");m.textContent="";m.style.color="";
+            busy=true;$("bk-go").disabled=true;
+            post("/api/bookkeeping/checkup",{answers:ans}).then(function(j){render(j.result)}).catch(function(err){m.textContent=err.message}).then(function(){busy=false;$("bk-go").disabled=false})});
+          $("b-go").addEventListener("click",function(){var m=$("b-msg");m.textContent="";m.style.color="";var n=$("b-name").value.trim(),em=$("b-email").value.trim();
+            if(!n||!em){m.textContent="Enter your name and email.";return}$("b-go").disabled=true;
+            post("/api/bookkeeping/checkup/lead",{answers:ans,name:n,email:em,company:$("b-co").value,note:$("b-note").value,website:$("b-web").value,heardFrom:"other"}).then(function(){m.style.color="var(--ok)";m.textContent="Sent. Check your inbox in a minute (and your spam folder).";if(window.mccTrack)window.mccTrack("generate_lead",{form:"bk_checkup"})}).catch(function(err){m.textContent=err.message;$("b-go").disabled=false})});
+          draw();
+        })();</script>`,
+        ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,
+      },
+      schema: [
+        { "@type": "WebApplication", name: "Free bookkeeping health check", url: url + CHECKUP, applicationCategory: "BusinessApplication", operatingSystem: "Any", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, provider: provider(url) },
+        faqSchema(faqs), crumbSchema(url, crumbs),
+      ],
+    }));
+  });
 }
 
-module.exports = { register, paths, HUB, SW_HUB };
+module.exports = { register, paths, HUB, SW_HUB, CHECKUP };
