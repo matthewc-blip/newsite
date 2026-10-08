@@ -235,6 +235,24 @@ async function lateFee(id) {
   catch (e) { console.error("Sending late-fee invoice failed:", e.message); return getInvoice(created.id); }
 }
 
+async function setDueDate(id, dueDate) {
+  const settings = await getSettings();
+  const d = String(dueDate || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(new Date(d + "T12:00:00Z"))) throw Object.assign(new Error("Pick a valid due date."), { status: 400 });
+  const inv = await db.one("SELECT * FROM invoices WHERE id = $1", [id]);
+  if (!inv) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  if (!["draft", "open"].includes(inv.status)) throw Object.assign(new Error("Only draft or open invoices can change due date."), { status: 400 });
+  if (d < String(inv.invoice_date).slice(0, 10)) throw Object.assign(new Error("The due date can't be before the invoice date."), { status: 400 });
+  if (inv.status === "open" && inv.provider === "stripe" && inv.stripe_invoice_id) {
+    try { await stripeB.setDueDate(inv.stripe_invoice_id, d, settings); }
+    catch (e) { throw Object.assign(new Error(`Stripe: ${e.message}`), { status: 502 }); }
+  }
+  await db.run("UPDATE invoices SET due_date = $1 WHERE id = $2", [d, id]);
+  const jobs = await db.all("SELECT id FROM bookings WHERE invoice_id = $1", [id]);
+  for (const b of jobs) await logEvent(b.id, "desk", `Invoice ${inv.number} due date changed from ${String(inv.due_date).slice(0, 10)} to ${d}`);
+  return getInvoice(id);
+}
+
 async function markPaid(id) {
   await db.run("UPDATE invoices SET status = 'paid', paid_at = now() WHERE id = $1 AND status IN ('open','draft')", [id]);
   return getInvoice(id);
@@ -357,6 +375,7 @@ function register(app, { requireAdmin, requireClient, loadClient }) {
   app.post("/api/admin/billing/invoices/:id/sync", requireAdmin, wrap(async (req) => ({ invoice: await syncInvoice(Number(req.params.id) || 0) })));
   app.post("/api/admin/billing/invoices/:id/void", requireAdmin, wrap(async (req) => ({ invoice: await voidInvoice(Number(req.params.id) || 0) })));
   app.post("/api/admin/billing/invoices/:id/late-fee", requireAdmin, wrap(async (req) => ({ invoice: await lateFee(Number(req.params.id) || 0) })));
+  app.post("/api/admin/billing/invoices/:id/due-date", requireAdmin, wrap(async (req) => ({ invoice: await setDueDate(Number(req.params.id) || 0, req.body.dueDate) })));
   app.post("/api/admin/billing/invoices/:id/mark-paid", requireAdmin, wrap(async (req) => ({ invoice: await markPaid(Number(req.params.id) || 0) })));
   app.get("/api/admin/billing/invoices/:id/view", requireAdmin, async (req, res) => {
     const inv = await getInvoice(Number(req.params.id) || 0);
@@ -374,4 +393,4 @@ function register(app, { requireAdmin, requireClient, loadClient }) {
   });
 }
 
-module.exports = { handleStripeWebhook, PROVIDER, register, createInvoice, sendInvoice, syncInvoice, syncOpen, startSyncJob, voidInvoice, markPaid, notarialFor, clientPrice, lineItemsFor };
+module.exports = { handleStripeWebhook, setDueDate, PROVIDER, register, createInvoice, sendInvoice, syncInvoice, syncOpen, startSyncJob, voidInvoice, markPaid, notarialFor, clientPrice, lineItemsFor };

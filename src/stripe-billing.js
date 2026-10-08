@@ -137,5 +137,11 @@ async function chargeSavedCard({ customerId, paymentMethodId, amount, descriptio
   }
 }
 
-module.exports = { enabled, createAndSend, get, voidInvoice, verifyEvent, normalizeStatus, webhookConfigured: !!WEBHOOK_SECRET,
+// Move the due date of an open Stripe invoice (end of that day in the desk's time zone; Stripe needs a future time).
+async function setDueDate(id, dueDate, settings) {
+  const due = Math.max(Math.floor(zonedToUtc(dueDate, 23 * 60 + 59, settings.business.timezone).getTime() / 1000), Math.floor(Date.now() / 1000) + 3600);
+  return stripe.invoices.update(id, { due_date: due });
+}
+
+module.exports = { enabled, setDueDate, createAndSend, get, voidInvoice, verifyEvent, normalizeStatus, webhookConfigured: !!WEBHOOK_SECRET,
   findOrCreateCustomer, createCardSession, readCardSession, chargeSavedCard };

@@ -766,6 +766,7 @@
         ${i.status === "open" && i.provider === "stripe" ? `<button class="btn btn-ghost btn-sm" data-isync="${i.id}">Check payment</button>` : ""}
         ${i.status === "open" && i.provider === "manual" ? `<button class="btn btn-ghost btn-sm" data-ipaid="${i.id}">Mark paid</button>` : ""}
         ${i.status === "open" && i.client_account_id && i.due_date < new Date().toISOString().slice(0, 10) ? `<button class="btn btn-ghost btn-sm" data-ilate="${i.id}" title="Bill the monthly late fee as a separate invoice">Late fee</button>` : ""}
+        ${["draft", "open"].includes(i.status) ? `<button class="btn btn-ghost btn-sm" data-idue="${i.id}" data-due="${esc(String(i.due_date).slice(0, 10))}">Due date</button>` : ""}
         ${["draft", "open"].includes(i.status) ? `<button class="linkbtn" data-ivoid="${i.id}">Void</button>` : ""}</td></tr>`).join("")
       : '<tr><td colspan="7" style="font-weight:400;color:var(--ink-2)">No invoices yet.</td></tr>';
     const act = async (path, okText, btn) => {
@@ -777,6 +778,12 @@
     $$("[data-isync]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.isync}/sync`, "Payment status updated.", b)));
     $$("[data-ilate]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ilate}/late-fee`, "Late fee invoice created.", b)));
     $$("[data-ipaid]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ipaid}/mark-paid`, "Marked paid.", b)));
+    $$("[data-idue]").forEach((b) => (b.onclick = async () => {
+      const v = prompt("New due date (YYYY-MM-DD):", b.dataset.due);
+      if (v === null || !v.trim() || v.trim() === b.dataset.due) return;
+      try { await api(`/api/admin/billing/invoices/${b.dataset.idue}/due-date`, { method: "POST", body: { dueDate: v.trim() } }); await loadBilling(); $("#billMsg").className = "form-msg ok"; $("#billMsg").textContent = "Due date updated."; }
+      catch (e) { $("#billMsg").className = "form-msg"; $("#billMsg").textContent = e.message; }
+    }));
     $$("[data-ivoid]").forEach((b) => (b.onclick = () => act(`/api/admin/billing/invoices/${b.dataset.ivoid}/void`, "Invoice voided. Its jobs are back in Ready to invoice.", b)));
   }
   $("#billThrough").addEventListener("change", loadBilling);
