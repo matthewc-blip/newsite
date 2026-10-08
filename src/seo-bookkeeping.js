@@ -166,12 +166,15 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Free bookkeeping health check</h1><p class="lede" style="margin-top:14px">Answer a few quick questions about how your books are kept and see what to tackle first, with a guide for each item. No sign-up to see the results.</p>`,
         main: `<section class="band"><div class="wrap" style="max-width:860px">
-          <form class="form-card" id="bk" novalidate><div id="bk-qs"></div>
-            <div style="margin-top:18px"><button class="btn btn-primary" type="submit" id="bk-go">See my results</button> <span class="form-msg" id="bk-msg" role="alert" style="margin-left:10px"></span></div>
-            <p style="margin-top:12px;color:var(--muted);font-size:.9rem">This reflects only your answers. It is general information, not tax, legal or accounting advice.</p></form>
+          <div class="form-card" id="bk">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><p id="bk-step" style="margin:0;font-family:var(--f-mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass)"></p><p id="bk-grp" style="margin:0;color:var(--muted);font-size:.9rem"></p></div>
+            <div role="progressbar" id="bk-bar" aria-label="Quiz progress" aria-valuemin="0" aria-valuemax="100" style="height:6px;background:var(--line);border-radius:99px;margin:10px 0 22px;overflow:hidden"><div id="bk-fill" style="height:100%;width:0;background:var(--brass);transition:width .25s ease"></div></div>
+            <div id="bk-qs" aria-live="polite"></div>
+            <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:22px;flex-wrap:wrap"><button class="btn btn-ghost" type="button" id="bk-back">Back</button><span class="form-msg" id="bk-msg" role="alert"></span><button class="btn btn-primary" type="button" id="bk-next" disabled>Next</button></div>
+            <p style="margin-top:14px;color:var(--muted);font-size:.9rem">This reflects only your answers. It is general information, not tax, legal or accounting advice.</p></div>
           <div id="bk-out" hidden>
             <div class="form-card" style="margin-top:22px"><div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div id="bk-score" style="font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1"></div><div><b id="bk-head"></b><p id="bk-sub" style="margin:4px 0 0;color:var(--ink-2)"></p></div></div></div>
-            <div id="bk-start" style="margin-top:22px"></div><div id="bk-list" style="margin-top:12px"></div>
+            <p style="margin:14px 0 0"><button class="btn btn-ghost btn-sm" type="button" id="bk-retake">Retake the quiz</button></p><div id="bk-start" style="margin-top:22px"></div><div id="bk-list" style="margin-top:12px"></div>
             <div class="form-card" style="margin-top:22px">
               <h2 style="margin:0 0 6px;font-size:1.3rem">Want this report by email?</h2>
               <p style="margin:0 0 14px;color:var(--ink-2)">We'll send the full list. If you'd like help, add a note and we'll reply with a plain estimate.</p>
@@ -191,16 +194,31 @@ function register(app, c) {
           function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
           function post(u,b){return fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Something went wrong.");return j})})}
           function vis(q){return !q.ask||ans[q.ask[0]]===q.ask[1]}
-          function draw(){var root=$("bk-qs"),g="";root.textContent="";
-            Q.forEach(function(q){if(!vis(q)){delete ans[q.id];return}
-              if(q.group!==g){g=q.group;var h=el("h3",null,g);h.style.margin="24px 0 4px";root.appendChild(h)}
-              var f=el("fieldset");f.style.cssText="border:0;padding:0;margin:14px 0;display:block";var lg=el("legend",null,q.text);lg.style.cssText="font-family:inherit;font-size:1rem;font-weight:600;letter-spacing:normal;text-transform:none;color:var(--ink);margin-bottom:8px;padding:0";f.appendChild(lg);
-              q.options.forEach(function(o,i){var id="q-"+q.id+"-"+i;var l=el("label");l.setAttribute("for",id);l.style.cssText="display:flex;gap:10px;align-items:flex-start;justify-content:flex-start;text-align:left;padding:7px 0;cursor:pointer;font-weight:400;font-size:1rem;letter-spacing:normal;text-transform:none;color:var(--ink)";
-                var r=el("input");r.type="radio";r.name=q.id;r.id=id;r.value=o[0];r.checked=ans[q.id]===o[0];r.style.cssText="width:auto;flex:none;margin:4px 0 0;padding:0";
-                r.addEventListener("change",function(){ans[q.id]=o[0];var d=q.id==="payroll";if(d)draw()});
-                l.appendChild(r);l.appendChild(el("span",null,o[1]));f.appendChild(l)});
-              root.appendChild(f)});
+          var idx=0;
+          function list(){return Q.filter(vis)}
+          function show(){var qs=list();if(idx>=qs.length)idx=qs.length-1;var q=qs[idx],root=$("bk-qs");root.textContent="";
+            $("bk-step").textContent="Question "+(idx+1)+" of "+qs.length;$("bk-grp").textContent=q.group;
+            var pct=Math.round(idx/qs.length*100);$("bk-fill").style.width=pct+"%";$("bk-bar").setAttribute("aria-valuenow",pct);
+            var f=el("fieldset");f.style.cssText="border:0;padding:0;margin:0;display:block";
+            var lg=el("legend",null,q.text);lg.style.cssText="font-family:var(--f-display);font-size:1.35rem;font-weight:700;line-height:1.3;letter-spacing:normal;text-transform:none;color:var(--ink);margin:0 0 16px;padding:0";lg.tabIndex=-1;f.appendChild(lg);
+            q.options.forEach(function(o,i){var id="q-"+q.id+"-"+i,on=ans[q.id]===o[0];
+              var l=el("label");l.setAttribute("for",id);l.style.cssText="display:flex;gap:12px;align-items:flex-start;justify-content:flex-start;text-align:left;padding:13px 14px;margin:0 0 10px;border:1px solid "+(on?"var(--brass)":"var(--line)")+";border-radius:6px;background:"+(on?"var(--brass-soft)":"var(--surface)")+";cursor:pointer;font-weight:400;font-size:1rem;letter-spacing:normal;text-transform:none;color:var(--ink)";
+              var r=el("input");r.type="radio";r.name=q.id;r.id=id;r.value=o[0];r.checked=on;r.style.cssText="width:auto;flex:none;margin:4px 0 0;padding:0";
+              r.addEventListener("change",function(){ans[q.id]=o[0];$("bk-msg").textContent="";show();var n=$("bk-next");n.disabled=false;var again=document.getElementById("q-"+q.id+"-"+i);if(again)again.focus()});
+              l.appendChild(r);l.appendChild(el("span",null,o[1]));f.appendChild(l)});
+            root.appendChild(f);
+            $("bk-back").style.visibility=idx===0?"hidden":"visible";
+            var last=idx===qs.length-1&&!(q.id==="payroll"&&ans.payroll==="yes");
+            $("bk-next").textContent=last?"See my results":"Next";$("bk-next").disabled=!ans[q.id];
           }
+          function next(){var qs=list(),q=qs[idx];if(!ans[q.id]){$("bk-msg").textContent="Choose an answer to continue.";return}$("bk-msg").textContent="";
+            var after=list();if(idx<after.length-1){idx++;show();var lg=document.querySelector("#bk-qs legend");if(lg)lg.focus();return}
+            if(busy)return;busy=true;$("bk-next").disabled=true;var m=$("bk-msg");m.style.color="var(--muted)";m.textContent="Scoring\u2026";
+            post("/api/bookkeeping/checkup",{answers:ans}).then(function(j){m.textContent="";m.style.color="";$("bk").hidden=true;render(j.result)}).catch(function(err){m.style.color="";m.textContent=err.message}).then(function(){busy=false;$("bk-next").disabled=false})}
+          $("bk-next").addEventListener("click",next);
+          $("bk-back").addEventListener("click",function(){if(idx>0){idx--;show()}});
+          document.addEventListener("keydown",function(e){if(e.key==="Enter"&&!$("bk").hidden&&document.activeElement&&document.activeElement.type==="radio"&&ans[list()[idx].id]){e.preventDefault();next()}});
+          function retake(){ans={};idx=0;$("bk-out").hidden=true;$("bk").hidden=false;show();$("bk").scrollIntoView({behavior:"smooth",block:"start"})}
           function card(i,tone){var row=el("div");row.style.cssText="padding:14px 0;border-bottom:1px solid var(--line)";
             var t=el("b",null,i.question);row.appendChild(t);var a=el("p",null,"Your answer: "+i.answer);a.style.cssText="margin:3px 0 0;color:var(--muted)";row.appendChild(a);
             var w=el("p",null,i.advice);w.style.cssText="margin:6px 0 0";row.appendChild(w);
@@ -217,13 +235,11 @@ function register(app, c) {
             if(ok.length){var h3=el("h2",null,"Already in good shape");h3.style.cssText="font-size:1.3rem;margin-top:26px";ls.appendChild(h3);var u=el("ul","checks");ok.forEach(function(i){u.appendChild(el("li",null,i.question.replace(/\\?$/,"")+": "+i.answer))});ls.appendChild(u)}
             if(!r.startHere.length&&!rest.length)st.appendChild(el("p",null,"Nothing to fix based on your answers. Keep the monthly routine going."));
             $("bk-out").scrollIntoView({behavior:"smooth",block:"start"});if(window.mccTrack)window.mccTrack("bk_checkup_run",{score:r.score});}
-          $("bk").addEventListener("submit",function(e){e.preventDefault();if(busy)return;var m=$("bk-msg");m.textContent="";m.style.color="";
-            busy=true;$("bk-go").disabled=true;
-            post("/api/bookkeeping/checkup",{answers:ans}).then(function(j){render(j.result)}).catch(function(err){m.textContent=err.message}).then(function(){busy=false;$("bk-go").disabled=false})});
           $("b-go").addEventListener("click",function(){var m=$("b-msg");m.textContent="";m.style.color="";var n=$("b-name").value.trim(),em=$("b-email").value.trim();
             if(!n||!em){m.textContent="Enter your name and email.";return}$("b-go").disabled=true;
             post("/api/bookkeeping/checkup/lead",{answers:ans,name:n,email:em,company:$("b-co").value,note:$("b-note").value,website:$("b-web").value,heardFrom:"other"}).then(function(){m.style.color="var(--ok)";m.textContent="Sent. Check your inbox in a minute (and your spam folder).";if(window.mccTrack)window.mccTrack("generate_lead",{form:"bk_checkup"})}).catch(function(err){m.textContent=err.message;$("b-go").disabled=false})});
-          draw();
+          $("bk-retake").addEventListener("click",retake);
+          show();
         })();</script>`,
         ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,
       },
