@@ -248,21 +248,80 @@ async function getInvoice(id) {
 }
 
 function invoiceHtml(inv, settings) {
-  const money = (n) => "$" + Number(n).toFixed(2);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${esc(inv.number)}</title>
-  <style>body{font-family:Arial,sans-serif;color:#14231d;max-width:780px;margin:40px auto;padding:0 20px}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:24px}
-  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #d9e0db;font-size:14px;vertical-align:top}th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6a7a72}
-  td.n,th.n{text-align:right;white-space:nowrap}.top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.muted{color:#6a7a72;font-size:13px}.tot{font-size:20px;font-weight:700}
-  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;background:#f3e7cf;color:#6e4b10;text-transform:uppercase;letter-spacing:.06em}</style></head><body>
-  <div class="top"><div><h1>${esc(settings.business.name)}</h1><p class="muted">${esc(settings.business.phone)} · ${esc(settings.business.email)}</p></div>
-  <div style="text-align:right"><p class="badge">${esc(inv.status)}</p><p><b>Invoice ${esc(inv.number)}</b><br><span class="muted">Issued ${esc(inv.invoice_date)} · Due ${esc(inv.due_date)}</span></p></div></div>
-  <p><span class="muted">Bill to</span><br><b>${esc(inv.bill_to_name)}</b><br>${esc(inv.bill_to_email)}</p>
-  ${inv.period_start ? `<p class="muted">Service period ${esc(inv.period_start)} to ${esc(inv.period_end)}</p>` : ""}
-  <table><thead><tr><th>Description</th><th class="n">Qty</th><th class="n">Amount</th></tr></thead><tbody>
-  ${inv.items.map((i) => `<tr><td>${esc(i.name)}</td><td class="n">${i.quantity}</td><td class="n">${money(i.quantity * i.unit_price)}</td></tr>`).join("")}
-  <tr><td></td><td class="n"><b>Total</b></td><td class="n tot">${money(inv.amount)}</td></tr></tbody></table>
-  ${inv.payment_url ? `<p style="margin-top:24px"><a href="${esc(inv.payment_url)}">Pay this invoice online</a></p>` : ""}
-  <p class="muted" style="margin-top:24px">Notarial fees are charged within state limits and listed separately from signing-service, travel and other fees.${inv.client_account_id && Number(settings.billing?.lateFeePct) > 0 ? ` Balances unpaid after the due date may be charged a late fee of ${Number(settings.billing.lateFeePct)}% a month.` : ""}</p></body></html>`;
+  const money = (n) => "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const day = (d) => { try { return new Date(String(d).slice(0, 10) + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }); } catch { return String(d || ""); } };
+  const biz = settings.business || {};
+  const paid = inv.status === "paid", voided = inv.status === "void";
+  const lateNote = inv.client_account_id && Number(settings.billing?.lateFeePct) > 0 ? ` Balances unpaid after the due date may be charged a late fee of ${Number(settings.billing.lateFeePct)}% a month.` : "";
+  const label = { paid: "Paid", open: "Due", draft: "Draft", void: "Void" }[inv.status] || inv.status;
+  const tel = String(biz.phone || "").replace(/[^\d+]/g, "");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Invoice ${esc(inv.number)} · ${esc(biz.name)}</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <style>
+  :root{--ink:#14231d;--ink2:#3d4f47;--muted:#5b6a63;--line:#d9e0db;--deep:#10261e;--deepfg:#e9f0eb;--brass:#8c6017;--brassSoft:#f3e7cf;--ok:#276b43;--okSoft:#dcefe3}
+  *{box-sizing:border-box}body{margin:0;background:#eef1ee;color:var(--ink);font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet{max-width:820px;margin:28px auto;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 8px 30px rgba(16,38,30,.08)}
+  .head{background:var(--deep);color:var(--deepfg);padding:30px 40px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;border-bottom:4px solid var(--brass)}
+  .brand{display:flex;align-items:center;gap:14px}.brand svg{width:54px;height:54px;flex:none}
+  .brand b{display:block;font-family:Archivo,"Arial Narrow",Arial,sans-serif;font-size:24px;font-weight:800;letter-spacing:.01em;line-height:1.1}
+  .brand span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#d8a24a}
+  .doc{text-align:right}.doc small{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9fb5aa}
+  .doc strong{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-weight:500;font-size:18px}
+  .body{padding:34px 40px 28px;position:relative}
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:18px 28px;margin-bottom:28px}
+  .meta small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .meta div{font-size:14px}.meta b{font-weight:700}
+  .pill{display:inline-block;padding:3px 12px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--brassSoft);color:#6e4b10}
+  .pill.paid{background:var(--okSoft);color:var(--ok)}.pill.void{background:#eee;color:#666}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:2px solid var(--ink);font-weight:600}
+  td{padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}td.q{color:var(--muted)}
+  .sum{display:flex;justify-content:flex-end;margin-top:20px}
+  .total{min-width:260px;background:var(--deep);color:var(--deepfg);border-radius:4px;padding:16px 20px;display:flex;justify-content:space-between;align-items:baseline;gap:24px;border-left:4px solid var(--brass)}
+  .total small{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9fb5aa}.total strong{font-family:Archivo,Arial,sans-serif;font-size:26px;font-weight:800}
+  .pay{margin-top:26px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .btn{display:inline-block;background:var(--brass);color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:4px;letter-spacing:.02em}
+  .paidnote{color:var(--ok);font-weight:700}
+  .stamp{position:absolute;right:40px;top:96px;transform:rotate(-8deg);border:3px solid var(--ok);color:var(--ok);padding:4px 16px;border-radius:4px;font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:26px;letter-spacing:.2em;opacity:.8}
+  .notes{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .foot{background:#f5f7f4;border-top:1px solid var(--line);padding:18px 40px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+  .foot b{color:var(--ink)}.foot a{color:var(--brass);text-decoration:none}
+  .print{max-width:820px;margin:0 auto 28px;text-align:right;padding:0 4px}.print button{font:inherit;font-size:13px;padding:8px 16px;border:1px solid var(--line);background:#fff;border-radius:4px;cursor:pointer}
+  @media(max-width:560px){.head,.body,.foot{padding-left:20px;padding-right:20px}.doc{text-align:left}.stamp{position:static;display:inline-block;margin-bottom:14px}}
+  @media print{body{background:#fff}.sheet{margin:0;border:0;box-shadow:none;border-radius:0}.print{display:none}@page{margin:12mm}}
+  </style></head><body>
+  <div class="sheet">
+    <div class="head">
+      <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#a8751f"/><circle cx="32" cy="32" r="25" fill="none" stroke="#fff" stroke-width="2"/><text x="32" y="38" font-family="Archivo,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="17" fill="#fff" text-anchor="middle">MCC</text></svg>
+        <div><b>${esc(biz.name)}</b><span>Notary &middot; Signing &middot; Process Serving</span></div></div>
+      <div class="doc"><small>Invoice</small><strong>${esc(inv.number)}</strong></div>
+    </div>
+    <div class="body">
+      ${paid ? `<div class="stamp">PAID</div>` : ""}
+      <div class="meta">
+        <div><small>Billed to</small><b>${esc(inv.bill_to_name)}</b><br>${esc(inv.bill_to_email)}</div>
+        <div><small>Issued</small>${esc(day(inv.invoice_date))}</div>
+        <div><small>${paid ? "Paid" : "Due"}</small>${esc(paid && inv.paid_at ? day(inv.paid_at.toISOString ? inv.paid_at.toISOString() : inv.paid_at) : day(inv.due_date))}</div>
+        <div><small>Status</small><span class="pill ${paid ? "paid" : voided ? "void" : ""}">${esc(label)}</span></div>
+      </div>
+      ${inv.period_start && inv.period_end && String(inv.period_start) !== String(inv.period_end) ? `<p style="margin:0 0 14px;color:var(--muted)">Service period ${esc(day(inv.period_start))} to ${esc(day(inv.period_end))}</p>` : ""}
+      <table><thead><tr><th>Description</th><th class="n">Qty</th><th class="n">Amount</th></tr></thead><tbody>
+      ${inv.items.map((i) => `<tr><td>${esc(i.name)}${i.ref ? `<br><span style="color:var(--muted);font-size:12px">Booking ${esc(i.ref)}</span>` : ""}</td><td class="n q">${i.quantity}</td><td class="n">${money(i.quantity * i.unit_price)}</td></tr>`).join("")}
+      </tbody></table>
+      <div class="sum"><div class="total"><small>${paid ? "Total paid" : "Total due"}</small><strong>${money(inv.amount)}</strong></div></div>
+      ${!paid && !voided && inv.payment_url ? `<div class="pay"><a class="btn" href="${esc(inv.payment_url)}">Pay this invoice online</a><span style="color:var(--muted)">Secure card or bank payment</span></div>` : ""}
+      ${paid ? `<div class="pay"><span class="paidnote">Thank you. This invoice has been paid in full.</span></div>` : ""}
+      <p class="notes">Notarial fees are charged within New Jersey's legal limits and listed separately from signing-service, travel and other fees.${esc(lateNote)} Questions about this invoice? Call or email us and mention ${esc(inv.number)}.</p>
+    </div>
+    <div class="foot">
+      <div><b>${esc(biz.name)}</b><br>Cranford, New Jersey</div>
+      <div><a href="tel:${esc(tel)}">${esc(biz.phone)}</a><br><a href="mailto:${esc(biz.email)}">${esc(biz.email)}</a></div>
+      <div><a href="https://mcc-solutionsnj.com">mcc-solutionsnj.com</a></div>
+    </div>
+  </div>
+  <div class="print"><button onclick="window.print()">Print or save as PDF</button></div>
+  </body></html>`;
 }
 
 function register(app, { requireAdmin, requireClient, loadClient }) {
