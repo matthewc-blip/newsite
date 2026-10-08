@@ -147,9 +147,9 @@ async function createRequest(body, c, { accountId = null, userId = null, actor =
   let row;
   for (let i = 0; i < 5 && !row; i++) {
     try {
-      row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, client_user_id, details, notes, due_date, client_ref, extras, extras_total)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-        [newRef(), type, c.name, c.email, c.phone || null, c.company || null, accountId, userId, JSON.stringify(d), str(body.notes, 2000) || null, due || null, clientRef, JSON.stringify(extras), fees.total(extras)]);
+      row = await db.one(`INSERT INTO service_requests(ref, type, contact_name, contact_email, contact_phone, company, client_account_id, client_user_id, details, notes, due_date, client_ref, extras, extras_total, heard_from, heard_note)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        [newRef(), type, c.name, c.email, c.phone || null, c.company || null, accountId, userId, JSON.stringify(d), str(body.notes, 2000) || null, due || null, clientRef, JSON.stringify(extras), fees.total(extras), require("./heard").clean(str(body.heardFrom, 20)), str(body.heardNote, 120) || null]);
     } catch (e) { if (e.code !== "23505") throw e; }
   }
   await logReq(row.id, actor, actor === "client" ? `Requested in the client portal by ${c.name}` : "Requested online");

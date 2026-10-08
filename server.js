@@ -184,6 +184,7 @@ function readBookingInput(body, { admin = false } = {}) {
     mailing_address: str(body.mailingAddress, 300),
     docs_delivery: str(body.docsDelivery, 60),
     contact_name: str(body.contactName, 120), contact_email: str(body.contactEmail, 160).toLowerCase(), contact_phone: str(body.contactPhone, 40),
+    heard_from: require("./src/heard").clean(str(body.heardFrom, 20)), heard_note: str(body.heardNote, 120) || null,
     signer_names: str(body.signerNames, 300), company: str(body.company, 160), file_number: str(body.fileNumber, 60), notes: str(body.notes, 2000),
     addons_in: body.addons, no_auto_fees: !!body.noAutoFees,
   };
@@ -209,7 +210,7 @@ function readBookingInput(body, { admin = false } = {}) {
 
 const BOOKING_COLS = ["ref", "token", "service", "category", "is_loan", "signers", "start_utc", "end_utc", "customer_tz", "address", "city", "state", "zip",
   "signer_location", "signer_state", "in_us", "mailing_address", "docs_delivery", "contact_name", "contact_email", "contact_phone",
-  "signer_names", "company", "file_number", "notes", "est_fee", "source", "addons", "addons_total"];
+  "signer_names", "company", "file_number", "notes", "est_fee", "source", "addons", "addons_total", "heard_from", "heard_note"];
 
 async function insertBooking(b, settings, { admin, force, source }) {
   const cfg = settings.services[b.service];
@@ -371,14 +372,14 @@ app.post("/api/waitlist", rateLimit(5, 10 * 60000), async (req, res) => {
 
 app.post("/api/messages", rateLimit(5, 10 * 60000), async (req, res) => {
   if (req.body.website) return res.status(400).json({ error: "Rejected" });
-  const m = { name: str(req.body.name, 120), email: str(req.body.email, 160), topic: str(req.body.topic, 80), message: str(req.body.message, 4000) };
+  const m = { name: str(req.body.name, 120), email: str(req.body.email, 160), topic: str(req.body.topic, 80), message: str(req.body.message, 4000), heard: require("./src/heard").clean(str(req.body.heardFrom, 20)), heardNote: str(req.body.heardNote, 120) || null };
   const fields = {};
   if (!m.name) fields.name = "Enter your name.";
   if (!emailOk(m.email)) fields.email = "Enter a valid email.";
   if (!m.message) fields.message = "Enter a message.";
   if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });
-  await db.run("INSERT INTO messages(name,email,topic,message) VALUES($1,$2,$3,$4)", [m.name, m.email, m.topic, m.message]);
-  mail.deskNotice(`Website message: ${m.topic}`, `${m.name} <${m.email}>\n\n${m.message}`);
+  await db.run("INSERT INTO messages(name,email,topic,message,heard_from,heard_note) VALUES($1,$2,$3,$4,$5,$6)", [m.name, m.email, m.topic, m.message, m.heard, m.heardNote]);
+  mail.deskNotice(`Website message: ${m.topic}`, `${m.name} <${m.email}>${m.heard ? `\nFound us: ${require("./src/heard").label(m.heard)}${m.heardNote ? " (" + m.heardNote + ")" : ""}` : ""}\n\n${m.message}`);
   res.status(201).json({ ok: true });
 });
 
@@ -646,6 +647,19 @@ app.patch("/api/admin/applications/:id", requireAdmin, async (req, res) => {
     if (n.email) mail.notaryWelcome(n, await notary.createLoginLink(n.id, 7 * 24 * 60), await getSettings());
   }
   res.json({ ok: true });
+});
+// Where customers say they found us (last 90 days), counted across bookings, requests, messages and bookkeeping leads.
+app.get("/api/admin/lead-sources", requireAdmin, async (req, res) => {
+  const heard = require("./src/heard");
+  const rows = await db.all(`SELECT src, heard, count(*)::int AS n FROM (
+      SELECT 'booking' AS src, heard_from AS heard FROM bookings WHERE created_at > now() - interval '90 days'
+      UNION ALL SELECT 'request', heard_from FROM service_requests WHERE created_at > now() - interval '90 days'
+      UNION ALL SELECT 'message', heard_from FROM messages WHERE created_at > now() - interval '90 days'
+      UNION ALL SELECT 'bookkeeping', NULLIF(data->>'heard','') FROM bookkeeping_leads WHERE created_at > now() - interval '90 days'
+    ) t GROUP BY src, heard`);
+  const by = {}; let total = 0, answered = 0;
+  for (const r of rows) { total += r.n; if (r.heard && heard.LABELS[r.heard]) { answered += r.n; by[r.heard] = (by[r.heard] || 0) + r.n; } }
+  res.json({ total, answered, sources: heard.OPTIONS.map(([id, label]) => ({ id, label, n: by[id] || 0 })).filter((s) => s.n).sort((a, b) => b.n - a.n) });
 });
 app.get("/api/admin/messages", requireAdmin, async (req, res) => {
   res.json({ messages: await db.all("SELECT * FROM messages ORDER BY handled, id DESC LIMIT 300") });

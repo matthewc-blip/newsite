@@ -134,7 +134,7 @@ window.MCC = (function () {
     { nsa: "j-nna", ron: "j-ron", rin: "j-rin", laser: "j-printer", reverse: "j-reverse" },
     "<b>Application received.</b> We review applications within 3 business days. Once approved, you'll get an email to finish onboarding in the notary portal.");
   wireForm("contactForm", "contactOk", "/api/messages",
-    { name: "c-name", email: "c-email", topic: "c-topic", message: "c-msg" }, null,
+    { name: "c-name", email: "c-email", topic: "c-topic", message: "c-msg", heardFrom: "c-heard", heardNote: "c-heardnote" }, null,
     "<b>Message sent.</b> A coordinator will reply within one business day.");
 
   return { api, STATES, route, ready, getConfig: () => config, showErrors };

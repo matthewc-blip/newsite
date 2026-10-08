@@ -148,6 +148,7 @@ form.card{border-radius:var(--r)}
           <label><input type="checkbox" name="needs" value="Fix or refresh my site"> Fix or refresh my site</label>
           <label><input type="checkbox" name="needs" value="Not sure"> Not sure yet</label>
         </div></fieldset>
+      <div class="field full"><label for="w-heard">How did you find us? <span class="opt">(optional)</span></label><select id="w-heard" name="heardFrom"><option value="">Choose one…</option><option value="google">Google search</option><option value="maps">Google Maps or Business Profile</option><option value="ai">ChatGPT or another AI assistant</option><option value="linkedin">LinkedIn</option><option value="social">Facebook or Instagram</option><option value="referral">Friend, family or colleague</option><option value="professional">Attorney, title company or lender</option><option value="repeat">I've used MCC Solutions before</option><option value="mailer">Postcard or flyer</option><option value="other">Other</option></select></div><div class="field full"><label for="w-heardnote">Who referred you, or tell us more <span class="opt">(optional)</span></label><input id="w-heardnote" name="heardNote" maxlength="120"></div>
       <div class="field full"><label for="w-msg">Anything else we should know?</label><textarea id="w-msg" name="message" aria-describedby="e-msg"></textarea><span class="err" id="e-msg"></span></div>
       <div class="hp" aria-hidden="true"><label for="w-hp">Leave this empty</label><input type="text" id="w-hp" name="website" tabindex="-1" autocomplete="off"></div>
       <div class="full" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><button class="btn btn-primary" type="submit" id="wSubmit">Send</button><span class="form-msg" id="wMsg" role="status" aria-live="polite"></span></div>
@@ -197,7 +198,7 @@ form.card{border-radius:var(--r)}
       "Needs: " + (needs.join(", ") || "-"), "", v("w-msg") || "(no message)"
     ].join("\n");
     var btn = document.getElementById("wSubmit"); btn.disabled = true;
-    fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v("w-name"), email: v("w-email"), topic: "Website & SEO", message: body, website: v("w-hp") }) })
+    fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: v("w-name"), email: v("w-email"), topic: "Website & SEO", message: body, website: v("w-hp"), heardFrom: v("w-heard"), heardNote: v("w-heardnote") }) })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (x) {
         btn.disabled = false;

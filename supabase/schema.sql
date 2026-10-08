@@ -492,3 +492,11 @@ alter table notaries add column if not exists password_hash text;
 alter table notaries add column if not exists password_set_at timestamptz;
 alter table notaries add column if not exists failed_logins integer not null default 0;
 alter table notaries add column if not exists locked_until timestamptz;
+
+-- ===== "How did you find us?" (added in v19; safe to re-run) =====
+alter table bookings add column if not exists heard_from text;
+alter table bookings add column if not exists heard_note text;
+alter table messages add column if not exists heard_from text;
+alter table messages add column if not exists heard_note text;
+alter table service_requests add column if not exists heard_from text;
+alter table service_requests add column if not exists heard_note text;

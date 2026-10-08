@@ -258,7 +258,7 @@
         ["In U.S.", b.service === "mobile" ? "" : b.in_us === 0 ? "No" : "Yes"],
         ["Mail docs to", b.mailing_address], ["Loan docs", b.docs_delivery],
         ["Add-ons", (b.addons || []).filter((a) => a.kind !== "fee").map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")],
-        ["Notes", b.notes], ["Source", b.source === "desk" ? "Entered by desk" : b.source === "client" ? "Client portal" : "Online booking"],
+        ["Notes", b.notes], ["Found us via", typeof heardText === "function" ? heardText(b.heard_from, b.heard_note) : ""], ["Source", b.source === "desk" ? "Entered by desk" : b.source === "client" ? "Client portal" : "Online booking"],
       ])}</div>
       <div class="dsec"><h4>Contact</h4>${kv([["Name", b.contact_name], ["Phone", b.contact_phone], ["Email", b.contact_email], ["Company", b.company], ["File #", b.file_number]])}${clientSel}</div>
       <div class="dsec"><h4>Notary</h4>${nStatus ? `<p style="margin-bottom:10px">${nStatus}</p>` : ""}
@@ -601,7 +601,7 @@
     $("#dBody").innerHTML = `
       <div class="dsec"><h4>Status</h4><div class="status-btns">${Object.entries(REQ_ST).map(([k, [, l]]) => `<button type="button" aria-pressed="${r.status === k}" data-rst="${k}">${l}</button>`).join("")}</div>
         <label class="agree" style="margin-top:8px"><input type="checkbox" id="rNotify" checked> Email the client about quoted, completed or canceled</label></div>
-      <div class="dsec"><h4>Request</h4>${kv([...det, ["Needed by", r.due_date], ["Notes", r.notes]])}</div>
+      <div class="dsec"><h4>Request</h4>${kv([...det, ["Needed by", r.due_date], ["Notes", r.notes], ["Found us via", heardText(r.heard_from, r.heard_note)]])}</div>
       <div class="dsec"><h4>Client</h4>${kv([["Name", r.contact_name], ["Company", r.company], ["Phone", r.contact_phone], ["Email", r.contact_email], ["Account", r.client_account_id ? "Client portal account" : ""]])}
         <div class="inline" style="margin-top:8px"><input id="rClientRef" placeholder="Client file / matter #" value="${esc(r.client_ref || "")}" aria-label="Client file or matter number"><button class="btn btn-ghost btn-sm" id="rRefSave" type="button">Save</button></div>
         ${r.type === "process_serve" || r.type === "inspection" ? `<label class="agree" style="margin-top:8px"><input type="checkbox" id="rNotifyAtt" ${r.notify_attempts !== 0 ? "checked" : ""}> Email the client each time an attempt is logged</label>` : ""}</div>
@@ -907,7 +907,7 @@
         <p class="meta">${esc(d.name)} · <a href="mailto:${esc(d.email)}">${esc(d.email)}</a>${d.phone ? ` · ${esc(d.phone)}` : ""} · ${esc(full(l.createdAt))}</p>
         <dl class="kvs"><dt>Software</dt><dd>${esc(l.platformLabel)}${d.platformNote ? ` (${esc(d.platformNote)})` : ""}</dd><dt>Volume</dt><dd>${esc(l.tierLabel)} · ${d.accounts} account${d.accounts > 1 ? "s" : ""}${d.payroll ? " · payroll" : ""}${d.employees ? ` · ${d.employees} employees` : ""}</dd>
         <dt>Books</dt><dd>${esc(l.backlogLabel)}</dd><dt>Needs</dt><dd>${esc(l.needsLabels.join(", "))}</dd><dt>Start</dt><dd>${esc({ asap: "As soon as possible", month: "Within a month", exploring: "Just exploring" }[d.start] || d.start)}</dd>
-        <dt>Estimate</dt><dd>${esc(l.estimateText || "—")}</dd>${d.industry ? `<dt>Industry</dt><dd>${esc(d.industry)}</dd>` : ""}${d.taxPreparer ? `<dt>Tax preparer</dt><dd>${esc({ yes: "Yes", no: "No", unsure: "Not sure" }[d.taxPreparer])}</dd>` : ""}${d.note ? `<dt>Their note</dt><dd>${esc(d.note)}</dd>` : ""}</dl>
+        <dt>Found us via</dt><dd>${esc(heardText(d.heard, d.heardNote) || "—")}</dd><dt>Estimate</dt><dd>${esc(l.estimateText || "—")}</dd>${d.industry ? `<dt>Industry</dt><dd>${esc(d.industry)}</dd>` : ""}${d.taxPreparer ? `<dt>Tax preparer</dt><dd>${esc({ yes: "Yes", no: "No", unsure: "Not sure" }[d.taxPreparer])}</dd>` : ""}${d.note ? `<dt>Their note</dt><dd>${esc(d.note)}</dd>` : ""}</dl>
         <div class="inline" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:10px">
           <div class="field" style="min-width:150px"><label for="bks-${l.id}">Status</label><select id="bks-${l.id}">${Object.entries(BK_STATUS).map(([k, v]) => `<option value="${k}" ${k === l.status ? "selected" : ""}>${v}</option>`).join("")}</select></div>
           <div class="field" style="max-width:170px"><label for="bkq-${l.id}">Monthly quote ($)</label><input type="number" min="0" step="1" id="bkq-${l.id}" value="${l.quoteMonthly ?? ""}" placeholder="${l.estimate && l.estimate.monthly != null ? Math.round(l.estimate.monthly) : "Custom"}"></div>
@@ -944,11 +944,22 @@
   }
 
   /* ---------- messages ---------- */
+  // Keep in sync with src/heard.js
+  const HEARD = { google: "Google search", maps: "Google Maps or Business Profile", ai: "ChatGPT or another AI assistant", linkedin: "LinkedIn", social: "Facebook or Instagram", referral: "Friend, family or colleague", professional: "Attorney, title company or lender", repeat: "Used MCC before", mailer: "Postcard or flyer", other: "Other" };
+  const heardText = (id, note) => (HEARD[id] ? HEARD[id] + (note ? ` (${note})` : "") : "");
+  async function loadLeadSources() {
+    try {
+      const s = await api("/api/admin/lead-sources");
+      const max = Math.max(1, ...s.sources.map((x) => x.n));
+      $("#leadSources").innerHTML = s.total ? `<p style="color:var(--ink-2);margin:0 0 8px">${s.answered} of ${s.total} inquiries said how they found us.</p>` + (s.sources.length ? s.sources.map((x) => `<div style="display:grid;grid-template-columns:230px 1fr 30px;gap:10px;align-items:center;margin:4px 0"><span>${esc(x.label)}</span><span style="background:var(--line,#ddd);height:10px;border-radius:5px"><i style="display:block;height:10px;border-radius:5px;background:var(--brass,#b8862f);width:${Math.round(x.n / max * 100)}%"></i></span><b>${x.n}</b></div>`).join("") : "") : "No inquiries yet in the last 90 days.";
+    } catch { $("#leadSources").textContent = ""; }
+  }
   async function loadMsgs() {
+    loadLeadSources();
     const { messages } = await api("/api/admin/messages");
     const box = $("#msgCards");
     if (!messages.length) { box.innerHTML = `<div class="empty-state" style="grid-column:1/-1">No messages yet. Messages from your site's Contact page land here.</div>`; return; }
-    box.innerHTML = messages.map((m) => `<div class="card${m.handled ? " handled" : ""}"><h3>${esc(m.topic)}</h3><p class="meta">${esc(m.name)} · ${esc(m.email)} · ${esc(full(m.created_at))}</p><p>${esc(m.message)}</p>
+    box.innerHTML = messages.map((m) => `<div class="card${m.handled ? " handled" : ""}"><h3>${esc(m.topic)}</h3><p class="meta">${esc(m.name)} · ${esc(m.email)} · ${esc(full(m.created_at))}${m.heard_from ? ` · Found us: ${esc(heardText(m.heard_from, m.heard_note))}` : ""}</p><p>${esc(m.message)}</p>
       <div class="actions"><button class="btn btn-ghost btn-sm" data-msg="${m.id}" data-h="${m.handled ? 0 : 1}">${m.handled ? "Mark open" : "Mark handled"}</button></div></div>`).join("");
     $$("[data-msg]", box).forEach((b) => b.addEventListener("click", async () => {
       await api("/api/admin/messages/" + b.dataset.msg, { method: "PATCH", body: { handled: b.dataset.h === "1" } });

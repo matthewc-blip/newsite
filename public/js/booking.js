@@ -360,6 +360,7 @@
       contactName: val("#b-cname"), contactEmail: val("#b-cemail"), contactPhone: val("#b-cphone"),
       signerNames: val("#b-snames"), company: val("#b-co"), fileNumber: val("#b-file"), notes: val("#b-notes"),
       website: $("#b-website").value,
+      heardFrom: val("#b-heard"), heardNote: val("#b-heardnote"),
       addons: selectedAddons(),
     };
     try {

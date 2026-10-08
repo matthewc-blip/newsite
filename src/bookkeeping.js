@@ -127,6 +127,7 @@ function clean(d, partial) {
     payroll: !!d.payroll, employees: Math.max(0, Math.min(500, parseInt(d.employees, 10) || 0)), backlog: BACKLOG[d.backlog] ? d.backlog : "none",
     needs: (Array.isArray(d.needs) ? d.needs : []).filter((n) => NEEDS[n]), start: STARTS[d.start] ? d.start : "month",
     taxPreparer: ["yes", "no", "unsure"].includes(d.taxPreparer) ? d.taxPreparer : "", note: str(d.note, 2000),
+    heard: require("./heard").clean(str(d.heard, 20)) || "", heardNote: str(d.heardNote, 120),
   };
   const fields = {};
   if (!partial) {
@@ -221,7 +222,7 @@ function leadSummary(d, e) {
     ["Volume", TIERS.find((t) => t.id === d.tier).label], ["Accounts", String(d.accounts)], ["Payroll", d.payroll ? "Yes" : "No"],
     ["Books", BACKLOG[d.backlog].label], ["Needs", d.needs.map((n) => NEEDS[n]).join(", ")], ["Start", STARTS[d.start]],
     ["Has a tax preparer", { yes: "Yes", no: "No", unsure: "Not sure" }[d.taxPreparer] || "—"],
-    ["Industry", d.industry || "—"], ["Starting estimate", describeEstimate(e)], ["Notes", d.note || "—"],
+    ["Industry", d.industry || "—"], ["Found us via", d.heard ? require("./heard").label(d.heard) + (d.heardNote ? ` (${d.heardNote})` : "") : "—"], ["Starting estimate", describeEstimate(e)], ["Notes", d.note || "—"],
   ];
 }
 

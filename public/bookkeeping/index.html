@@ -433,6 +433,7 @@ header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
           <span class="err-t" id="e-needs" style="flex-basis:100%"></span>
         </fieldset>
         <div class="field full"><label for="b-tax">Do you have a tax preparer?</label><select id="b-tax"><option value="">Choose one</option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Not sure</option></select></div>
+        <div class="field full"><label for="b-heard">How did you find us? <span class="opt">(optional)</span></label><select id="b-heard" name="heardFrom"><option value="">Choose one…</option><option value="google">Google search</option><option value="maps">Google Maps or Business Profile</option><option value="ai">ChatGPT or another AI assistant</option><option value="linkedin">LinkedIn</option><option value="social">Facebook or Instagram</option><option value="referral">Friend, family or colleague</option><option value="professional">Attorney, title company or lender</option><option value="repeat">I've used MCC Solutions before</option><option value="mailer">Postcard or flyer</option><option value="other">Other</option></select></div><div class="field full"><label for="b-heardnote">Who referred you, or tell us more <span class="opt">(optional)</span></label><input id="b-heardnote" name="heardNote" maxlength="120"></div>
         <div class="field full"><label for="b-note">Anything we should know? <span style="font-weight:400;opacity:.8">(optional)</span></label><textarea id="b-note" placeholder="How the books are kept now, what's been hard, deadlines…"></textarea></div>
         <div class="est" id="est" role="status" aria-live="polite" hidden></div>
         <div class="hp" aria-hidden="true"><label for="b-website">Website</label><input type="text" id="b-website" tabindex="-1" autocomplete="off"></div>
@@ -493,7 +494,7 @@ header.site.scrolled{box-shadow:0 8px 24px -16px rgba(16,38,30,.5)}
   const val = () => ({
     name: $("b-name").value, email: $("b-email").value, company: $("b-company").value, phone: $("b-phone").value, entity: $("b-entity").value, industry: $("b-industry").value,
     platform: $("b-platform").value, platformNote: $("b-pnote").value, tier: $("b-tier").value, accounts: $("b-accounts").value, employees: $("b-employees").value, payroll: $("b-payroll").checked,
-    backlog: $("b-backlog").value, start: $("b-start").value, taxPreparer: $("b-tax").value, note: $("b-note").value,
+    backlog: $("b-backlog").value, start: $("b-start").value, taxPreparer: $("b-tax").value, note: $("b-note").value, heard: $("b-heard").value, heardNote: $("b-heardnote").value,
     needs: [...form.querySelectorAll('input[name="needs"]:checked')].map((i) => i.value), website: $("b-website").value,
   });
 
