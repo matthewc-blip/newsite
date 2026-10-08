@@ -30,6 +30,7 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Bookkeeping guides</p><h1 style="margin-top:10px">Plain answers to small business bookkeeping questions</h1><p class="lede" style="margin-top:14px">Short guides from the MCC Solutions desk for New Jersey business owners. General information, not tax or legal advice.</p>`,
         main: `<section class="band"><div class="wrap"><div class="grid g3">${GUIDES.map((g) => card(gPath(g), "GUIDE", g.title, g.description, "Read the guide")).join("")}</div>
+          <h2 style="margin:32px 0 10px;font-size:1.4rem">Bookkeeping by type of business</h2><ul class="county-links">${require("./seo-niche").bkLinks().map(([t, h]) => `<li><a href="${h}">${esc(t)}</a></li>`).join("")}</ul>
           <p style="margin-top:28px;color:var(--ink-2)">Not sure where your books stand? Take the <a href="${CHECKUP}">free bookkeeping health check</a>. Looking for help with a specific program? See <a href="${SW_HUB}">bookkeeping by software</a>.</p></div></section>`,
         ctaTitle: "Rather have us keep the books? Ask for a quote.", ...CTA,
       },
