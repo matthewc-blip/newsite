@@ -494,6 +494,7 @@ function register(app) {
             <li><h3>Complete the signing</h3><p>Notarize, mark the job complete, and upload the scanbacks.</p></li>
             <li><h3>Get paid</h3><p>You're paid per assignment as an independent contractor, and you'll receive a 1099 at year end.</p></li>
           </ol>
+          <p><a href="/notary/become-a-notary/earnings">Estimate your earnings with our calculator</a></p>
           <p style="color:var(--ink-2)">Honest note: we're a young company. We're building up volume with title companies, law firms and families, and we're keeping the team small so the notaries who join early get the work as it grows.</p></div>
         </div></section>
         <section class="band alt"><div class="wrap stack">

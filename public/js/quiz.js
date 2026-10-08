@@ -35,7 +35,7 @@
     $("bk-msg").textContent = "";
     if (idx < qs.length - 1) { idx++; show(); var lg = document.querySelector("#bk-qs legend"); if (lg) lg.focus(); return; }
     if (busy) return; busy = true; $("bk-next").disabled = true; var m = $("bk-msg"); m.style.color = "var(--muted)"; m.textContent = "Scoring…";
-    post(C.checkApi, { answers: ans }).then(function (j) { m.textContent = ""; m.style.color = ""; $("bk").hidden = true; render(j.result); })
+    post(C.checkApi, { answers: ans }).then(function (j) { m.textContent = ""; m.style.color = ""; $("bk").hidden = true; (C.mode === "recommend" ? renderRec : render)(j.result); })
       .catch(function (err) { m.style.color = ""; m.textContent = err.message; }).then(function () { busy = false; $("bk-next").disabled = false; });
   }
   function retake() { ans = {}; idx = 0; $("bk-out").hidden = true; $("bk").hidden = false; show(); $("bk").scrollIntoView({ behavior: "smooth", block: "start" }); }
@@ -61,11 +61,29 @@
     $("bk-out").scrollIntoView({ behavior: "smooth", block: "start" }); track(C.event + "_run", { score: r.score });
   }
 
+  function renderRec(r) {
+    $("bk-out").hidden = false; var root = $("bk-rec"); root.textContent = "";
+    var box = el("div", "form-card"); box.style.borderLeft = "4px solid var(--brass)";
+    var eb = el("p", null, "Our recommendation"); eb.style.cssText = "margin:0 0 6px;font-family:var(--f-mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass)"; box.appendChild(eb);
+    var h = el("h2", null, r.title); h.style.cssText = "margin:0 0 8px;font-size:1.7rem"; box.appendChild(h);
+    if (r.price) { var pr = el("p", null, r.price); pr.style.cssText = "margin:0 0 10px;font-weight:700;color:var(--brass-ink)"; box.appendChild(pr); }
+    box.appendChild(el("p", null, r.why)).style.margin = "0 0 14px";
+    if (r.steps && r.steps.length) { var hs = el("h3", null, "What happens next"); hs.style.margin = "16px 0 6px"; box.appendChild(hs); var ol = el("ol"); ol.style.cssText = "margin:0 0 12px;padding-left:20px"; r.steps.forEach(function (t) { ol.appendChild(el("li", null, t)).style.margin = "4px 0"; }); box.appendChild(ol); }
+    (r.notes || []).forEach(function (t) { var n = el("p", "callout", t); n.style.margin = "12px 0 0"; box.appendChild(n); });
+    var row = el("div"); row.style.cssText = "display:flex;gap:12px;flex-wrap:wrap;margin-top:20px";
+    var b1 = el("a", "btn btn-primary", r.ctaLabel); b1.href = r.ctaHref; row.appendChild(b1);
+    if (r.phone) { var b2 = el("a", "btn btn-ghost", "Call " + r.phone); b2.href = "tel:" + r.phone.replace(/[^\d+]/g, ""); row.appendChild(b2); }
+    if (r.learnHref) { var b3 = el("a", "btn btn-ghost", "Read about it"); b3.href = r.learnHref; row.appendChild(b3); }
+    box.appendChild(row); root.appendChild(box);
+    b1.addEventListener("click", function () { track(C.event + "_book", { service: r.key }); });
+    $("bk-out").scrollIntoView({ behavior: "smooth", block: "start" }); track(C.event + "_run", { service: r.key });
+  }
+
   $("bk-next").addEventListener("click", next);
   $("bk-back").addEventListener("click", function () { if (idx > 0) { idx--; show(); } });
   $("bk-retake").addEventListener("click", retake);
   document.addEventListener("keydown", function (e) { if (e.key === "Enter" && !$("bk").hidden && document.activeElement && document.activeElement.type === "radio" && ans[list()[idx].id]) { e.preventDefault(); next(); } });
-  $("b-go").addEventListener("click", function () {
+  if ($("b-go")) $("b-go").addEventListener("click", function () {
     var m = $("b-msg"); m.textContent = ""; m.style.color = ""; var n = $("b-name").value.trim(), em = $("b-email").value.trim();
     if (!n || !em) { m.textContent = "Enter your name and email."; return; }
     $("b-go").disabled = true;

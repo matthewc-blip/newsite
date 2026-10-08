@@ -34,8 +34,8 @@ function registerApi(app, cfg) {
 }
 
 // Quiz card, results area, email form and config. `faqBand` is the FAQ section HTML shown below.
-function mainHtml({ engine, checkApi, leadApi, event, allGood, disclaimer, faqBand }) {
-  const cfg = JSON.stringify({ questions: engine.publicQuestions(), checkApi, leadApi, event, allGood }).replace(/</g, "\\u003c");
+function mainHtml({ engine, checkApi, leadApi, event, allGood, disclaimer, faqBand, mode }) {
+  const cfg = JSON.stringify({ questions: engine.publicQuestions(), checkApi, leadApi, event, allGood, mode: mode || "score" }).replace(/</g, "\\u003c");
   return `<section class="band"><div class="wrap" style="max-width:860px">
     <div class="form-card" id="bk">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><p id="bk-step" style="margin:0;font-family:var(--f-mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass)"></p><p id="bk-grp" style="margin:0;color:var(--muted);font-size:.9rem"></p></div>
@@ -43,7 +43,11 @@ function mainHtml({ engine, checkApi, leadApi, event, allGood, disclaimer, faqBa
       <div id="bk-qs" aria-live="polite"></div>
       <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:22px;flex-wrap:wrap"><button class="btn btn-ghost" type="button" id="bk-back">Back</button><span class="form-msg" id="bk-msg" role="alert"></span><button class="btn btn-primary" type="button" id="bk-next" disabled>Next</button></div>
       <p style="margin-top:14px;color:var(--muted);font-size:.9rem">${disclaimer}</p></div>
-    <div id="bk-out" hidden>
+    ${mode === "recommend" ? `    <div id="bk-out" hidden>
+      <div id="bk-rec" style="margin-top:22px"></div>
+      <p style="margin:14px 0 0"><button class="btn btn-ghost btn-sm" type="button" id="bk-retake">Start over</button></p>
+    </div>
+    ` : `    <div id="bk-out" hidden>
       <div class="form-card" style="margin-top:22px"><div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div id="bk-score" style="font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1"></div><div><b id="bk-head"></b><p id="bk-sub" style="margin:4px 0 0;color:var(--ink-2)"></p></div></div></div>
       <p style="margin:14px 0 0"><button class="btn btn-ghost btn-sm" type="button" id="bk-retake">Retake the quiz</button></p>
       <div id="bk-start" style="margin-top:22px"></div><div id="bk-list" style="margin-top:12px"></div>
@@ -57,6 +61,7 @@ function mainHtml({ engine, checkApi, leadApi, event, allGood, disclaimer, faqBa
         <button class="btn btn-primary" type="button" id="b-go">Email me the report</button> <span class="form-msg" id="b-msg" role="alert" style="margin-left:10px"></span>
       </div>
     </div>
+    `}
   </div></section>
   ${faqBand}
   <script>window.MCC_QUIZ=${cfg};</script><script src="/js/quiz.js" defer></script>`;
