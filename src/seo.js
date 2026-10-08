@@ -221,6 +221,7 @@ function register(app) {
   require("./seo-web").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-tools").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   require("./seo-seasonal").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
+  require("./seo-rin").register(app, { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref });
   app.get(NJ_HUB, async (req, res) => {
     const biz = await business();
     const url = base(req);
@@ -292,7 +293,8 @@ function register(app) {
 
   const relatedBand = (slug) => {
     const ds = lb.docsForService(slug), ss = lb.seasonalForService(slug);
-    const li = [...ds.map((d) => `<li><a href="${docPath(d)}">${esc(d.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</a></li>`), ...ss.map((x) => `<li><a href="${x.path}">${esc(x.label)}</a></li>`)];
+    const rin = ["remote-ink-signed-notarization", "remote-online-notarization"].includes(slug) ? require("./seo-rin").links() : [];
+    const li = [...rin.map(([t, h]) => `<li><a href="${h}">${esc(t)}</a></li>`), ...ds.map((d) => `<li><a href="${docPath(d)}">${esc(d.title.replace(/ in New Jersey| \(NJ\)| in NJ/g, ""))}</a></li>`), ...ss.map((x) => `<li><a href="${x.path}">${esc(x.label)}</a></li>`)];
     return `<section class="band alt"><div class="wrap"><div class="sec-head"><p class="eyebrow">Related</p><h2>Documents and tools</h2></div>${li.length ? `<ul class="county-links">${li.join("")}</ul>` : ""}
       <p style="margin-top:18px;color:var(--ink-2)">Not sure this is the right service? <a href="/notary/which-service">Find the right one in four questions</a>, or print <a href="/notary/appointment-checklist">what to bring to your appointment</a>.</p></div></section>`;
   };
@@ -445,7 +447,7 @@ function register(app) {
 
   app.get("/sitemap.xml", async (req, res) => {
     const url = base(req);
-    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...require("./seo-towns-em").paths(), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ...require("./seo-tools").paths(), ...require("./seo-seasonal").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
+    const paths = [["/", "1.0"], ["/notary/", "0.9"], [NJ_HUB, "0.8"], ...SERVICES.map((s) => [servicePath(s), "0.8"]), ...COUNTIES.map((c) => [countyPath(c), "0.7"]), ["/about", "0.6"], ["/websites/", "0.6"], ["/notary/vendors", "0.6"], ["/notary/law-firms", "0.7"], ["/notary/fees", "0.6"], ["/notary/training", "0.5"], ["/notary/become-a-notary", "0.6"], ...TOWNS.map((t) => [townsMod.notaryPath(t), "0.6"]), ...require("./seo-towns-em").paths(), ...TOWNS.map((t) => [townsMod.webPath(t), "0.5"]), ...require("./seo-web").paths(), ...require("./seo-tools").paths(), ...require("./seo-seasonal").paths(), ...require("./seo-rin").paths(), ["/notary/become-a-witness", "0.5"], ["/notary/become-a-process-server", "0.5"], [GUIDES_HUB, "0.6"], ...GUIDES.map((g) => [guidePath(g), "0.6"]), [DOCS_HUB, "0.7"], ...DOCS.map((d) => [docPath(d), "0.6"]), ["/privacy", "0.3"], ["/terms", "0.3"]];
     // The bookkeeping page is unlisted until it is opened in Settings → Bookkeeping.
     if ((await getSettings().catch(() => null))?.bookkeeping?.open) { paths.push(["/bookkeeping/", "0.7"]); TOWNS.forEach((t) => paths.push([townsMod.bookPath(t), "0.5"])); paths.push(...require("./seo-bookkeeping").paths()); }
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
