@@ -459,6 +459,63 @@ function register(app) {
     }));
   });
 
+  /* ---------- How to qualify: step-by-step for people who are not yet commissioned, insured or screened ---------- */
+  app.get("/notary/become-a-notary/how-to-qualify", async (req, res) => {
+    const biz = await business();
+    const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], ["Notary", "/notary/"], ["Become a notary", "/notary/become-a-notary"], ["How to qualify", "/notary/become-a-notary/how-to-qualify"]];
+    const step = (id, n, h, body) => `<section class="band${n % 2 ? "" : " alt"}" id="${id}"><div class="wrap stack" style="max-width:860px"><p class="eyebrow">Step ${n}</p><h2>${h}</h2>${body}</div></section>`;
+    res.send(layout({
+      req, biz, path: "/notary/become-a-notary/how-to-qualify", crumbs,
+      title: "How to Become a Notary & Loan Signing Agent in NJ | MCC",
+      description: "Step by step: get your New Jersey notary commission, E&O insurance, a background check and NNA signing agent certification. Costs and timelines, then apply to MCC.",
+      body: {
+        hero: `<p class="eyebrow">Start from zero</p><h1 style="margin-top:10px">How to become a notary and loan signing agent in New Jersey</h1><p class="lede" style="margin-top:14px">Not commissioned, insured or screened yet? That's fine. Here is the whole path, in order, with what each step costs and how long it takes. Do it, and come back to apply.</p>`,
+        main: [
+          step("commission", 1, "Get your New Jersey notary commission", `
+            <ol class="steps" style="grid-template-columns:1fr">
+              <li><h3>Check you're eligible</h3><p>You must be 18 or older and live in New Jersey, or live in a neighboring state and regularly work or keep an office here. Certain convictions (dishonesty offenses and first- or second-degree crimes) can block a commission or require extra approval.</p></li>
+              <li><h3>Take the required course and exam</h3><p>New Jersey's county clerks list a state-approved six-hour course and exam for first-time notaries. The state has changed these requirements over time, and some guides describe a shorter route, so confirm what applies to you on the State Treasury's notary page before you pay for a course.</p></li>
+              <li><h3>Apply online and get a legislator's endorsement</h3><p>You apply through the Division of Revenue and Enterprise Services. The filing fee is $25, plus a $5 online convenience fee. An NJ state legislator has to endorse your application. The online system sends it to the one you pick.</p></li>
+              <li><h3>Wait for your certificates</h3><p>Processing usually takes four to six weeks. If approved, you get a commission certificate and an oath qualification certificate.</p></li>
+              <li><h3>Take your oath at the county clerk</h3><p>Do this within 90 days or your commission is void and you must start over. The clerk charges a small filing fee (about $17.50, per the National Notary Association).</p></li>
+              <li><h3>Buy your seal and journal</h3><p>Your stamp must show your name, "Notary Public, State of New Jersey," and your expiration date. Budget about $30 for the seal and $30 to $55 for a journal.</p></li>
+            </ol>
+            <p><b>Rough cost:</b> $100 to $135 plus the course. <b>Time:</b> plan on 6 to 8 weeks, mostly waiting. Your commission lasts five years. <b>NJ doesn't require a bond.</b></p>`),
+          step("eo", 2, "Get errors and omissions (E&O) insurance", `
+            <p>E&amp;O pays if a mistake in your work leads to a claim. We require at least $100,000 of coverage before you take assignments, because title companies and lenders expect it.</p>
+            <ul class="checks"><li>A $100,000 policy typically costs about $100 to $175 a year. A $25,000 policy costs about $20 to $40 but isn't enough for us. (National Notary Association estimate, updated March 2025.)</li>
+            <li>You can buy it from the NNA or other notary insurance providers. Compare quotes, since price and coverage vary.</li>
+            <li>Make sure it covers loan signing work, not just general notary acts. Ask before you buy.</li>
+            <li>It usually starts the same day you buy it, so do this just before you apply, not months ahead.</li></ul>`),
+          step("background", 3, "Get a background check", `
+            <p>Lenders and title companies expect signing agents to be screened. We need one completed within the last 12 months.</p>
+            <ul class="checks"><li>The NNA's screening is $89. It covers 10 years of federal, county and motor-vehicle records plus an OFAC check, and results take about 5 to 15 business days.</li>
+            <li>Independent screenings run roughly $30 to $60, but title companies may only accept certain providers, so the NNA screening is the safer choice if you plan to do loan work.</li>
+            <li>The commission background process in step 1 doesn't count as this one.</li>
+            <li>The screening is included in the NNA signing agent package in step 4, so if you're doing both, buy the package and skip the standalone screening.</li></ul>`),
+          step("nsa", 4, "Get NNA Notary Signing Agent certification (for loan work)", `
+            <p>This is optional for general notary and RON work, and expected for loan signings.</p>
+            <ul class="checks"><li>The NNA's certification starts at $199 and includes training, the exam and the background screening.</li>
+            <li>With an active commission, most people finish in one to two weeks. Most of that is waiting on the screening.</li>
+            <li>The industry standard is to renew the exam and screening every year.</li>
+            <li>Don't have it yet? You can still start with general notary work for us and add loan signings later.</li></ul>`),
+          step("gear", 5, "Get your equipment", `
+            <ul class="checks"><li><b>General notary work:</b> your seal, journal, a smartphone and a way to scan documents. That's about it.</li>
+            <li><b>Loan signings:</b> add a dual-tray laser printer (a good one costs under about $400), paper, toner, and a portable scanner (about $70 to $120 for a basic one).</li>
+            <li><b>Remote online notarization (optional):</b> a computer with a webcam and microphone. We help you get set up on the Proof platform and file the remote notarization notice with the NJ Treasurer.</li></ul>
+            <p>The NNA estimates a full loan-signing startup at roughly $1,200 to $3,800 including a laptop and printer. A general mobile notary can start for far less.</p>`),
+          step("apply", 6, "Come back and apply", `
+            <p>When you have your commission, E&amp;O and a background check, apply to our network. It's free to join, and your pay is shown before you accept each job.</p>
+            <p><a class="btn btn-primary" href="/notary/#notaries">Go to the application</a> <a class="btn btn-ghost" href="/notary/training">Join the training interest list</a></p>
+            <p style="color:var(--ink-2)">Prices, fees and state requirements change. We link to official sources where we can, but confirm current amounts with the State Treasury, your county clerk and each provider before you pay. This isn't legal advice. If something here is out of date, tell us.</p>`),
+        ].join(""),
+        ctaTitle: "Questions about getting started? Call the desk.",
+      },
+      schema: [crumbLd(url, crumbs)],
+    }));
+  });
+
   /* ---------- Become a notary / loan signing agent (application + Google for Jobs) ---------- */
   app.get("/notary/become-a-notary", async (req, res) => {
     const biz = await business();
@@ -495,6 +552,7 @@ function register(app) {
             <li><h3>Complete the signing</h3><p>Notarize, mark the job complete, and upload the scanbacks.</p></li>
             <li><h3>Get paid</h3><p>You're paid per assignment as an independent contractor, and you'll receive a 1099 at year end.</p></li>
           </ol>
+          <p><a href="/notary/become-a-notary/how-to-qualify">Not commissioned or insured yet? See how to qualify, step by step</a></p>
           <p><a href="/notary/become-a-notary/earnings">Estimate your earnings with our calculator</a></p>
           <p style="color:var(--ink-2)">Honest note: we're a young company. We're building up volume with title companies, law firms and families, and we're keeping the team small so the notaries who join early get the work as it grows.</p></div>
         </div></section>

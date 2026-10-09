@@ -133,20 +133,21 @@ window.MCC = (function () {
   (function () {
     const scr = document.getElementById("joinScreen"), form = document.getElementById("joinForm"), out = document.getElementById("scOut");
     if (!scr || !form) return;
+    const G = "/notary/become-a-notary/how-to-qualify";
     const NEED = {
-      commission: "You need an active notary commission with at least 60 days left. If it's close to expiring, renew first and then apply.",
-      eo: "We require E&O insurance of at least $100,000 before any assignment. It's inexpensive, and you can get a policy through your commission provider or an insurer. Come back once it's in place.",
-      bg: "We need a background check completed within the last 12 months. Get one from a notary-approved provider, then apply.",
-      "1099": "This is independent contractor work paid per job, with a 1099 at year end. If that doesn't suit you, no hard feelings.",
-      ethics: "Proper ID checks and honest notarization are non-negotiable for everyone on our network, so we can't move forward.",
-      travel: "We send in-person jobs and RON jobs. You need to be able to do at least one. If you want RON only, answer Yes and say so on the application.",
+      commission: `No active commission yet, or it's close to expiring? <a href="${G}#commission">Here's how to get or renew it, step by step</a>.`,
+      eo: `No E&O insurance yet? It costs roughly $100 to $175 a year for $100,000 of coverage. <a href="${G}#eo">Here's how to get it</a>.`,
+      bg: `Need a background check? <a href="${G}#background">Here's where to get one and what it costs</a>. The NNA signing agent package includes one.`,
+      "1099": `This is independent contractor work, paid per job, with a 1099 at year end. If that works for you, change your answer to Yes. If not, no hard feelings.`,
+      ethics: `Proper ID checks and honest notarization are non-negotiable for everyone on our network.`,
+      travel: `We send in-person and RON jobs, and you'll need to be able to do at least one. <a href="${G}#gear">Here's what each one takes</a>.`,
     };
     const names = Object.keys(NEED);
     function check() {
       const ans = Object.fromEntries(names.map((n) => [n, (scr.querySelector(`input[name="sc-${n}"]:checked`) || {}).value]));
       const no = names.filter((n) => ans[n] === "no"), left = names.filter((n) => !ans[n]);
       out.hidden = !no.length && left.length > 0;
-      if (no.length) { out.style.background = "var(--warn-soft)"; out.style.borderColor = "var(--warn)"; out.innerHTML = "<b>Not quite yet.</b> " + no.map((n) => NEED[n]).join(" "); form.hidden = true; return; }
+      if (no.length) { out.style.background = "var(--warn-soft)"; out.style.borderColor = "var(--warn)"; out.innerHTML = "<b>Not yet, and that\'s fine.</b> Here\'s how to get there: <ul style=\"margin:8px 0 8px 18px\">" + no.map((n) => "<li>" + NEED[n] + "</li>").join("") + "</ul>Start-to-finish guide: <a href=\"" + G + "\">how to qualify</a>. Come back and apply when you\'re set."; form.hidden = true; return; }
       if (left.length) { form.hidden = true; return; }
       out.style.background = ""; out.style.borderColor = ""; out.innerHTML = "<b>You meet the requirements.</b> Fill in the application below. We'll verify your commission, E&amp;O and background check documents before you're approved.";
       form.hidden = false;

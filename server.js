@@ -354,12 +354,12 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
     const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + "T12:00:00Z")) ? new Date(v + "T12:00:00Z").getTime() : null);
     const now = Date.now(), exp = day(data.commissionExpires), bg = day(data.backgroundDate);
     if (exp == null) fields.commissionExpires = "Enter the date your commission expires.";
-    else if (exp < now + 60 * 86400e3) fields.commissionExpires = "Your commission needs at least 60 days left. Renew, then apply.";
-    if (/^none/i.test(data.eo) || !data.eo) fields.eo = "We require E&O insurance of at least $100,000. Apply once it's in place.";
-    else if (data.eo === "$25,000") fields.eo = "We require E&O coverage of at least $100,000.";
+    else if (exp < now + 60 * 86400e3) fields.commissionExpires = "Your commission needs at least 60 days left. Renew, then apply. How: /notary/become-a-notary/how-to-qualify#commission";
+    if (/^none/i.test(data.eo) || !data.eo) fields.eo = "We require E&O insurance of at least $100,000. How to get it: /notary/become-a-notary/how-to-qualify#eo";
+    else if (data.eo === "$25,000") fields.eo = "We require E&O coverage of at least $100,000. How to get it: /notary/become-a-notary/how-to-qualify#eo";
     if (bg == null) fields.backgroundDate = "Enter the date of your background check.";
     else if (bg > now + 86400e3) fields.backgroundDate = "That date is in the future.";
-    else if (bg < now - 366 * 86400e3) fields.backgroundDate = "We need a background check from the last 12 months.";
+    else if (bg < now - 366 * 86400e3) fields.backgroundDate = "We need a background check from the last 12 months. How: /notary/become-a-notary/how-to-qualify#background";
   }
   if (data.role !== "notary" && !/^\d{5}$/.test(data.zip)) fields.zip = "Enter your 5-digit home ZIP code.";
   if (data.role === "process_server") { data.vehicle = str(d.vehicle, 40); data.experience = str(d.experience, 40); if (!/^Yes/.test(data.vehicle)) fields.vehicle = "Process servers need a registered, insured vehicle."; }
