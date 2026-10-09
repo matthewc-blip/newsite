@@ -6,13 +6,20 @@ const clean = (v) => String(v || "").trim();
 
 const r2On = () => !!(E.R2_ACCOUNT_ID && E.R2_ACCESS_KEY_ID && E.R2_SECRET_ACCESS_KEY && E.R2_BUCKET);
 
+// Buckets created in a jurisdiction (EU, FedRAMP) live at a different address. R2_ENDPOINT overrides the default; R2_JURISDICTION ("eu" or "fedramp") builds it.
+function endpoint() {
+  if (clean(E.R2_ENDPOINT)) return clean(E.R2_ENDPOINT).replace(/\/+$/, "");
+  const j = clean(E.R2_JURISDICTION).toLowerCase();
+  return `https://${clean(E.R2_ACCOUNT_ID)}.${j ? j + "." : ""}r2.cloudflarestorage.com`;
+}
+
 let client;
 function s3() {
   if (!client) {
     const { S3Client } = require("@aws-sdk/client-s3");
     client = new S3Client({
       region: "auto",
-      endpoint: `https://${clean(E.R2_ACCOUNT_ID)}.r2.cloudflarestorage.com`,
+      endpoint: endpoint(),
       credentials: { accessKeyId: String(E.R2_ACCESS_KEY_ID).trim(), secretAccessKey: String(E.R2_SECRET_ACCESS_KEY).trim() },
       // Newer SDK versions add checksum headers by default; R2 only wants them when an operation requires one.
       requestChecksumCalculation: "WHEN_REQUIRED",
@@ -50,12 +57,13 @@ async function selfTest() {
   const c = require("@aws-sdk/client-s3");
   const bucket = clean(E.R2_BUCKET), key = `healthcheck/${Date.now()}.txt`;
   const mask = (v) => { v = clean(v); return v.length > 8 ? `${v.slice(0, 4)}…${v.slice(-4)} (${v.length} characters)` : `(${v.length} characters)`; };
-  const out = { account: mask(E.R2_ACCOUNT_ID), accessKeyId: mask(E.R2_ACCESS_KEY_ID), secretLength: clean(E.R2_SECRET_ACCESS_KEY).length, bucket, steps: [] };
+  const out = { endpoint: endpoint().replace(clean(E.R2_ACCOUNT_ID), "<account>"), buckets: null, account: mask(E.R2_ACCOUNT_ID), accessKeyId: mask(E.R2_ACCESS_KEY_ID), secretLength: clean(E.R2_SECRET_ACCESS_KEY).length, bucket, steps: [] };
   const step = async (name, fn) => {
     try { await fn(); out.steps.push({ name, ok: true }); return true; }
     catch (e) { out.steps.push({ name, ok: false, error: `${e.name || "Error"}: ${e.message}`, status: e.$metadata?.httpStatusCode }); return false; }
   };
   // Every step runs even if an earlier one fails: some tokens can upload but not "find" the bucket, and the pattern tells us which permission is missing.
+  await step("See which buckets this key can access", async () => { out.buckets = ((await s3().send(new c.ListBucketsCommand({}))).Buckets || []).map((b) => b.Name); });
   await step("Find the bucket (HeadBucket)", () => s3().send(new c.HeadBucketCommand({ Bucket: bucket })));
   await step("List files in the bucket", () => s3().send(new c.ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 })));
   const up = await step("Upload a small file", () => s3().send(new c.PutObjectCommand({ Bucket: bucket, Key: key, Body: "storage test" })));
