@@ -792,6 +792,14 @@
     }));
     $$("[data-rtrack]").forEach((b) => (b.onchange = () => post(b.dataset.rtrack, { tracking: b.value })));
   }
+  $("#remTest")?.addEventListener("click", async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = "Testing…";
+    try {
+      const r = await api("/api/admin/remote-storage");
+      alert([`Bucket: ${r.bucket}`, `Account ID: ${r.account}`, `Access key ID: ${r.accessKeyId}`, `Secret length: ${r.secretLength}`, "", ...r.steps.map((s) => (s.ok ? "OK    " : "FAILED ") + s.name + (s.error ? `\n      ${s.error}${s.status ? " (HTTP " + s.status + ")" : ""}` : ""))].join("\n"));
+    } catch (e) { alert(e.message); }
+    b.disabled = false; b.textContent = "Test storage";
+  });
   $("#remNew")?.addEventListener("click", () => { $("#rsErr").textContent = ""; $("#remDlg").showModal(); });
   $("#rsCancel")?.addEventListener("click", () => $("#remDlg").close());
   $("#rsSave")?.addEventListener("click", async () => {

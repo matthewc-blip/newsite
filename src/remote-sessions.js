@@ -79,12 +79,12 @@ async function hashZoomFile(url, store, dlToken) {
   src.on("data", (c) => { h.update(c); n += c.length; });
   src.on("error", (e) => tap.destroy(e));
   src.pipe(tap);
-  let key = null;
+  let key = null, uploadError = null;
   if (store && archive.r2On()) {
     try { key = await archive.putStream(store.key, tap, { contentType: store.contentType, metadata: store.metadata }); }
-    catch (e) { console.error("R2 upload failed:", e.message); tap.resume(); await new Promise((ok) => src.once("end", ok).once("close", ok)); }
+    catch (e) { console.error("R2 upload failed:", e.message, e.$metadata?.httpStatusCode || ""); uploadError = `${e.name || "Error"}: ${e.message}`; tap.resume(); await new Promise((ok) => src.once("end", ok).once("close", ok)); }
   } else { for await (const _ of tap) { /* drain */ } }
-  return { sha256: h.digest("hex"), size: n, key };
+  return { sha256: h.digest("hex"), size: n, key, uploadError };
 }
 async function hashRecording(sessionId, files, dlToken) {
   const done = [], failed = [];
@@ -99,7 +99,8 @@ async function hashRecording(sessionId, files, dlToken) {
     if (dup) continue;
     try {
       const store = sess ? { key: archive.keyFor(sess.ref, name), contentType: ext === "MP4" ? "video/mp4" : undefined, metadata: { session: String(sess.ref) } } : null;
-      const { sha256, size, key } = await hashZoomFile(f.download_url, store, dlToken || f.download_token);
+      const { sha256, size, key, uploadError } = await hashZoomFile(f.download_url, store, dlToken || f.download_token);
+      if (uploadError) failed.push("Cloud storage upload failed (" + uploadError + "). The recording is fingerprinted but only exists in Zoom; use Test storage");
       let row = await addHash(sessionId, kind, name, size, sha256, "zoom");
       if (key) {
         // Read the stored copy back and confirm it matches before calling it archived.
@@ -330,6 +331,10 @@ function register(app, { requireAdmin }) {
     if (!s.persona_inquiry_id) throw bad("No Persona check has been started.");
     const st = await personaRefresh(s.persona_inquiry_id);
     return { session: view(await db.one("update remote_sessions set persona_status=$2,persona_checked_at=now() where id=$1 returning *", [s.id, st])) };
+  }));
+  app.get("/api/admin/remote-storage", requireAdmin, wrap(async () => {
+    if (!archive.r2On()) throw bad("Cloud storage isn't connected. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET in Render.");
+    return archive.selfTest();
   }));
   // Re-run the fingerprint and archive step: ask Zoom for the recording's files again (fresh download links).
   app.post("/api/admin/remote/:id/fingerprint", requireAdmin, wrap(async (req) => {
