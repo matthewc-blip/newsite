@@ -778,6 +778,7 @@ app.use(express.static(path.join(__dirname, "public"), {
   extensions: ["html"],
   setHeaders: (res, file) => {
     if (/\.(png|jpe?g|webp|svg|ico|woff2?)$/i.test(file)) res.setHeader("Cache-Control", "public, max-age=2592000");
+    else if (/[\\/]admin[\\/]/.test(file) && /\.(css|js)$/i.test(file)) res.setHeader("Cache-Control", "no-cache"); // the admin portal always revalidates so new buttons show up right away
     else if (/\.(css|js)$/i.test(file)) res.setHeader("Cache-Control", "public, max-age=3600");
   },
 }));
