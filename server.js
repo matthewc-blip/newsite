@@ -349,6 +349,18 @@ app.post("/api/applications", rateLimit(5, 10 * 60000), async (req, res) => {
   if (!emailOk(data.email)) fields.email = "Enter a valid email.";
   if (!phoneOk(data.phone)) fields.phone = "Enter a phone number.";
   if (data.role === "notary" && !data.commissionState) fields.commissionState = "Choose your commission state.";
+  if (data.role === "notary") {
+    // The requirements listed on the become-a-notary page, checked here too so the pre-check can't be skipped.
+    const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + "T12:00:00Z")) ? new Date(v + "T12:00:00Z").getTime() : null);
+    const now = Date.now(), exp = day(data.commissionExpires), bg = day(data.backgroundDate);
+    if (exp == null) fields.commissionExpires = "Enter the date your commission expires.";
+    else if (exp < now + 60 * 86400e3) fields.commissionExpires = "Your commission needs at least 60 days left. Renew, then apply.";
+    if (/^none/i.test(data.eo) || !data.eo) fields.eo = "We require E&O insurance of at least $100,000. Apply once it's in place.";
+    else if (data.eo === "$25,000") fields.eo = "We require E&O coverage of at least $100,000.";
+    if (bg == null) fields.backgroundDate = "Enter the date of your background check.";
+    else if (bg > now + 86400e3) fields.backgroundDate = "That date is in the future.";
+    else if (bg < now - 366 * 86400e3) fields.backgroundDate = "We need a background check from the last 12 months.";
+  }
   if (data.role !== "notary" && !/^\d{5}$/.test(data.zip)) fields.zip = "Enter your 5-digit home ZIP code.";
   if (data.role === "process_server") { data.vehicle = str(d.vehicle, 40); data.experience = str(d.experience, 40); if (!/^Yes/.test(data.vehicle)) fields.vehicle = "Process servers need a registered, insured vehicle."; }
   if (Object.keys(fields).length) return res.status(400).json({ error: "Check the highlighted fields.", fields });

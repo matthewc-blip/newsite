@@ -466,7 +466,19 @@
     <p style="margin-top:12px">Already on our roster? <a href="/portal/" style="color:var(--brass-ink);font-weight:600">Sign in to the notary portal →</a></p>
   </div></section>
   <section class="band"><div class="wrap form-layout">
-    <form class="form-card" id="joinForm" novalidate>
+    <div class="form-card" id="joinScreen">
+      <fieldset><legend>First, a quick check</legend>
+        <p style="margin:0 0 12px;color:var(--ink-2)">These are the requirements for every notary on our network. Answer honestly. It saves you time and us too, and you can come back when something changes.</p>
+        <div class="field full"><label>I have an active notary commission (New Jersey, or my own state for remote work) that doesn't expire in the next 60 days.</label><div class="radio-row"><label><input type="radio" name="sc-commission" value="yes"> Yes</label><label><input type="radio" name="sc-commission" value="no"> No</label></div></div>
+        <div class="field full"><label>I carry errors and omissions (E&amp;O) insurance of at least $100,000 right now.</label><div class="radio-row"><label><input type="radio" name="sc-eo" value="yes"> Yes</label><label><input type="radio" name="sc-eo" value="no"> No</label></div></div>
+        <div class="field full"><label>I've completed a background check in the last 12 months.</label><div class="radio-row"><label><input type="radio" name="sc-bg" value="yes"> Yes</label><label><input type="radio" name="sc-bg" value="no"> No</label></div></div>
+        <div class="field full"><label>I'm fine working as an independent contractor (1099), paid per job at the fee shown before I accept it.</label><div class="radio-row"><label><input type="radio" name="sc-1099" value="yes"> Yes</label><label><input type="radio" name="sc-1099" value="no"> No</label></div></div>
+        <div class="field full"><label>I will check every signer's ID, never notarize a signature I didn't witness, and never backdate.</label><div class="radio-row"><label><input type="radio" name="sc-ethics" value="yes"> Yes</label><label><input type="radio" name="sc-ethics" value="no"> No</label></div></div>
+        <div class="field full"><label>I can travel to signings and print loan documents, or I only want remote (RON) work.</label><div class="radio-row"><label><input type="radio" name="sc-travel" value="yes"> Yes</label><label><input type="radio" name="sc-travel" value="no"> No</label></div></div>
+        <div class="notice" id="scOut" role="status" aria-live="polite" hidden></div>
+      </fieldset>
+    </div>
+    <form class="form-card" id="joinForm" novalidate hidden>
       <fieldset><legend>About you</legend>
         <div class="field"><label for="j-name">Full name</label><input id="j-name" required autocomplete="name" placeholder="Dana Whitfield"></div>
         <div class="field"><label for="j-email">Email</label><input id="j-email" type="email" required autocomplete="email" placeholder="dana@example.com"></div>

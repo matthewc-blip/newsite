@@ -129,6 +129,31 @@ window.MCC = (function () {
     });
   }
 
+  // Pre-application check: the application stays hidden until every requirement is answered Yes.
+  (function () {
+    const scr = document.getElementById("joinScreen"), form = document.getElementById("joinForm"), out = document.getElementById("scOut");
+    if (!scr || !form) return;
+    const NEED = {
+      commission: "You need an active notary commission with at least 60 days left. If it's close to expiring, renew first and then apply.",
+      eo: "We require E&O insurance of at least $100,000 before any assignment. It's inexpensive, and you can get a policy through your commission provider or an insurer. Come back once it's in place.",
+      bg: "We need a background check completed within the last 12 months. Get one from a notary-approved provider, then apply.",
+      "1099": "This is independent contractor work paid per job, with a 1099 at year end. If that doesn't suit you, no hard feelings.",
+      ethics: "Proper ID checks and honest notarization are non-negotiable for everyone on our network, so we can't move forward.",
+      travel: "We send in-person jobs and RON jobs. You need to be able to do at least one. If you want RON only, answer Yes and say so on the application.",
+    };
+    const names = Object.keys(NEED);
+    function check() {
+      const ans = Object.fromEntries(names.map((n) => [n, (scr.querySelector(`input[name="sc-${n}"]:checked`) || {}).value]));
+      const no = names.filter((n) => ans[n] === "no"), left = names.filter((n) => !ans[n]);
+      out.hidden = !no.length && left.length > 0;
+      if (no.length) { out.style.background = "var(--warn-soft)"; out.style.borderColor = "var(--warn)"; out.innerHTML = "<b>Not quite yet.</b> " + no.map((n) => NEED[n]).join(" "); form.hidden = true; return; }
+      if (left.length) { form.hidden = true; return; }
+      out.style.background = ""; out.style.borderColor = ""; out.innerHTML = "<b>You meet the requirements.</b> Fill in the application below. We'll verify your commission, E&amp;O and background check documents before you're approved.";
+      form.hidden = false;
+    }
+    scr.addEventListener("change", check);
+  })();
+
   wireForm("joinForm", "joinOk", "/api/applications",
     { name: "j-name", email: "j-email", phone: "j-phone", zip: "j-zip", radius: "j-radius", commissionState: "j-state", commissionExpires: "j-exp", eo: "j-eo", backgroundDate: "j-bg", signings: "j-count", languages: "j-lang" },
     { nsa: "j-nna", ron: "j-ron", rin: "j-rin", laser: "j-printer", reverse: "j-reverse" },

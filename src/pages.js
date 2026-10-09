@@ -500,7 +500,7 @@ function register(app) {
         </div></section>
         <section class="band alt"><div class="wrap stack">
           <p class="eyebrow">Ready?</p><h2>Apply to the notary network</h2>
-          <p>The application is on our notary page. Tell us your commission, your coverage area and what kinds of signings you do.</p>
+          <p>The application is on our notary page. You\'ll answer a few quick requirement questions first, then tell us your commission, your coverage area and what kinds of signings you do.</p>
           <p><a class="btn btn-primary" href="/notary/#notaries">Go to the application</a></p>
           <p style="color:var(--ink-2)">Want other kinds of work? You can also <a href="/notary/become-a-witness">work as a signing witness</a> or <a href="/notary/become-a-process-server">serve papers as a process server</a>.</p>
         </div></section>`,
