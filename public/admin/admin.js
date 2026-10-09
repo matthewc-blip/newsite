@@ -317,7 +317,7 @@
         const price = b.quoted_fee ?? b.est_fee;
         if (!b.stripe_payment_method_id) return `<p style="color:var(--muted);font-size:.9rem">No card on file.${b.status === "requested" ? " A card is required before this can be confirmed." : ""} Individual customers are asked to save one when they book.</p>
           <button class="btn btn-ghost btn-sm" id="dCardLink" type="button" style="margin-top:8px">Email card link to customer</button>`;
-        const card = `<p><span class="pill p-ok">${esc((b.card_brand || "card").replace(/^./, (c) => c.toUpperCase()))} ending ${esc(b.card_last4 || "")}</span> <span style="font-size:.85rem;color:var(--muted)">saved ${esc(full(b.card_saved_at).replace(/, \d{4}/, ""))}</span></p>`;
+        const card = `<p><span class="pill p-ok">${esc((b.card_brand || "card").replace(/^./, (c) => c.toUpperCase()))}${b.card_last4 ? ` ending ${esc(b.card_last4)}` : ""}</span> <span style="font-size:.85rem;color:var(--muted)">saved ${esc(full(b.card_saved_at).replace(/, \d{4}/, ""))}</span></p>`;
         if (binv) return card + (binv.provider === "card" && binv.status === "paid" ? `<p style="font-size:.9rem;margin-top:6px">Paid by card · ${esc(binv.number)}</p>` : binv.error ? `<p class="form-msg" style="margin-top:6px">${esc(binv.error)}</p>` : "");
         return card + `<div class="inline" style="margin-top:8px">
             ${b.status === "completed" && price != null ? `<button class="btn btn-primary btn-sm" id="dCharge" type="button">Charge $${(Number(price) + Number(b.addons_total || 0)).toFixed(2)}</button>` : ""}

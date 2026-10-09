@@ -107,7 +107,7 @@ async function charge(bookingId, { kind = "service", amount, note } = {}) {
     });
     if (pi.status !== "succeeded") throw Object.assign(new Error(`Payment is ${pi.status.replace(/_/g, " ")}.`), { declined: true, paymentIntentId: pi.id });
     await db.run(`UPDATE invoices SET status = 'paid', paid_at = now(), sent_at = now(), stripe_payment_intent_id = $1, error = NULL WHERE id = $2`, [pi.id, inv.id]);
-    await logEvent(b.id, "desk", `Charged $${total.toFixed(2)} to ${b.card_brand || "card"} ending ${b.card_last4 || "?"} (${inv.number})`);
+    await logEvent(b.id, "desk", `Charged $${total.toFixed(2)} to ${b.card_brand || "card"}${b.card_last4 ? ` ending ${b.card_last4}` : ""} (${inv.number})`);
     return { ok: true, invoice: inv.number, amount: total };
   } catch (e) {
     // Leave the draft so the desk can send it as a regular Stripe invoice with a pay link instead.
