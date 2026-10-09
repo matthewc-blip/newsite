@@ -126,9 +126,11 @@ async function sendInvoice(id) {
   if (PROVIDER === "stripe") {
     try {
       const a = inv.client_account_id ? await db.one("SELECT * FROM client_accounts WHERE id = $1", [inv.client_account_id]) : null;
+      const lead = inv.bk_lead_id ? await db.one("SELECT id, stripe_customer_id FROM bookkeeping_leads WHERE id = $1", [inv.bk_lead_id]) : null;
       const items = await db.all("SELECT booking_id, name, quantity, unit_price FROM invoice_items WHERE invoice_id = $1 ORDER BY id", [id]);
-      const r = await stripeB.createAndSend({ inv, items, customerId: a?.stripe_customer_id || null, dueDate: inv.due_date, settings });
+      const r = await stripeB.createAndSend({ inv, items, customerId: a?.stripe_customer_id || lead?.stripe_customer_id || null, dueDate: inv.due_date, settings });
       if (a && !a.stripe_customer_id) await db.run("UPDATE client_accounts SET stripe_customer_id = $1 WHERE id = $2", [r.customerId, a.id]);
+      if (lead && !lead.stripe_customer_id) await db.run("UPDATE bookkeeping_leads SET stripe_customer_id = $1 WHERE id = $2", [r.customerId, lead.id]);
       await db.run(`UPDATE invoices SET stripe_invoice_id = $1, payment_url = $2, status = $3, provider = 'stripe', sent_at = now(), error = NULL, last_synced_at = now() WHERE id = $4`,
         [r.id, r.url, r.status === "draft" ? "open" : r.status, id]);
       const cc = (settings.billing?.ccEmails || []).filter(emailOk);
@@ -312,7 +314,7 @@ function invoiceHtml(inv, settings) {
   <div class="sheet">
     <div class="head">
       <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#a8751f"/><circle cx="32" cy="32" r="25" fill="none" stroke="#fff" stroke-width="2"/><text x="32" y="38" font-family="Archivo,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="17" fill="#fff" text-anchor="middle">MCC</text></svg>
-        <div><b>${esc(biz.name)}</b><span>Notary &middot; Signing &middot; Process Serving</span></div></div>
+        <div><b>${esc(biz.name)}</b><span>${inv.kind === "bookkeeping" ? "Bookkeeping &middot; Business Services" : "Notary &middot; Signing &middot; Process Serving"}</span></div></div>
       <div class="doc"><small>Invoice</small><strong>${esc(inv.number)}</strong></div>
     </div>
     <div class="body">
@@ -330,7 +332,7 @@ function invoiceHtml(inv, settings) {
       <div class="sum"><div class="total"><small>${paid ? "Total paid" : "Total due"}</small><strong>${money(inv.amount)}</strong></div></div>
       ${!paid && !voided && inv.payment_url ? `<div class="pay"><a class="btn" href="${esc(inv.payment_url)}">Pay this invoice online</a><span style="color:var(--muted)">Secure card or bank payment</span></div>` : ""}
       ${paid ? `<div class="pay"><span class="paidnote">Thank you. This invoice has been paid in full.</span></div>` : ""}
-      <p class="notes">Notarial fees are charged within New Jersey's legal limits and listed separately from signing-service, travel and other fees.${esc(lateNote)} Questions about this invoice? Call or email us and mention ${esc(inv.number)}.</p>
+      <p class="notes">${inv.kind === "bookkeeping" ? "" : "Notarial fees are charged within New Jersey's legal limits and listed separately from signing-service, travel and other fees."}${esc(lateNote)} Questions about this invoice? Call or email us and mention ${esc(inv.number)}.</p>
     </div>
     <div class="foot">
       <div><b>${esc(biz.name)}</b><br>Cranford, New Jersey</div>
@@ -393,4 +395,4 @@ function register(app, { requireAdmin, requireClient, loadClient }) {
   });
 }
 
-module.exports = { handleStripeWebhook, setDueDate, PROVIDER, register, createInvoice, sendInvoice, syncInvoice, syncOpen, startSyncJob, voidInvoice, markPaid, notarialFor, clientPrice, lineItemsFor };
+module.exports = { invoiceNumber, getInvoice, handleStripeWebhook, setDueDate, PROVIDER, register, createInvoice, sendInvoice, syncInvoice, syncOpen, startSyncJob, voidInvoice, markPaid, notarialFor, clientPrice, lineItemsFor };

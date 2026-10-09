@@ -1001,6 +1001,33 @@
   /* ---------- bookkeeping ---------- */
   const BK_STATUS = { new: "New", contacted: "Contacted", quoted: "Quoted", onboarding: "Onboarding", active: "Active", declined: "Declined", lost: "Lost" };
   const BK_PILL = { new: "p-warn", contacted: "p-info", quoted: "p-info", onboarding: "p-info", active: "p-ok", declined: "p-info", lost: "p-info" };
+  // Billing block on each bookkeeping client: monthly retainer, one-time invoices, and what has been billed.
+  const monthName = () => new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  function bkBillingHtml(l) {
+    const b = l.billing, e = l.estimate || {}, q = l.quoteMonthly;
+    const presets = [["Catch-up bookkeeping", e.cleanup], ["Software setup", e.setup], ["Year-end package", e.yearEnd], ["Business setup", e.oneTime]].filter(([, v]) => v > 0);
+    const invs = l.invoices || [];
+    return `<details class="dsec" style="margin-top:12px" data-bkb="${l.id}" ${invs.length || b.auto ? "open" : ""}><summary style="cursor:pointer;font-weight:700">Billing${invs.length ? ` <small>${invs.length} invoice${invs.length > 1 ? "s" : ""}</small>` : ""}${b.auto ? ' <span class="pill p-ok">Auto-bills monthly</span>' : ""}</summary>
+      ${invs.length ? `<ul class="log" style="margin-top:8px">${invs.slice(0, 8).map((i) => `<li style="grid-template-columns:1fr auto auto"><span class="mono">${esc(i.number)}${i.period_key ? " · " + esc(i.period_key) : ""} <small style="color:var(--muted)">due ${esc(String(i.due_date).slice(0, 10))}</small>${i.error ? `<br><small style="color:var(--warn)">${esc(i.error)}</small>` : ""}</span><span class="pill ${INV_PILL[i.status] || "p-info"}">${esc(i.status)}</span><span><b>${usd(i.amount)}</b> <a href="/api/admin/billing/invoices/${i.id}/view" target="_blank" rel="noopener" style="font-size:.86rem">View</a></span></li>`).join("")}</ul><p class="meta" style="margin-top:4px">Drafts, payment checks, due dates and voids are in the Billing tab.</p>` : ""}
+      <p class="meta" style="margin:12px 0 4px"><b>Monthly retainer</b> ${q > 0 ? `· ${usd(q)} a month (change it in Monthly quote above, then Save)` : "· set a Monthly quote above and Save first"}</p>
+      <div class="inline" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <button class="btn btn-primary btn-sm" data-bkb-month="${l.id}" ${q > 0 ? "" : "disabled"}>Bill ${esc(monthName())} now</button>
+        <label class="switch" style="margin:0"><input type="checkbox" id="bkba-${l.id}" ${b.auto ? "checked" : ""} ${q > 0 ? "" : "disabled"}> Send it automatically each month</label>
+        <div class="field" style="max-width:90px"><label for="bkbd-${l.id}">On day</label><input type="number" min="1" max="28" id="bkbd-${l.id}" value="${b.day}"></div>
+        <div class="field" style="max-width:100px"><label for="bkbt-${l.id}">Days to pay</label><input type="number" min="0" max="90" id="bkbt-${l.id}" value="${b.terms}"></div>
+        <div class="field" style="min-width:200px"><label for="bkbe-${l.id}">Invoices go to</label><input type="email" id="bkbe-${l.id}" value="${esc(b.email)}" placeholder="${esc(l.data.email)}"></div>
+        <button class="btn btn-ghost btn-sm" data-bkb-save="${l.id}">Save billing</button>
+      </div>
+      ${b.auto ? `<p class="meta" style="margin-top:4px">Automatic billing is on${b.since ? ` since ${esc(b.since)}` : ""}. Only active clients are billed, once a month, and you get an email each time.</p>` : ""}
+      <p class="meta" style="margin:14px 0 4px"><b>One-time invoice</b> ${presets.length ? "· from the estimate:" : ""} ${presets.map(([n, v]) => `<button class="linkbtn" style="color:var(--brass-ink)" data-bkb-fill="${l.id}" data-name="${esc(n)}" data-amt="${v}">${esc(n)} ${usd(v)}</button>`).join(" · ")}</p>
+      <div class="inline" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <div class="field" style="flex:1;min-width:220px"><label for="bko-n-${l.id}">What it's for</label><input id="bko-n-${l.id}" maxlength="190" placeholder="Catch-up bookkeeping, Jan to Jun 2026"></div>
+        <div class="field" style="max-width:120px"><label for="bko-a-${l.id}">Amount ($)</label><input type="number" min="0" step="0.01" id="bko-a-${l.id}"></div>
+        <button class="btn btn-primary btn-sm" data-bkb-one="${l.id}">Create &amp; send</button><button class="btn btn-ghost btn-sm" data-bkb-one="${l.id}" data-draft="1">Save as draft</button>
+      </div>
+      <span class="form-msg" data-bkb-msg="${l.id}" role="status"></span>
+    </details>`;
+  }
   async function loadBk() {
     const { leads } = await api("/api/admin/bookkeeping");
     const bkSet = settings.bookkeeping || {};
@@ -1025,6 +1052,7 @@
         <div class="dsec" style="margin-top:12px"><h4>Onboarding checklist <small>${done} of ${l.checklist.length}</small></h4>
           ${groups.map((g) => `<p class="meta" style="margin:8px 0 4px">${esc(g)}</p>${l.checklist.filter((c) => c.group === g).map((c) => `<label class="switch" style="margin:2px 0;display:flex;gap:8px"><input type="checkbox" data-bk-check="${esc(c.key)}" ${c.done ? "checked" : ""}> ${esc(c.label)}</label>`).join("")}`).join("")}
         </div>
+        ${bkBillingHtml(l)}
         <div class="actions"><button class="btn btn-primary btn-sm" data-bk-save="${l.id}">Save</button><button class="btn btn-ghost btn-sm" data-bk-mail="${l.id}">Email ${esc(l.platformLabel)} access steps</button><span class="form-msg" data-bk-msg="${l.id}" role="status"></span></div>
       </div>`;
     }).join("");
@@ -1039,6 +1067,33 @@
         await api("/api/admin/bookkeeping/" + id, { method: "PATCH", body: { status: $("#bks-" + id).value, quoteMonthly: q === "" ? null : Number(q), notes: $("#bkn-" + id).value } });
         m.className = "form-msg ok"; m.textContent = "Saved."; loadStats();
       } catch (e) { m.className = "form-msg"; m.textContent = e.message; }
+    }));
+    const bkMsg = (id, ok, t) => { const m = $(`[data-bkb-msg="${id}"]`, box); m.className = ok ? "form-msg ok" : "form-msg"; m.textContent = t; };
+    const invMsg = (inv) => `Invoice ${inv.number} for ${usd(inv.amount)} ${inv.error ? "saved as a draft: " + inv.error : inv.status === "draft" ? "saved as a draft." : "sent to " + inv.bill_to_email + "."}`;
+    const reopen = async (id, ok, t) => { await loadBk(); const d = $(`[data-bkb="${id}"]`, box); if (d) d.open = true; bkMsg(id, ok, t); };
+    $$("[data-bkb-fill]", box).forEach((b) => b.addEventListener("click", () => { const id = b.dataset.bkbFill; $("#bko-n-" + id).value = b.dataset.name; $("#bko-a-" + id).value = b.dataset.amt; }));
+    $$("[data-bkb-save]", box).forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.bkbSave;
+      try {
+        await api(`/api/admin/bookkeeping/${id}/billing`, { method: "PATCH", body: { billDay: $("#bkbd-" + id).value, billTerms: $("#bkbt-" + id).value, billEmail: $("#bkbe-" + id).value, billAuto: $("#bkba-" + id).checked } });
+        await reopen(id, true, "Billing settings saved.");
+      } catch (e) { bkMsg(id, false, e.message); }
+    }));
+    $$("[data-bkb-month]", box).forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.bkbMonth;
+      if (!confirm(`Bill ${monthName()} now and email the invoice to the client?`)) return;
+      b.disabled = true;
+      try { const { invoice } = await api(`/api/admin/bookkeeping/${id}/invoice-monthly`, { method: "POST", body: {} }); await reopen(id, !invoice.error, invMsg(invoice)); }
+      catch (e) { bkMsg(id, false, e.message); b.disabled = false; }
+    }));
+    $$("[data-bkb-one]", box).forEach((b) => b.addEventListener("click", async () => {
+      const id = b.dataset.bkbOne, name = $("#bko-n-" + id).value.trim(), amount = Number($("#bko-a-" + id).value);
+      if (!name || !(amount > 0)) return bkMsg(id, false, "Enter what it's for and an amount.");
+      const draft = !!b.dataset.draft;
+      if (!draft && !confirm(`Send an invoice for ${usd(amount)} to the client now?`)) return;
+      b.disabled = true;
+      try { const { invoice } = await api(`/api/admin/bookkeeping/${id}/invoice`, { method: "POST", body: { items: [{ name, amount }], send: !draft } }); await reopen(id, !invoice.error, invMsg(invoice)); }
+      catch (e) { bkMsg(id, false, e.message); b.disabled = false; }
     }));
     $$("[data-bk-mail]", box).forEach((b) => b.addEventListener("click", async () => {
       const id = b.dataset.bkMail, m = $(`[data-bk-msg="${id}"]`, box);

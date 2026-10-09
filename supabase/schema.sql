@@ -565,3 +565,16 @@ alter table remote_hashes add column if not exists stored_verified boolean;   --
 alter table remote_hashes add column if not exists retain_until date;         -- 10-year retention target (the bucket lock enforces it)
 create index if not exists remote_hashes_session on remote_hashes(session_id);
 alter table remote_hashes enable row level security;
+
+-- ===== Bookkeeping billing (added in v20; safe to re-run) =====
+-- Invoices for bookkeeping clients hang off the lead instead of a booking. period_key ("2026-10") makes a monthly invoice happen once per month.
+alter table invoices add column if not exists kind text default 'notary';
+alter table invoices add column if not exists bk_lead_id integer;
+alter table invoices add column if not exists period_key text;
+create unique index if not exists uq_invoices_bk_period on invoices(bk_lead_id, period_key) where period_key is not null and status <> 'void';
+alter table bookkeeping_leads add column if not exists bill_auto boolean default false;      -- send the monthly invoice automatically
+alter table bookkeeping_leads add column if not exists bill_day integer default 1;            -- day of the month it goes out (1 to 28)
+alter table bookkeeping_leads add column if not exists bill_terms integer default 10;         -- days to pay
+alter table bookkeeping_leads add column if not exists bill_since date;                       -- automatic billing starts with the first bill date on or after this day
+alter table bookkeeping_leads add column if not exists bill_email text;                       -- where invoices go, if not the lead's email
+alter table bookkeeping_leads add column if not exists stripe_customer_id text;

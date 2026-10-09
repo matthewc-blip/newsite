@@ -267,11 +267,13 @@ function register(app, { requireAdmin }) {
   const shape = (r) => ({ id: r.id, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at, data: r.data, estimate: r.estimate, estimateText: describeEstimate(r.estimate),
     quoteMonthly: r.quote_monthly, notes: r.notes || "", platformLabel: (PLATFORMS[r.data.platform] || {}).label || r.data.platform,
     tierLabel: (TIERS.find((t) => t.id === r.data.tier) || {}).label || "", backlogLabel: (BACKLOG[r.data.backlog] || {}).label || "", needsLabels: (r.data.needs || []).map((n) => NEEDS[n]),
-    checklist: checklist({ data: r.data, done: r.done }) });
+    checklist: checklist({ data: r.data, done: r.done }),
+    billing: { auto: !!r.bill_auto, day: r.bill_day || 1, terms: r.bill_terms ?? 10, email: r.bill_email || "", since: r.bill_since ? String(r.bill_since).slice(0, 10) : "" } });
 
   app.get("/api/admin/bookkeeping", requireAdmin, async (req, res) => {
     const rows = await db.all("SELECT * FROM bookkeeping_leads ORDER BY (status = 'new') DESC, id DESC LIMIT 300");
-    res.json({ leads: rows.map(shape), statuses: STATUSES });
+    const inv = rows.length ? await db.all("SELECT id, bk_lead_id, number, amount, status, invoice_date, due_date, period_key, error FROM invoices WHERE bk_lead_id = ANY($1) ORDER BY id DESC", [rows.map((r) => r.id)]) : [];
+    res.json({ leads: rows.map((r) => ({ ...shape(r), invoices: inv.filter((i) => i.bk_lead_id === r.id) })), statuses: STATUSES });
   });
 
   app.patch("/api/admin/bookkeeping/:id", requireAdmin, async (req, res) => {
