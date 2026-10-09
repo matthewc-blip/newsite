@@ -1,6 +1,7 @@
 // "Starting at" prices shown on the website. Edit them in the dashboard: Settings → Starting prices on the website.
 // They're shown to customers only; the actual quote for each job is still set by the desk.
 const ITEMS = [
+  { key: "ron", label: "Remote online notarization (RON)", note: "per session, online, no travel" },
   { key: "mobile", label: "Mobile notary visit", note: "plus state notarial fees" },
   { key: "loan", label: "Loan signing", note: "printing and scanbacks included" },
   { key: "hospital", label: "Hospital or care facility visit", note: "plus state notarial fees" },
@@ -13,10 +14,11 @@ const ITEMS = [
   { key: "medical_records", label: "Medical records pickup", note: "per facility, plus copy fees" },
   { key: "i9", label: "I-9 verification", note: "per employee" },
 ];
-const DEFAULTS = { mobile: 75, loan: 150, hospital: 125, process_serve: 85, apostille: 125, recording: 50, court_filing: 75, records: 65, skip_trace: 75, medical_records: 95, i9: 50 };
+const DEFAULTS = { ron: 40, mobile: 75, loan: 150, hospital: 125, process_serve: 85, apostille: 125, recording: 50, court_filing: 75, records: 65, skip_trace: 75, medical_records: 95, i9: 50 };
 
 // Which starting price each service page shows.
 const BY_SLUG = {
+  "remote-online-notarization": "ron",
   "mobile-notary": "mobile", "estate-planning-notary": "mobile", "business-notary": "mobile", "usps-form-1583": "mobile",
   "child-travel-consent": "mobile", "passport-consent-form": "mobile",
   "loan-signing-agent": "loan", "private-lender-signings": "loan",

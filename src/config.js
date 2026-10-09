@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS = {
   // "Quoted when we confirm" instead of a number.
   pricing: {
     mobile: { general: null, loan: null, perExtraSigner: null },
-    ron: { base: null, perExtraSigner: null },
+    ron: { base: 40, perExtraSigner: 10 }, // market rate: online notary sessions typically run $25 to $50
     rin: { base: null, perExtraSigner: null },
   },
   // States where your RIN notaries are commissioned and RIN is allowed.

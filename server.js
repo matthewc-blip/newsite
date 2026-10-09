@@ -812,6 +812,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   init()
+    .then(() => require("./src/seed-ron-prices")().catch((e) => console.error("RON price seed:", e.message)))
     .then(() => { app.listen(PORT, () => console.log(`MCC Solutions running on http://localhost:${PORT}`)); notary.startReminderJob(); dispatch.start(); documents.startRetentionJob(); billing.startSyncJob(); require("./src/bk-billing").startJob(); require("./src/reviews").startJob(); require("./src/followups").startJob(); require("./src/remote-sessions").startJob(); })
     .catch((e) => { console.error("Could not connect to the database:", e.message); process.exit(1); });
 }
