@@ -55,10 +55,15 @@ async function selfTest() {
     try { await fn(); out.steps.push({ name, ok: true }); return true; }
     catch (e) { out.steps.push({ name, ok: false, error: `${e.name || "Error"}: ${e.message}`, status: e.$metadata?.httpStatusCode }); return false; }
   };
-  if (!await step("Find the bucket (HeadBucket)", () => s3().send(new c.HeadBucketCommand({ Bucket: bucket })))) return out;
-  if (!await step("Upload a small file", () => s3().send(new c.PutObjectCommand({ Bucket: bucket, Key: key, Body: "storage test" })))) return out;
-  await step("Read it back", () => s3().send(new c.GetObjectCommand({ Bucket: bucket, Key: key })).then((r) => r.Body.transformToString()));
-  await step("Delete the test file", () => s3().send(new c.DeleteObjectCommand({ Bucket: bucket, Key: key })));
+  // Every step runs even if an earlier one fails: some tokens can upload but not "find" the bucket, and the pattern tells us which permission is missing.
+  await step("Find the bucket (HeadBucket)", () => s3().send(new c.HeadBucketCommand({ Bucket: bucket })));
+  await step("List files in the bucket", () => s3().send(new c.ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 })));
+  const up = await step("Upload a small file", () => s3().send(new c.PutObjectCommand({ Bucket: bucket, Key: key, Body: "storage test" })));
+  if (up) await step("Read it back", () => s3().send(new c.GetObjectCommand({ Bucket: bucket, Key: key })).then((r) => r.Body.transformToString()));
+  let mp = null;
+  await step("Start a large upload (what recordings use)", async () => { mp = (await s3().send(new c.CreateMultipartUploadCommand({ Bucket: bucket, Key: key + ".mp" }))).UploadId; });
+  if (mp) await step("Cancel the large upload", () => s3().send(new c.AbortMultipartUploadCommand({ Bucket: bucket, Key: key + ".mp", UploadId: mp })));
+  if (up) await step("Delete the test file", () => s3().send(new c.DeleteObjectCommand({ Bucket: bucket, Key: key })));
   return out;
 }
 
