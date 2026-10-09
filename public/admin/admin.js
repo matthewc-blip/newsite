@@ -740,6 +740,7 @@
         <p class="meta">${esc(s.ref)} · ${esc(s.doc_title || "No document named")} · ${esc(s.act)}${s.signer_location ? " · " + esc(s.signer_location) : ""}${s.scheduled_at ? "<br>" + esc(full(s.scheduled_at)) : ""}</p>
         <p style="margin:8px 0">${due} ${s.persona_status ? `<span class="pill ${PSTAT[s.persona_status] || "p-info"}">ID check: ${esc(s.persona_status)}</span>` : ""} ${s.recording_url ? '<span class="pill p-ok">Recording ready</span>' : ""} ${s.id_method ? `<span class="pill p-info">${esc(IDM[s.id_method] || s.id_method)}</span>` : ""}</p>
         ${s.zoom_join_url ? `<p style="font-size:.88rem;word-break:break-all"><a href="${esc(s.zoom_start_url || s.zoom_join_url)}" target="_blank" rel="noopener">${s.zoom_start_url ? "Start meeting" : "Zoom link"}</a> · <button class="linkbtn" data-rcopy="${esc(s.zoom_join_url)}">Copy join link</button></p>` : ""}
+        ${s.archive_error ? `<p style="font-size:.86rem;color:#f0a39b;margin:6px 0">Recording problem: ${esc(s.archive_error)}</p>` : ""}
         ${s.persona_link ? `<p style="font-size:.88rem"><button class="linkbtn" data-rcopy="${esc(s.persona_link)}">Copy ID check link</button></p>` : ""}
         ${s.recording_url ? `<p style="font-size:.88rem"><a href="${esc(s.recording_url)}" target="_blank" rel="noopener">Open recording</a>${s.recording_passcode ? " · passcode " + esc(s.recording_passcode) : ""}</p>` : ""}
         <details style="margin:8px 0"><summary>Checklist (${done}/${REM.checks.length})</summary>${REM.checks.map(([k, l]) => `<label style="display:flex;gap:8px;margin:6px 0;font-size:.9rem"><input type="checkbox" data-rck="${s.id}:${k}" ${c[k] ? "checked" : ""}> ${esc(l)}</label>`).join("")}</details>
@@ -755,6 +756,7 @@
           ${!s.zoom_join_url && REM.zoom ? `<button class="btn btn-ghost btn-sm" data-ract="zoom" data-id="${s.id}">Create Zoom</button>` : ""}
           ${REM.persona ? `<button class="btn btn-ghost btn-sm" data-ract="persona" data-id="${s.id}">${s.persona_inquiry_id ? "New ID check link" : "Start ID check"}</button>` : ""}
           ${s.persona_inquiry_id ? `<button class="btn btn-ghost btn-sm" data-ract="persona/refresh" data-id="${s.id}">Refresh ID result</button>` : ""}
+          ${s.recording_url ? `<button class="btn btn-ghost btn-sm" data-ract="fingerprint" data-id="${s.id}">${(s.hashes || []).length ? "Re-check recording" : "Retry fingerprint"}</button>` : ""}
           ${s.signer_email && s.zoom_join_url ? `<button class="btn btn-ghost btn-sm" data-ract="invite" data-id="${s.id}">Email signer</button>` : ""}
           <a class="btn btn-ghost btn-sm" href="/api/admin/remote/${s.id}/declaration" target="_blank" rel="noopener">Declaration</a>
           ${!s.session_ended_at ? `<button class="btn btn-ghost btn-sm" data-rend="${s.id}">Session ended</button>` : ""}

@@ -543,6 +543,7 @@ create table if not exists remote_sessions (
   completed_at timestamptz,
   created_at timestamptz default now()
 );
+alter table remote_sessions add column if not exists archive_error text;  -- last fingerprint/archive failure, shown on the card
 alter table remote_sessions enable row level security;
 
 -- Tamper-evidence: SHA-256 fingerprints of recordings and signed papers (safe to re-run)

@@ -58,9 +58,21 @@ async function addHash(sessionId, kind, filename, size, sha256, source) {
   return db.one("insert into remote_hashes (session_id,kind,filename,size_bytes,sha256,source) values ($1,$2,$3,$4,$5,$6) returning *", [sessionId, kind, filename || null, size == null ? null : Number(size), sha256, source]);
 }
 // Downloads one Zoom file once, hashing it as it streams. When R2 is connected the same bytes are copied into the bucket.
-async function hashZoomFile(url, store) {
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${await zoomToken()}` }, redirect: "follow" });
-  if (!r.ok || !r.body) throw new Error("Zoom download failed: " + r.status);
+async function zoomDownload(url, dlToken) {
+  // Zoom sends a short-lived download token with each recording event; it works without any extra app scope.
+  // The app's own token is the fallback (it needs the cloud recording read scopes).
+  const tries = [dlToken, null].filter((t, i) => t || i === 1);
+  let last = 0;
+  for (const t of tries) {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${t || await zoomToken()}` }, redirect: "follow" });
+    if (r.ok && r.body) return r;
+    last = r.status;
+    if (r.status !== 401 && r.status !== 403) break;
+  }
+  throw new Error("Zoom download failed: " + last);
+}
+async function hashZoomFile(url, store, dlToken) {
+  const r = await zoomDownload(url, dlToken);
   const h = crypto.createHash("sha256"); let n = 0;
   const tap = new PassThrough();
   const src = Readable.fromWeb(r.body);
@@ -74,17 +86,20 @@ async function hashZoomFile(url, store) {
   } else { for await (const _ of tap) { /* drain */ } }
   return { sha256: h.digest("hex"), size: n, key };
 }
-async function hashRecording(sessionId, files) {
-  const done = [];
+async function hashRecording(sessionId, files, dlToken) {
+  const done = [], failed = [];
   const sess = archive.r2On() ? await get(sessionId) : null;
   for (const f of files || []) {
     if (!f.download_url || (f.status && f.status !== "completed")) continue;
     const ext = String(f.file_type || "").toUpperCase();
     const kind = ext === "TRANSCRIPT" || ext === "VTT" ? "transcript" : "recording";
     const name = `${f.recording_type || "recording"}.${ext.toLowerCase() || "bin"}`;
+    // A retry must not copy a file that's already fingerprinted (and archived, when R2 is on).
+    const dup = await db.one("select id from remote_hashes where session_id=$1 and filename=$2 and size_bytes=$3 and ($4 or stored_key is not null)", [sessionId, name, Number(f.file_size) || -1, !archive.r2On()]).catch(() => null);
+    if (dup) continue;
     try {
       const store = sess ? { key: archive.keyFor(sess.ref, name), contentType: ext === "MP4" ? "video/mp4" : undefined, metadata: { session: String(sess.ref) } } : null;
-      const { sha256, size, key } = await hashZoomFile(f.download_url, store);
+      const { sha256, size, key } = await hashZoomFile(f.download_url, store, dlToken || f.download_token);
       let row = await addHash(sessionId, kind, name, size, sha256, "zoom");
       if (key) {
         // Read the stored copy back and confirm it matches before calling it archived.
@@ -93,8 +108,10 @@ async function hashRecording(sessionId, files) {
         row = await db.one("update remote_hashes set stored_key=$2, stored_at=now(), stored_verified=$3, retain_until=$4 where id=$1 returning *", [row.id, key, ok, archive.retainUntil()]);
       }
       done.push(row);
-    } catch (e) { console.error("Recording fingerprint failed:", e.message); }
+    } catch (e) { console.error("Recording fingerprint failed:", e.message); failed.push(e.message); }
   }
+  // Show the outcome on the session card so a failure is visible without reading logs.
+  await db.run("update remote_sessions set archive_error=$2 where id=$1", [sessionId, failed.length ? failed[0] + (done.length ? "" : " (nothing was fingerprinted; use Retry)") : null]).catch(() => {});
   if (done.length) await mail.deskNotice("Recording fingerprints saved", done.map((r) => `${r.filename}  ${r.size_bytes} bytes  SHA-256 ${r.sha256}` + (r.stored_key ? `\n   Archived: ${r.stored_key} (${r.stored_verified ? "read back and matched" : "UPLOADED BUT NOT VERIFIED - check it"})` : "")).join("\n") + "\n\nKeep this email as an independent, dated copy." + (archive.r2On() ? "" : "\nLong-term storage is not connected: these recordings exist only in Zoom."));
   return done;
 }
@@ -206,7 +223,7 @@ function zoomWebhook(req, res) {
     const mid = String(o.id || "");
     if (ev.event === "recording.completed" && mid) {
       const sess = await db.one("select id from remote_sessions where zoom_meeting_id=$1", [mid]);
-      if (sess) hashRecording(sess.id, o.recording_files).catch((e) => console.error("Fingerprint job:", e.message));
+      if (sess) hashRecording(sess.id, o.recording_files, ev.download_token).catch((e) => console.error("Fingerprint job:", e.message));
       await db.run("update remote_sessions set recording_url=$2, recording_passcode=$3, recording_ref=$4, recording_at=now(), checklist = coalesce(checklist,'{}'::jsonb) where zoom_meeting_id=$1", [mid, o.share_url || null, o.password || null, String(o.uuid || "")]);
     }
     if (ev.event === "meeting.ended" && mid) {
@@ -313,6 +330,19 @@ function register(app, { requireAdmin }) {
     if (!s.persona_inquiry_id) throw bad("No Persona check has been started.");
     const st = await personaRefresh(s.persona_inquiry_id);
     return { session: view(await db.one("update remote_sessions set persona_status=$2,persona_checked_at=now() where id=$1 returning *", [s.id, st])) };
+  }));
+  // Re-run the fingerprint and archive step: ask Zoom for the recording's files again (fresh download links).
+  app.post("/api/admin/remote/:id/fingerprint", requireAdmin, wrap(async (req) => {
+    const s = await load(req);
+    if (!zoomOn()) throw bad("Zoom isn't connected.");
+    const key = s.recording_ref || s.zoom_meeting_id;
+    if (!key) throw bad("This session has no Zoom recording yet.");
+    const enc = encodeURIComponent(/^\/|\/\//.test(key) ? encodeURIComponent(key) : key);
+    const r = await fetch(`https://api.zoom.us/v2/meetings/${enc}/recordings`, { headers: { Authorization: `Bearer ${await zoomToken()}` } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw bad("Zoom wouldn't list the recording: " + (j.message || r.status) + ". Check the recording scopes on the Zoom app.", 502);
+    const rows = (await hashRecording(s.id, j.recording_files, j.download_access_token)).length;
+    return { fingerprinted: rows, session: view(await get(s.id)) };
   }));
   app.post("/api/admin/remote/:id/invite", requireAdmin, wrap(async (req) => {
     const s = await load(req);
