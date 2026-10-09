@@ -255,7 +255,27 @@ function register(app, { requireAdmin }) {
     if (dupe) throw bad("That fingerprint is already saved for this session.");
     return { hash: await addHash(s.id, kind, str(b.filename, 200), Number(b.size) >= 0 ? Number(b.size) : null, sha, "manual") };
   }));
-  app.post("/api/admin/remote", requireAdmin, wrap(async (req) => ({ session: view(await create(req.body || {})) })));
+  // Creating a session also starts the ID check and emails the signer the Zoom and ID links, unless sendInvite is false.
+  // A failed step never loses the session: it comes back as a warning and the card's buttons can retry it.
+  app.post("/api/admin/remote", requireAdmin, wrap(async (req) => {
+    const b = req.body || {};
+    let s = await create(b);
+    const warnings = [];
+    if (b.sendInvite !== false) {
+      if (personaOn() && (!b.idMethod || b.idMethod === "persona")) {
+        try {
+          const p = await personaStart(s);
+          s = await db.one("update remote_sessions set persona_inquiry_id=$2,persona_link=$3,persona_status=$4,persona_checked_at=now(),id_method=coalesce(id_method,'persona') where id=$1 returning *", [s.id, p.id, p.link, p.status]);
+        } catch (e) { warnings.push("The ID check link wasn't created: " + e.message); }
+      }
+      if (s.signer_email && s.zoom_join_url) {
+        try { await invite(s, await getSettings()); s = await get(s.id); }
+        catch (e) { warnings.push("The invite wasn't sent: " + e.message); }
+      } else if (!s.signer_email) warnings.push("No signer email, so nothing was sent. Add one and use Send invite.");
+      else warnings.push("No Zoom link yet, so the invite wasn't sent.");
+    }
+    return { session: view(s), warnings };
+  }));
   app.post("/api/admin/remote/:id", requireAdmin, wrap(async (req) => {
     const s = await load(req), b = req.body || {}, sets = [], vals = [];
     const put = (col, v) => { vals.push(v); sets.push(`${col}=$${vals.length}`); };

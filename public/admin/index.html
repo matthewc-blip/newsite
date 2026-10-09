@@ -51,6 +51,7 @@
     <label>Date and time (<span class="bizTz"></span>)<input id="rsWhen" type="datetime-local"></label>
     <label>ID method<select id="rsId"><option value="">Choose later</option><option value="persona">Persona ID and selfie check</option><option value="kba">Third-party KBA</option><option value="witness">Credible witness</option><option value="personal">Personal knowledge</option></select></label>
     <label>Your own Zoom link (optional; leave blank to create one)<input id="rsZoom" placeholder="https://zoom.us/j/..."></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:.9rem"><input type="checkbox" id="rsSend" checked style="margin-top:3px"><span>Email the signer the Zoom link and ID check link now (needs an email and a Zoom link)</span></label>
   </div>
   <p class="form-msg" id="rsErr"></p>
   <div class="actions" style="margin-top:12px"><button class="btn btn-primary btn-sm" id="rsSave">Create</button><button class="btn btn-ghost btn-sm" id="rsCancel">Cancel</button></div>

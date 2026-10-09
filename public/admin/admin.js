@@ -795,8 +795,9 @@
   $("#rsSave")?.addEventListener("click", async () => {
     try {
       const when = $("#rsWhen").value ? new Date($("#rsWhen").value).toISOString() : null;
-      await api("/api/admin/remote", { method: "POST", body: { signerName: $("#rsName").value, signerEmail: $("#rsEmail").value, signerPhone: $("#rsPhone").value, signerLocation: $("#rsLoc").value, docTitle: $("#rsDoc").value, act: $("#rsAct").value, scheduledAt: when, idMethod: $("#rsId").value, zoomUrl: $("#rsZoom").value } });
+      const r = await api("/api/admin/remote", { method: "POST", body: { signerName: $("#rsName").value, signerEmail: $("#rsEmail").value, signerPhone: $("#rsPhone").value, signerLocation: $("#rsLoc").value, docTitle: $("#rsDoc").value, act: $("#rsAct").value, scheduledAt: when, idMethod: $("#rsId").value, zoomUrl: $("#rsZoom").value, sendInvite: $("#rsSend").checked } });
       $("#remDlg").close(); await loadRemote();
+      if (r?.warnings?.length) alert(r.warnings.join("\n"));
     } catch (e) { $("#rsErr").textContent = e.message; }
   });
 
