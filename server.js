@@ -131,6 +131,7 @@ async function publicBooking(b, settings) {
     feeIsQuote: b.quoted_fee != null, contactName: b.contact_name,
     notary: ["assigned", "completed"].includes(b.status) && notary ? notary : null,
     canCancel: ["requested", "confirmed", "assigned"].includes(b.status) && new Date(b.start_utc).getTime() > Date.now(),
+    proofLink: b.service === "ron" && b.proof_link && ["requested", "confirmed", "assigned"].includes(b.status) ? b.proof_link : null,
     card: payments.cardView(b),
     addons: addons.list(b).filter((a) => a.kind !== "fee").map((a) => ({ label: a.label, qty: a.qty, price: a.price })),
     fees: fees.ofKind(addons.list(b)).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
@@ -574,6 +575,14 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
     const f = fees.ofKind(feeItems);
     notes.push(f.length ? `Extra fees: ${addons.describe(f)}` : "Extra fees removed");
   }
+  if (req.body.proof_link !== undefined) {
+    const raw = str(req.body.proof_link, 600);
+    if (raw) {
+      let u; try { u = new URL(raw); } catch { return res.status(400).json({ error: "That doesn't look like a link. Paste the full Proof link, starting with https://" }); }
+      if (u.protocol !== "https:") return res.status(400).json({ error: "The Proof link has to start with https://" });
+      if (u.href !== row.proof_link) { sets.proof_link = u.href; sets.proof_sent_at = null; notes.push("Proof link added"); }
+    } else if (row.proof_link) { sets.proof_link = null; sets.proof_sent_at = null; notes.push("Proof link removed"); }
+  }
   if (req.body.internal_notes !== undefined) sets.internal_notes = str(req.body.internal_notes, 5000);
   if (req.body.notarial_fee !== undefined) {
     const nf = req.body.notarial_fee === "" || req.body.notarial_fee === null ? null : Number(req.body.notarial_fee);
@@ -608,6 +617,18 @@ app.patch("/api/admin/bookings/:id", requireAdmin, async (req, res) => {
 app.post("/api/admin/bookings/:id/charge", requireAdmin, async (req, res) => {
   try { res.json(await payments.charge(Number(req.params.id), { kind: req.body.kind === "fee" ? "fee" : "service", amount: Number(req.body.amount), note: str(req.body.note, 120) })); }
   catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+app.post("/api/admin/bookings/:id/proof-invite", requireAdmin, async (req, res) => {
+  const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id)]);
+  if (!b) return res.status(404).json({ error: "Not found" });
+  if (!b.proof_link) return res.status(400).json({ error: "Save the Proof link on this booking first." });
+  if (!b.contact_email) return res.status(400).json({ error: "This booking has no email address." });
+  if (["canceled", "no_show", "completed"].includes(b.status)) return res.status(400).json({ error: "This booking is " + b.status.replace("_", " ") + ", so there's nothing to join." });
+  const ok = await mail.proofInvite(b, await getSettings());
+  if (!ok) return res.status(502).json({ error: "The email didn't send. Check the email settings, or copy the link and send it yourself." });
+  await db.run("UPDATE bookings SET proof_sent_at = now() WHERE id = $1", [b.id]);
+  await logEvent(b.id, "desk", "Emailed the client the Proof session link");
+  res.json({ ok: true });
 });
 app.post("/api/admin/bookings/:id/card-link", requireAdmin, async (req, res) => {
   const b = await db.one("SELECT * FROM bookings WHERE id = $1", [Number(req.params.id)]);

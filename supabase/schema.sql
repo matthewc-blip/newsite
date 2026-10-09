@@ -212,6 +212,8 @@ alter table notaries add column if not exists attestations jsonb default '{}'::j
 
 -- ===== Billing (added in v5; safe to re-run) =====
 alter table client_accounts add column if not exists payment_terms_days integer default 30;
+alter table bookings add column if not exists proof_link text;               -- the Proof session link for a RON booking
+alter table bookings add column if not exists proof_sent_at timestamptz;      -- when the join email last went to the client
 alter table bookings add column if not exists notarial_fee double precision;   -- state-capped notarial portion of the client price
 alter table bookings add column if not exists invoice_id integer;
 

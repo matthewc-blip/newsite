@@ -326,6 +326,9 @@
             <button class="btn btn-ghost btn-sm" id="dChargeFee" type="button">Charge fee</button></div>
           <p style="font-size:.84rem;color:var(--muted);margin-top:6px">${b.status === "completed" ? "" : "The service fee can be charged once the job is completed (automatically, if auto-charge is on). "}Use Charge fee for no-shows, late cancellations or extra trips.</p>`;
       })()}</div>` : ""}
+      ${b.service === "ron" ? `<div class="dsec"><h4>Proof session</h4>
+        <div class="inline"><input id="dProof" type="url" inputmode="url" placeholder="Paste the Proof link (https://…)" value="${esc(b.proof_link || "")}" aria-label="Proof session link"><button class="btn btn-ghost btn-sm" id="dProofSave" type="button">Save link</button></div>
+        ${b.proof_link ? `<div class="inline" style="margin-top:8px"><button class="btn btn-primary btn-sm" id="dProofSend" type="button">${b.proof_sent_at ? "Email it again" : "Email Proof link to client"}</button>${b.proof_sent_at ? `<span style="font-size:.86rem;color:var(--muted)">Last sent ${esc(full(b.proof_sent_at, TZ))}</span>` : ""}</div>` : '<p style="font-size:.86rem;color:var(--muted);margin-top:6px">Create the session in Proof, paste its link here, then email it to the client.</p>'}</div>` : ""}
       <div class="dsec"><h4>Reschedule</h4><div class="inline"><input id="dStart" type="datetime-local" aria-label="New date and time" value="${utcToLocalInput(b.start_utc, TZ)}"><button class="btn btn-ghost btn-sm" id="dMove" type="button">Move</button></div></div>
       <div class="dsec"><h4>Internal notes</h4><textarea id="dNotes" rows="3" placeholder="Only the desk sees this">${esc(b.internal_notes)}</textarea><button class="btn btn-ghost btn-sm" id="dNotesSave" type="button" style="margin-top:8px">Save Notes</button></div>
       <div class="dsec"><h4>Customer link</h4><div class="copyline"><input id="dLink" readonly value="${esc(location.origin + manageUrl)}"><button class="btn btn-ghost btn-sm" id="dCopy" type="button">Copy</button></div></div>
@@ -413,6 +416,12 @@
       catch (e) { $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
     }));
     $("#dMove").onclick = () => $("#dStart").value && patch({ start: localToUtc($("#dStart").value, TZ) }, "Rescheduled. Let the customer know the new time.");
+    if ($("#dProofSave")) $("#dProofSave").onclick = () => patch({ proof_link: $("#dProof").value.trim() }, "Proof link saved.");
+    if ($("#dProofSend")) $("#dProofSend").onclick = async (ev) => {
+      ev.target.disabled = true;
+      try { await api(`/api/admin/bookings/${id}/proof-invite`, { method: "POST", body: {} }); await openBooking(id); $("#dMsg").className = "form-msg ok"; $("#dMsg").textContent = "Emailed the client the Proof link."; }
+      catch (e) { ev.target.disabled = false; $("#dMsg").className = "form-msg"; $("#dMsg").textContent = e.message; }
+    };
     $("#dNotesSave").onclick = () => patch({ internal_notes: $("#dNotes").value }, "Notes saved.");
     $("#dClientSave").onclick = () => patch({ client_account_id: $("#dClient").value || null }, "Client account updated.");
     if ($("#dAuto")) $("#dAuto").onclick = async () => {

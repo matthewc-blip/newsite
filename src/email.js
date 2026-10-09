@@ -110,11 +110,56 @@ async function bookingStatusChanged(b, settings, notary) {
   });
 }
 
+// "Please join your Proof session": the link the desk pasted onto the booking, with what to have ready.
+async function proofInvite(b, settings) {
+  const tz = b.customer_tz || settings.business.timezone;
+  const when = fmt(new Date(b.start_utc), tz);
+  const first = String(b.contact_name || "").split(/\s+/)[0] || "there";
+  const biz = settings.business;
+  const ready = [
+    "A current government-issued photo ID (driver's license or passport).",
+    "A phone, tablet or computer with a working camera and microphone.",
+    "A quiet place where you can be on camera for the signing.",
+    "The document does not need to be signed beforehand. Do not sign anything until the notary asks you to.",
+  ];
+  const text = `Hi ${first},
+
+Your remote notarization with ${biz.name} is set for ${when}.
+
+Please join your secure signing session on Proof here:
+${b.proof_link}
+
+What happens next:
+1. Open the link and follow the prompts to confirm who you are. You may be asked a few identity questions.
+2. You'll connect by video with the notary, who will walk you through the signing.
+
+Please have ready:
+${ready.map((r) => "- " + r).join("\n")}
+
+If you have trouble opening the link, call us at ${biz.phone} or reply to this email and we'll help right away.
+
+Thank you,
+${biz.name}`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;color:#14231d;line-height:1.55">
+  <h2 style="margin:0 0 8px">Please join your signing session</h2>
+  <p>Hi ${esc(first)},</p>
+  <p>Your remote notarization with <b>${esc(biz.name)}</b> is set for <b>${esc(when)}</b>.</p>
+  <p style="margin:22px 0"><a href="${esc(b.proof_link)}" style="background:#1f5f46;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;display:inline-block">Join my Proof session</a></p>
+  <p style="font-size:13px;color:#6a7a72;word-break:break-all">Button not working? Copy this link into your browser:<br>${esc(b.proof_link)}</p>
+  <h3 style="margin:22px 0 6px;font-size:16px">What happens next</h3>
+  <ol style="padding-left:20px;margin:0"><li>Open the link and follow the prompts to confirm who you are. You may be asked a few identity questions.</li><li>You'll connect by video with the notary, who will walk you through the signing.</li></ol>
+  <h3 style="margin:22px 0 6px;font-size:16px">Please have ready</h3>
+  <ul style="padding-left:20px;margin:0">${ready.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+  <p style="margin-top:22px">Trouble opening the link? Call us at ${esc(biz.phone)} or reply to this email and we'll help right away.</p>
+  <p>Thank you,<br>${esc(biz.name)}</p></div>`;
+  return send({ to: b.contact_email, subject: `Please join your remote notarization on Proof · ${b.ref}`, text, html });
+}
+
 async function deskNotice(subject, text) {
   await send({ to: DESK, subject, text });
 }
 
-module.exports = { bookingCreated, bookingStatusChanged, deskNotice, manageUrl, SERVICE_NAMES, emailEnabled: enabled };
+module.exports = { proofInvite, bookingCreated, bookingStatusChanged, deskNotice, manageUrl, SERVICE_NAMES, emailEnabled: enabled };
 
 /* ---------- notary emails ---------- */
 function jobLines(b, settings) {

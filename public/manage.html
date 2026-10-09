@@ -73,8 +73,9 @@
     if (b.addons && b.addons.length) rows.push(["Add-ons", b.addons.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
     if (b.fees && b.fees.length) rows.push(["Extra fees", b.fees.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
     if (b.estFee != null) rows.push(["Fee", "$" + (Number(b.estFee) + Number(b.addonsTotal || 0)).toFixed(2) + (b.feeIsQuote ? "" : " estimated") + (b.addonsTotal ? ((b.addons && b.addons.length) && (b.fees && b.fees.length) ? " incl. add-ons and extra fees" : (b.fees && b.fees.length) ? " incl. extra fees" : " incl. add-ons") : "")]);
+    if (b.proofLink) rows.push(["Your signing session", "__proof__"]);
     const dl = $("#details"); dl.innerHTML = "";
-    rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
+    rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); if (v === "__proof__") { const a = document.createElement("a"); a.href = b.proofLink; a.textContent = "Join on Proof"; a.rel = "noopener"; a.style.fontWeight = "700"; dd.append(a); } else dd.textContent = v; dl.append(dt, dd); });
     $("#actions").hidden = b.status === "canceled";
     $("#ics").href = `/api/bookings/${encodeURIComponent(b.ref)}/ics?token=${encodeURIComponent(token)}`;
     $("#cancelBox").hidden = !b.canCancel;
