@@ -121,3 +121,7 @@ footer .fbottom{margin-top:40px;padding-top:22px;border-top:1px solid color-mix(
 footer .fnote{max-width:90ch;line-height:1.55}
 footer .frow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px}
 footer .flinks{display:flex;gap:22px}
+
+/* Short check-mark list under a hero (the bookkeeping page uses it) */
+.chips{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;font-size:.88rem;color:var(--ink-2)}
+.chips span::before{content:"✓";color:var(--brass);margin-right:7px;font-weight:700}

@@ -100,7 +100,7 @@ function register(app, c) {
     const pr = (slug) => { const p = s && require("./prices").forSlug(s, slug); return p ? ` <b>from ${require("./prices").money(p.price)}</b>` : ""; };
     res.set("X-Robots-Tag", "noindex");
     res.send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>MCC Solutions flyer</title>
-<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/glass.css">
 <style>body{background:#e9ece9;margin:0}.sheet{width:8.5in;max-width:100%;min-height:11in;margin:20px auto;background:#fff;padding:.6in .65in;box-sizing:border-box;color:#10261e;font-family:'Public Sans',system-ui,sans-serif}
 .sheet h1{font-family:Archivo,'Helvetica Neue',Arial,sans-serif;font-size:2.5rem;line-height:1.1;margin:.1in 0 .12in}.sheet .k{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:#8c6017;font-weight:700}
 .sheet ul{list-style:none;padding:0;margin:.2in 0}.sheet li{padding:.09in 0;border-bottom:1px solid #d9dfda;font-size:1.1rem}.sheet li span{color:#4a5d53;font-size:.95rem;display:block}

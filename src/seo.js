@@ -81,6 +81,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<meta property="og:t
 <link rel="preload" href="/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css">
 <link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/glass.css">
 <script type="application/ld+json">${json}</script>
 <script src="/js/ga.js" async></script>
 <script src="/js/nudge.js" defer></script>

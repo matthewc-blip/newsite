@@ -1,0 +1,120 @@
+/* "Liquid glass" finish for the public site: translucent, softly blurred surfaces with a bright edge, floating over a gentle colored backdrop.
+   Loaded after site.css, only on public pages (not the admin, notary portal or client portal). Remove the <link> to switch it off.
+   Everything degrades to the normal solid look when the browser has no backdrop-filter, or when the visitor asks for less transparency, more contrast or less motion. */
+
+:root{
+  --g-blur:18px; --g-sat:1.7;
+  --g-fill:color-mix(in srgb,var(--surface) 62%,transparent);
+  --g-fill-strong:color-mix(in srgb,var(--surface) 78%,transparent);
+  --g-edge:rgba(255,255,255,.65); --g-edge-low:rgba(255,255,255,.18);
+  --g-shadow:0 1px 1px rgba(16,38,30,.05),0 8px 24px -8px rgba(16,38,30,.16),0 24px 48px -24px rgba(16,38,30,.18);
+  --g-r:22px;
+  --g-glow-a:rgba(216,162,74,.30); --g-glow-b:rgba(70,150,120,.26); --g-glow-c:rgba(90,140,200,.20);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --g-fill:color-mix(in srgb,var(--surface) 58%,transparent);
+  --g-fill-strong:color-mix(in srgb,var(--surface) 76%,transparent);
+  --g-edge:rgba(255,255,255,.20); --g-edge-low:rgba(255,255,255,.06);
+  --g-shadow:0 1px 1px rgba(0,0,0,.4),0 10px 28px -10px rgba(0,0,0,.6),0 26px 52px -26px rgba(0,0,0,.6);
+  --g-glow-a:rgba(216,162,74,.16); --g-glow-b:rgba(70,150,120,.20); --g-glow-c:rgba(90,140,200,.14)}}
+:root[data-theme="dark"]{
+  --g-fill:color-mix(in srgb,var(--surface) 58%,transparent);
+  --g-fill-strong:color-mix(in srgb,var(--surface) 76%,transparent);
+  --g-edge:rgba(255,255,255,.20); --g-edge-low:rgba(255,255,255,.06);
+  --g-shadow:0 1px 1px rgba(0,0,0,.4),0 10px 28px -10px rgba(0,0,0,.6),0 26px 52px -26px rgba(0,0,0,.6);
+  --g-glow-a:rgba(216,162,74,.16); --g-glow-b:rgba(70,150,120,.20); --g-glow-c:rgba(90,140,200,.14)}
+
+/* A soft colored backdrop so the glass has something to bend. Fixed, so it stays put while the page scrolls. */
+body{background:
+  radial-gradient(60vmax 50vmax at 8% -8%,var(--g-glow-a),transparent 62%),
+  radial-gradient(55vmax 45vmax at 98% 14%,var(--g-glow-b),transparent 60%),
+  radial-gradient(60vmax 50vmax at 40% 105%,var(--g-glow-c),transparent 62%),
+  var(--paper);
+  background-attachment:fixed}
+/* The plain page header lets the backdrop through. Bands keep their own backgrounds (some are dark). */
+.page-hero{background:transparent}
+section.band.alt{background:color-mix(in srgb,var(--surface) 38%,transparent)}
+.page-hero{border-bottom-color:var(--g-edge-low)}
+
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  /* Header: a floating glass bar */
+  header.site{background:var(--g-fill-strong);-webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));
+    border-bottom:1px solid var(--g-edge-low);box-shadow:inset 0 -1px 0 var(--g-edge-low),0 8px 24px -16px rgba(16,38,30,.35)}
+  nav.main a{border-radius:99px;transition:background .2s,color .2s}
+  nav.main a:hover{background:color-mix(in srgb,var(--brass) 14%,transparent)}
+  nav.main a[aria-current="page"]{box-shadow:none;background:color-mix(in srgb,var(--brass) 20%,transparent)}
+
+  /* Glass panels */
+  .svc,.form-card,.aside-card,.remote-card,.callout,.cred-list li,.svc-opt,.slot,.day,.ticket{
+    background:var(--g-fill);-webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));
+    border:1px solid var(--g-edge-low);
+    box-shadow:inset 0 1px 0 var(--g-edge),inset 0 0 0 1px color-mix(in srgb,#fff 6%,transparent),var(--g-shadow)}
+  .svc,.form-card,.aside-card,.remote-card{border-radius:var(--g-r)}
+  .callout,.cred-list li{border-radius:16px}
+  .svc-opt,.ticket{border-radius:18px}
+  .slot,.day{border-radius:14px}
+  .band.alt .svc{background:var(--g-fill)}
+
+  /* Lift on hover, with a brighter edge, the way a glass key catches light */
+  a.svc,.svc-opt,.slot,.day{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,background .25s,border-color .25s}
+  a.svc:hover,.svc-opt:hover,.slot:hover,.day:not([disabled]):hover{transform:translateY(-2px);background:var(--g-fill-strong);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 12px 30px -10px rgba(16,38,30,.28),0 30px 56px -28px rgba(16,38,30,.3)}
+  .svc-opt:has(input:checked),.slot[aria-selected="true"],.day[aria-selected="true"]{
+    background:color-mix(in srgb,var(--brass) 20%,var(--g-fill-strong));border-color:color-mix(in srgb,var(--brass) 70%,transparent);
+    box-shadow:inset 0 1px 0 var(--g-edge),0 0 0 3px color-mix(in srgb,var(--brass) 22%,transparent),var(--g-shadow)}
+
+  /* Buttons: glossy pills */
+  .btn{border-radius:99px;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,filter .2s,background .2s}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:linear-gradient(180deg,color-mix(in srgb,var(--brass) 82%,#fff) 0%,var(--brass) 55%,color-mix(in srgb,var(--brass) 88%,#000) 100%);
+    border-color:color-mix(in srgb,var(--brass) 60%,#fff);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(0,0,0,.12),0 6px 16px -6px color-mix(in srgb,var(--brass) 70%,transparent)}
+  .btn-primary:hover{filter:brightness(1.06) saturate(1.05);transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 10px 22px -8px color-mix(in srgb,var(--brass) 80%,transparent)}
+  .btn-ghost{background:var(--g-fill);-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5);border-color:var(--g-edge-low);box-shadow:inset 0 1px 0 var(--g-edge)}
+  .btn-ghost:hover{background:var(--g-fill-strong)}
+
+  /* Inputs: frosted wells */
+  .field input,.field select,.field textarea{background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:12px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:box-shadow .2s,border-color .2s,background .2s}
+  .field input:focus,.field select:focus,.field textarea:focus{background:var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--brass) 28%,transparent)}
+
+  /* Hero: glowing orbs behind the dark hero so the glass ticket has depth */
+  .hero::before,.hero::after{content:"";position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0}
+  .hero::before{width:520px;height:520px;right:-120px;top:-140px;background:radial-gradient(circle,rgba(216,162,74,.55),transparent 68%)}
+  .hero::after{width:460px;height:460px;left:-140px;bottom:-200px;background:radial-gradient(circle,rgba(70,170,140,.40),transparent 68%)}
+  .hero .wrap{z-index:1}
+  .hero .ticket{background:rgba(255,255,255,.12);color:var(--deep-fg);border-color:rgba(255,255,255,.22);
+    -webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 30px 70px -24px rgba(0,0,0,.6)}
+  .hero .ticket-top{border-bottom-color:rgba(255,255,255,.25)}
+  .hero .btn-ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+
+  /* Step bar, pills, checks, county links */
+  .stepbar li{border-top-width:4px;border-radius:99px 99px 0 0}
+  .county-links a{background:var(--g-fill);border-radius:99px;border-color:var(--g-edge-low);box-shadow:inset 0 1px 0 var(--g-edge);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .pill{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+
+  /* Call-to-action band at the bottom of pages */
+  .cta-band{position:relative;overflow:hidden}
+  .cta-band::before{content:"";position:absolute;inset:-40% -10% auto auto;width:560px;height:560px;border-radius:50%;filter:blur(70px);background:radial-gradient(circle,rgba(216,162,74,.4),transparent 70%);pointer-events:none}
+  .cta-band .wrap{position:relative}
+}
+
+/* Phones: lighter blur and radius so scrolling stays smooth */
+@media (max-width:700px){
+  :root{--g-blur:12px;--g-r:18px}
+  body{background-attachment:scroll}
+}
+
+/* Visitors who ask for less: fall back to solid, readable surfaces */
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  :root{--g-fill:var(--surface);--g-fill-strong:var(--surface)}
+  header.site,.svc,.form-card,.aside-card,.remote-card,.callout,.cred-list li,.svc-opt,.slot,.day,.ticket,.btn-ghost,.county-links a,.field input,.field select,.field textarea{
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  body{background:var(--paper)}
+  section.band.alt{background:var(--surface)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+  a.svc:hover,.svc-opt:hover,.slot:hover,.day:hover,.btn:hover,.btn:active{transform:none!important}
+}
