@@ -582,6 +582,14 @@
             <label class="svc-opt"><input type="radio" name="service" value="rin">
               <span class="svc-opt-code">RIN</span><strong>Remote Ink-Signed Notarization</strong><span>Sign paper documents in ink on video, then ship the originals to the notary.</span><em id="meta-rin"></em></label>
           </div>
+          <div class="callout" id="ronCheck" style="margin-top:16px">
+            <b>Does this have to be in person?</b> Two quick questions. If it can be done online, you skip the travel and often get an earlier time.
+            <div style="display:grid;gap:10px;margin-top:10px">
+              <div class="field"><label for="rc-doc">What is being notarized?</label><select id="rc-doc"><option value="">Choose one…</option><option value="Power of attorney">Power of attorney</option><option value="Affidavit or sworn statement">Affidavit or sworn statement</option><option value="Business documents">Business or contract documents</option><option value="Real estate closing">Deed, mortgage or other real estate documents</option><option value="Vehicle title or bill of sale">Vehicle title, MVC or other government forms</option><option value="Other documents">Court or legal-filing documents</option><option value="Other documents|unsure">Something else, or not sure</option></select></div>
+              <div class="field"><label for="rc-who">Everyone signing</label><select id="rc-who"><option value="">Choose one…</option><option value="ok">Has unexpired photo ID and a phone, tablet or computer with a camera</option><option value="help">Needs hands-on help (limited mobility, care facility, or trouble with technology)</option><option value="no">Is missing photo ID or a device with a camera</option></select></div>
+              <div id="rcOut" role="status" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
 
         <!-- step 2 -->

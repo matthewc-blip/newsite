@@ -84,6 +84,30 @@
     }
   }
 
+  /* ---------- "does this have to be in person?" check on step 1 ---------- */
+  // Recommends RON only when it is likely to work. Real estate, government and court documents depend on who receives them, so those ask the signer to confirm first.
+  const SAFE_RON = new Set(["Power of attorney", "Affidavit or sworn statement", "Business documents"]);
+  function ronCheck() {
+    const out = $("#rcOut"); if (!out) return;
+    const [doc] = ($("#rc-doc").value || "").split("|"), unsure = ($("#rc-doc").value || "").includes("|unsure"), who = $("#rc-who").value;
+    out.innerHTML = "";
+    if (!doc || !who) return;
+    const p = (config && config.pricing) || {};
+    const ronP = p.ron && p.ron.base, mobP = p.mobile && (LOAN.has(doc) ? p.mobile.loan : p.mobile.general);
+    const price = ronP != null && ronP !== "" ? ` RON starts at ${money(ronP)}${mobP != null && mobP !== "" ? `, in person at ${money(mobP)}` : ""}, and in-person visits farther away add a travel fee that RON never has.` : " RON never has a travel fee.";
+    const box = (html, btns) => {
+      out.innerHTML = `<p style="margin:0 0 8px">${html}</p>`;
+      btns.forEach(([label, svc, primary]) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-sm " + (primary ? "btn-primary" : "btn-ghost"); b.style.marginRight = "8px"; b.textContent = label;
+        b.addEventListener("click", () => { setService(svc); const sel = $("#b-category"); if (svc === "ron" && [...sel.options].some((o) => o.value === doc)) sel.value = doc; syncLoan(); summary(); }); out.appendChild(b); });
+    };
+    if (who !== "ok") return box("In person is the better fit here. The notary comes to you, checks ID on the spot and walks everyone through it.", [["Book a mobile notary", "mobile", true]]);
+    if (SAFE_RON.has(doc)) return box("<b>RON is likely a good fit.</b> You sign online with a notary on video, no travel and usually an earlier time." + price, [["Book RON", "ron", true], ["I'd rather have someone come to me", "mobile", false]]);
+    const why = doc === "Real estate closing" ? "Lenders and title companies often require their own closing method, and some recorders want certain documents on paper." : doc === "Vehicle title or bill of sale" ? "Government offices can have their own rules about electronic notarization." : unsure ? "It depends on who receives the document." : "Courts and filing offices can have their own rules.";
+    box("<b>Check one thing first.</b> " + why + " Ask whoever receives the document: <i>\"Do you accept an electronic, remotely notarized document?\"</i> If they do, RON saves you the trip." + price, [["They accept it: book RON", "ron", true], ["They need it in person: book mobile", "mobile", false]]);
+  }
+  ["#rc-doc", "#rc-who"].forEach((id) => $(id) && $(id).addEventListener("change", ronCheck));
+  window.MCC.ready && window.MCC.ready.then((c) => { if (c) { config = config || c; ronCheck(); } }).catch(() => {});
+
   /* ---------- steps ---------- */
   function showStep(n) {
     st.step = n;
