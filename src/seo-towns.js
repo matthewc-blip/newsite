@@ -131,6 +131,25 @@ function register(app, c) {
     provider: { "@type": "ProfessionalService", name: "MCC Solutions", url: url + "/", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } },
     areaServed: { "@type": "City", name: `${t.name}, NJ` } });
 
+  /* ----- service-area hubs (the middle step of the town breadcrumbs) ----- */
+  const areaHub = (path, label, topPath, pathFn, what) => app.get(path, async (req, res) => {
+    const biz = await business(); const url = base(req);
+    const crumbs = [["MCC Solutions", "/"], [label, topPath], ["Service areas", path]];
+    res.send(layout({
+      req, biz, path, crumbs,
+      title: fit(`${label} Service Areas in Union County, NJ`),
+      description: `${what} for small businesses in Union County, NJ towns, from our Cranford office. Find your town.`,
+      body: {
+        hero: `<p class="eyebrow">Union County, NJ</p><h1 style="margin-top:10px">${esc(label)} service areas</h1><p class="lede" style="margin-top:14px">${esc(what)} for small businesses across Union County, from our Cranford office. Pick your town.</p>`,
+        main: `<section class="band"><div class="wrap">${allLinks(pathFn, null)}</div></section>`,
+        ctaTitle: "Not sure we cover you? Ask the desk.", ctaHref: topPath + (label === "Bookkeeping" ? "#interest" : "#quote"), ctaLabel: "Get a Quote",
+      },
+      schema: [{ "@type": "CollectionPage", name: `${label} service areas`, url: url + path, hasPart: TOWNS.map((n) => ({ "@type": "WebPage", name: `${label} for ${n.name}, NJ`, url: url + pathFn(n) })) }],
+    }));
+  });
+  areaHub("/bookkeeping/areas", "Bookkeeping", "/bookkeeping/", bookPath, "Monthly bookkeeping, cleanup, payroll and NJ filings");
+  areaHub("/websites/areas", "Websites", "/websites/", webPath, "Websites and local SEO");
+
   /* ----- notary ----- */
   app.get("/notary/new-jersey/union-county/:town", async (req, res, next) => {
     const t = BY[req.params.town];
@@ -187,7 +206,7 @@ function register(app, c) {
     const bk = settings && settings.bookkeeping;
     const biz = await business(); const url = base(req); const path = bookPath(t);
     const t1 = bk && bk.showPrices && bk.prices && bk.prices.t1 && bk.prices.t1.monthly;
-    const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], [`${t.name}, NJ`, path]];
+    const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Service areas", "/bookkeeping/areas"], [`${t.name}, NJ`, path]];
     const faqs = [
       [`Do you work with ${t.name} businesses in person?`, `We are based in Cranford, a short drive from ${t.name}. Most bookkeeping is done online in your accounting software, and we are happy to meet in person when it helps.`],
       [`What does monthly bookkeeping for a ${t.name} business include?`, `Categorizing transactions, reconciling bank and card accounts, and monthly financial reports, in QuickBooks Online, Xero or another platform. Payroll processing and NJ filings can be added.`],
@@ -227,7 +246,7 @@ function register(app, c) {
     const m = /^([a-z-]+)-nj$/.exec(req.params.town); const t = m && BY[m[1]];
     if (!t) return next();
     const biz = await business(); const url = base(req); const path = webPath(t);
-    const crumbs = [["MCC Solutions", "/"], ["Websites", "/websites/"], [`${t.name}, NJ`, path]];
+    const crumbs = [["MCC Solutions", "/"], ["Websites", "/websites/"], ["Service areas", "/websites/areas"], [`${t.name}, NJ`, path]];
     const faqs = [
       [`What does local SEO mean for a ${t.name} business?`, `Making it easy for people searching nearby to find you: a complete Google Business Profile, clear service pages, your ${t.name} location and service area on the site, and a fast, mobile-friendly design.`],
       [`Can you guarantee a first-page ranking in ${t.name}?`, `No one honestly can. We do the work that improves your chances, set up Search Console so you can see what is happening, and explain results in plain terms.`],
