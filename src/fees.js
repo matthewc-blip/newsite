@@ -8,9 +8,12 @@
 const { dateInTz, weekday } = require("./time");
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const SERVICES = ["mobile", "ron", "rin"];
-const AUTO = ["rush", "after_hours", "weekend", "extra_signer", "late_cancel"];
+const AUTO = ["rush", "after_hours", "weekend", "extra_signer", "late_cancel", "act"];
+// The state-set notarial fee ($2.50 per act in NJ). It is shown to customers on its own line, apart from the service and travel fees.
+const ACT_ID = "notarial_act";
 
 const DEFAULTS = [
+  { id: ACT_ID, label: "New Jersey notarial fee (set by the state)", price: 2.5, unit: "per act", max: 50, auto: "act", share: 100, statutory: true, services: ["mobile", "ron", "rin"], note: "The state caps this fee per notarial act. It starts at one act per signer; the desk sets the real count before billing." },
   { id: "rush", label: "Rush (starts within 4 hours of booking)", price: 50, auto: "rush", share: 50, services: ["mobile"], note: "Added automatically when the appointment starts less than 4 hours after it's booked." },
   { id: "after_hours", label: "After-hours (before 8 am or after 7 pm)", price: 50, auto: "after_hours", share: 50, services: ["mobile"], note: "Added automatically for early-morning and evening appointments." },
   { id: "weekend", label: "Weekend appointment", price: 40, auto: "weekend", share: 50, services: ["mobile"], note: "Added automatically for Saturday and Sunday appointments." },
@@ -43,7 +46,8 @@ const REQUEST_DEFAULTS = [
 const clean = (a) => ({
   id: String(a.id).slice(0, 30), label: String(a.label).slice(0, 80), price: round2(a.price),
   unit: a.unit ? String(a.unit).slice(0, 30) : "", note: String(a.note || "").slice(0, 200),
-  max: Math.max(1, Math.min(50, parseInt(a.max, 10) || 1)), auto: AUTO.includes(a.auto) ? a.auto : null,
+  statutory: a.id === ACT_ID || !!a.statutory,
+  max: Math.max(1, Math.min(50, parseInt(a.max, 10) || 1)), auto: a.id === ACT_ID ? "act" : AUTO.includes(a.auto) ? a.auto : null,
   share: Math.max(0, Math.min(100, Number(a.share) || 0)), onCancel: !!a.onCancel,
   services: (Array.isArray(a.services) ? a.services : SERVICES).filter((s) => SERVICES.includes(s)),
 });
@@ -68,13 +72,15 @@ function requestAuto(settings, type, details) {
 }
 
 function catalog(settings) {
-  const list = Array.isArray(settings.fees) ? settings.fees : DEFAULTS;
+  let list = Array.isArray(settings.fees) ? settings.fees : DEFAULTS;
+  // Settings saved before this fee existed don't have it; add it once. Turning it off in Settings is still respected.
+  if (!list.some((a) => a && a.id === ACT_ID)) list = [DEFAULTS.find((a) => a.id === ACT_ID), ...list];
   return list.filter((a) => a && a.id && a.label && a.enabled !== false && Number(a.price) >= 0).map(clean);
 }
 // What the website and booking form may show (no notary share).
 const publicCatalog = (settings) => catalog(settings).map(({ share, ...a }) => a);
 
-const item = (f, qty, extra = {}) => ({ id: f.id, label: f.label, qty, price: f.price, kind: "fee", share: f.share, onCancel: f.onCancel, ...extra });
+const item = (f, qty, extra = {}) => ({ id: f.id, label: f.label, qty, price: f.price, kind: "fee", share: f.share, onCancel: f.onCancel, ...(f.statutory ? { statutory: true } : {}), ...extra });
 
 // Fees that apply automatically to a new booking.
 function auto(settings, b, now = Date.now()) {
@@ -91,6 +97,7 @@ function auto(settings, b, now = Date.now()) {
     if (f.auto === "rush" && start.getTime() - now < 4 * 3600e3) out.push(item(f, 1));
     if (f.auto === "after_hours" && (mins < 8 * 60 || mins >= 19 * 60)) out.push(item(f, 1));
     if (f.auto === "weekend" && (day === 0 || day === 6)) out.push(item(f, 1));
+    if (f.auto === "act") out.push(item(f, Math.min(f.max, Math.max(1, Number(b.signers) || 1))));
     if (f.auto === "extra_signer" && (perSigner == null || perSigner === "") && b.signers > 1) out.push(item(f, Math.min(f.max, b.signers - 1)));
   }
   return out;
@@ -148,4 +155,4 @@ function validateSettings(list) {
   return null;
 }
 
-module.exports = { DEFAULTS, REQUEST_DEFAULTS, requestCatalog, forType, requestAuto, catalog, publicCatalog, auto, lateCancel, apply, ofKind, total, notaryShare, cancelItems, validateSettings };
+module.exports = { ACT_ID, DEFAULTS, REQUEST_DEFAULTS, requestCatalog, forType, requestAuto, catalog, publicCatalog, auto, lateCancel, apply, ofKind, total, notaryShare, cancelItems, validateSettings };
