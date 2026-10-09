@@ -133,7 +133,7 @@ async function publicBooking(b, settings) {
     canCancel: ["requested", "confirmed", "assigned"].includes(b.status) && new Date(b.start_utc).getTime() > Date.now(),
     card: payments.cardView(b),
     addons: addons.list(b).filter((a) => a.kind !== "fee").map((a) => ({ label: a.label, qty: a.qty, price: a.price })),
-    fees: fees.ofKind(addons.list(b)).map((a) => ({ label: a.label, qty: a.qty, price: a.price, statutory: !!a.statutory })), addonsTotal: Number(b.addons_total) || 0,
+    fees: fees.ofKind(addons.list(b)).map((a) => ({ label: a.label, qty: a.qty, price: a.price })), addonsTotal: Number(b.addons_total) || 0,
     cardRequested: payments.wantsCard(b, settings),
     cardRequired: payments.cardRequired(settings) && payments.wantsCard(b, settings),
     lateCancelFee: (() => { const f = ["requested", "confirmed", "assigned"].includes(b.status) ? fees.lateCancel(settings, b) : null; return f ? f.price : null; })(),
@@ -615,19 +615,8 @@ app.post("/api/admin/bookings/:id/card-link", requireAdmin, async (req, res) => 
   const settings = await getSettings();
   if (!payments.cardsOn(settings)) return res.status(400).json({ error: "Connect Stripe and turn on card payments in Settings first." });
   const url = `${mail.BASE}/manage.html?ref=${encodeURIComponent(b.ref)}&token=${encodeURIComponent(b.token)}`;
-  // Lay the charges out line by line, with the state notarial fee on its own line.
-  const money = (n) => "$" + Number(n).toFixed(2);
-  const lines = [];
-  const quoted = b.quoted_fee ?? b.est_fee;
-  const all = addons.list(b);
-  if (quoted != null) lines.push(`  Service fee: ${money(quoted)}`);
-  for (const a of all.filter((x) => x.kind !== "fee")) lines.push(`  ${a.label}${a.qty > 1 ? " x" + a.qty : ""}: ${money(a.qty * a.price)}`);
-  for (const a of fees.ofKind(all).filter((x) => !x.statutory)) lines.push(`  ${a.label}${a.qty > 1 ? " x" + a.qty : ""}: ${money(a.qty * a.price)}`);
-  for (const a of fees.ofKind(all).filter((x) => x.statutory)) lines.push(`  ${a.label}${a.qty > 1 ? ` (${a.qty} acts at ${money(a.price)})` : ""}: ${money(a.qty * a.price)}`);
-  const total = (Number(quoted) || 0) + all.reduce((t, a) => t + a.qty * a.price, 0);
-  const breakdown = lines.length ? `\n\nCharges${b.quoted_fee != null ? "" : " (estimated)"}:\n${lines.join("\n")}\n  Total: ${money(total)}` : "";
   await mail.send({ to: b.contact_email, subject: `Add a card for booking ${b.ref}`,
-    text: `Hi ${b.contact_name},\n\nPlease add a payment card for your ${settings.business.name} appointment (${b.ref}). Your card is saved securely with Stripe and charged only after the appointment.${breakdown}\n\nAdd your card: ${url}\n\nQuestions? ${settings.business.phone} · ${settings.business.email}` });
+    text: `Hi ${b.contact_name},\n\nPlease add a payment card for your ${settings.business.name} appointment (${b.ref}). Your card is saved securely with Stripe and charged only after the appointment.\n\nAdd your card: ${url}\n\nQuestions? ${settings.business.phone} · ${settings.business.email}` });
   await logEvent(b.id, "desk", "Emailed the customer a link to add a card");
   res.json({ ok: true });
 });

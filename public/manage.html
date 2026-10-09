@@ -71,10 +71,7 @@
     if (b.mailingAddress) rows.push(["Docs mailed to", b.mailingAddress]);
     if (b.notary) rows.push(["Your notary", b.notary.name + (b.notary.phone ? " · " + b.notary.phone : "")]);
     if (b.addons && b.addons.length) rows.push(["Add-ons", b.addons.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
-    const money = (a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`;
-    const stateFees = (b.fees || []).filter((a) => a.statutory), otherFees = (b.fees || []).filter((a) => !a.statutory);
-    if (otherFees.length) rows.push(["Extra fees", otherFees.map(money).join(", ")]);
-    if (stateFees.length) rows.push(["Notarial fee", stateFees.map((a) => `${a.qty} act${a.qty > 1 ? "s" : ""} at $${Number(a.price).toFixed(2)} = $${(a.qty * a.price).toFixed(2)} (set by New Jersey)`).join(", ")]);
+    if (b.fees && b.fees.length) rows.push(["Extra fees", b.fees.map((a) => `${a.label}${a.qty > 1 ? " ×" + a.qty : ""} ($${(a.qty * a.price).toFixed(2)})`).join(", ")]);
     if (b.estFee != null) rows.push(["Fee", "$" + (Number(b.estFee) + Number(b.addonsTotal || 0)).toFixed(2) + (b.feeIsQuote ? "" : " estimated") + (b.addonsTotal ? ((b.addons && b.addons.length) && (b.fees && b.fees.length) ? " incl. add-ons and extra fees" : (b.fees && b.fees.length) ? " incl. extra fees" : " incl. add-ons") : "")]);
     const dl = $("#details"); dl.innerHTML = "";
     rows.forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
