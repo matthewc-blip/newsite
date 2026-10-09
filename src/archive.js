@@ -8,7 +8,7 @@ const r2On = () => !!(E.R2_ACCOUNT_ID && E.R2_ACCESS_KEY_ID && E.R2_SECRET_ACCES
 
 // Buckets created in a jurisdiction (EU, FedRAMP) live at a different address. R2_ENDPOINT overrides the default; R2_JURISDICTION ("eu" or "fedramp") builds it.
 function endpoint() {
-  if (clean(E.R2_ENDPOINT)) return clean(E.R2_ENDPOINT).replace(/\/+$/, "");
+  if (clean(E.R2_ENDPOINT)) { try { return new URL(clean(E.R2_ENDPOINT)).origin; } catch { return clean(E.R2_ENDPOINT).replace(/\/+$/, ""); } } // keeps only the address, so a pasted ".../rinsessions" still works
   const j = clean(E.R2_JURISDICTION).toLowerCase();
   return `https://${clean(E.R2_ACCOUNT_ID)}.${j ? j + "." : ""}r2.cloudflarestorage.com`;
 }
