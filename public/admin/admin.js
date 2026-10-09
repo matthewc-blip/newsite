@@ -1170,7 +1170,7 @@
         </div>
         <div class="set-card"><h3>Bookkeeping</h3>
           <p style="font-size:.86rem;color:var(--ink-2)">The Bookkeeping page is unlisted until you open it. Prices are what the starting estimate is built from; leave a price blank for "custom quote". You always see the estimate on each lead, even with prices hidden on the page.</p>
-          <label class="switch" style="margin-top:8px"><input type="checkbox" id="bkOpen" ${bk.open ? "checked" : ""}> Open the page (search engines may list it; it says you're accepting clients)</label>
+          <label class="switch" style="margin-top:8px"><input type="checkbox" id="bkOpen" ${bk.open ? "checked" : ""}> Say on the page that you're accepting clients (the page is always listed on Google either way)</label>
           <label class="switch" style="margin-top:6px"><input type="checkbox" id="bkShow" ${bk.showPrices ? "checked" : ""}> Show starting prices and a live estimate on the page</label>
           <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Per month, per month behind (catch-up), and year-end package</p>
           ${Object.entries(BK_TIERS).map(([id, label]) => `<div class="inline" style="margin-top:6px;align-items:center"><span style="flex:1;min-width:0;font-size:.9rem">${esc(label)}</span>

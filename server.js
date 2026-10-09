@@ -56,7 +56,7 @@ app.use((req, res, next) => {
   if (host !== PUBLIC_HOST && (host === "www." + PUBLIC_HOST || "www." + host === PUBLIC_HOST)) return res.redirect(301, PUBLIC_ORIGIN + req.originalUrl);
   next();
 });
-// The bookkeeping page is unlisted (noindex) until it is opened in Settings → Bookkeeping, then search engines may index it.
+// The bookkeeping page is always open to search engines.
 app.get(["/bookkeeping", "/bookkeeping/"], async (req, res, next) => {
   if (req.path === "/bookkeeping") {
     const q = req.originalUrl.indexOf("?");
@@ -66,7 +66,7 @@ app.get(["/bookkeeping", "/bookkeeping/"], async (req, res, next) => {
   require("fs").readFile(path.join(__dirname, "public", "bookkeeping", "index.html"), "utf8", (err, html) => {
     if (err) return next();
     if (PUBLIC_ORIGIN && PUBLIC_ORIGIN !== "https://www.mcc-solutionsnj.com") html = html.replaceAll("https://www.mcc-solutionsnj.com", PUBLIC_ORIGIN);
-    if (settings?.bookkeeping?.open) html = html.replace('<meta name="robots" content="noindex">\n', "");
+    html = html.replace('<meta name="robots" content="noindex">\n', "");
     res.type("html").send(html);
   });
 });

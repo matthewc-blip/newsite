@@ -196,7 +196,7 @@ function register(app, c) {
       [`How much does it cost?`, t1 ? `Monthly bookkeeping starts at $${t1} for the smallest tier and rises with transaction volume. The bookkeeping page has a live estimate, and we confirm a written quote before starting.` : `Pricing depends on transaction volume and how far behind the books are. Request a quote on the bookkeeping page and we reply with a written estimate.`],
     ];
     res.send(layout({
-      req, biz, path, crumbs, noindex: !(bk && bk.open),
+      req, biz, path, crumbs, noindex: false,
       title: fit(`Bookkeeping for ${t.name}, NJ Small Businesses`),
       description: `Monthly bookkeeping, cleanup, payroll and NJ filings for ${t.name}, NJ small businesses. Based in Cranford.${t1 ? ` Starting at $${t1}/month.` : ""}`,
       body: {

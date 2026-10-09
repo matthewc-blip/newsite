@@ -15,13 +15,13 @@ const paths = () => [[CHECKUP, "0.6"], [HUB, "0.6"], [SW_HUB, "0.6"], ...SOFTWAR
 
 function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
-  const open = async () => !!((await getSettings().catch(() => null))?.bookkeeping?.open);
+  // Every bookkeeping page is always open to search engines. (The Settings switch only changes the wording on the page.)
   const CTA = { ctaHref: "/bookkeeping/#interest", ctaLabel: "Get a Quote" };
   const card = (href, code, h, p, more) => `<a class="svc" href="${href}"><span class="code">${code}</span><h3>${esc(h)}</h3><p>${esc(p)}</p><span class="more">${more} →</span></a>`;
   const provider = (url) => ({ "@type": "ProfessionalService", name: "MCC Solutions", url: url + "/", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } });
 
   app.get(HUB, async (req, res) => {
-    const biz = await business(); const url = base(req); const noindex = !(await open());
+    const biz = await business(); const url = base(req); const noindex = false;
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Guides", HUB]];
     res.send(layout({
       req, biz, path: HUB, crumbs, noindex,
@@ -39,7 +39,7 @@ function register(app, c) {
   });
 
   app.get(SW_HUB, async (req, res) => {
-    const biz = await business(); const url = base(req); const noindex = !(await open());
+    const biz = await business(); const url = base(req); const noindex = false;
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Software", SW_HUB]];
     res.send(layout({
       req, biz, path: SW_HUB, crumbs, noindex,
@@ -57,7 +57,7 @@ function register(app, c) {
 
   app.get(`${SW_HUB}/:slug`, async (req, res, next) => {
     const s = SW[req.params.slug]; if (!s) return next();
-    const biz = await business(); const url = base(req); const path = swPath(s); const noindex = !(await open());
+    const biz = await business(); const url = base(req); const path = swPath(s); const noindex = false;
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Software", SW_HUB], [s.name, path]];
     const gl = s.guides.map((x) => GD[x]).filter(Boolean);
     const others = SOFTWARE.filter((x) => x.slug !== s.slug);
@@ -92,7 +92,7 @@ function register(app, c) {
 
   app.get(`${HUB}/:slug`, async (req, res, next) => {
     const g = GD[req.params.slug]; if (!g) return next();
-    const biz = await business(); const url = base(req); const path = gPath(g); const noindex = !(await open());
+    const biz = await business(); const url = base(req); const path = gPath(g); const noindex = false;
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Guides", HUB], [g.title, path]];
     const sws = (g.software || []).map((x) => SW[x]).filter(Boolean);
     const more = lb.cyclic(GUIDES, g, 4);
@@ -129,7 +129,7 @@ function register(app, c) {
     tag: "Free bookkeeping health check", quoteUrl: "https://mcc-solutionsnj.com/bookkeeping/#interest", leadSubject: "Your bookkeeping health check", deskSubject: "Bookkeeping health check lead" });
 
   app.get(CHECKUP, async (req, res) => {
-    const biz = await business(); const url = base(req); const noindex = !(await open());
+    const biz = await business(); const url = base(req); const noindex = false;
     const crumbs = [["MCC Solutions", "/"], ["Bookkeeping", "/bookkeeping/"], ["Health check", CHECKUP]];
     const faqs = [
       ["What is this?", "A short set of questions about how your business keeps its books: separate accounts, reconciliation, records, payroll and sales tax filings, and year-end. You get a score and a plain-English list of what to tackle first, with a guide for each."],
