@@ -56,7 +56,7 @@ async function recordFromSession(sessionId, expectBookingId) {
   if (b.stripe_payment_method_id === c.paymentMethodId) return b;
   const updated = await db.one(`UPDATE bookings SET stripe_customer_id = $1, stripe_payment_method_id = $2, card_brand = $3, card_last4 = $4,
       card_saved_at = now(), updated_at = now() WHERE id = $5 RETURNING *`, [c.customerId || b.stripe_customer_id, c.paymentMethodId, c.brand || null, c.last4 || null, b.id]);
-  await logEvent(b.id, "customer", `Card saved (${c.brand || "card"} ending ${c.last4 || "?"})`);
+  await logEvent(b.id, "customer", `${c.type && c.type !== "card" ? `Payment method saved (type: ${c.type})` : "Card saved"} (${c.brand || "card"}${c.last4 ? ` ending ${c.last4}` : ""})`);
   return updated;
 }
 

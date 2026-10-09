@@ -115,8 +115,10 @@ async function readCardSession(sessionId) {
     bookingId: Number(s.metadata && s.metadata.mcc_booking_id) || null,
     customerId: typeof s.customer === "string" ? s.customer : s.customer && s.customer.id,
     paymentMethodId: pm && pm.id,
-    brand: pm && pm.card && pm.card.brand,
-    last4: pm && pm.card && pm.card.last4,
+    // Checkout offers whatever is switched on in the Stripe Dashboard, so the saved method is not always a card.
+    brand: pm && ((pm.card && pm.card.brand) || (pm.us_bank_account && (pm.us_bank_account.bank_name || "bank account")) || (pm.type === "link" ? "Link" : pm.type)),
+    last4: pm && ((pm.card && pm.card.last4) || (pm.us_bank_account && pm.us_bank_account.last4) || null),
+    type: pm && pm.type,
   };
 }
 
