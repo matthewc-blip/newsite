@@ -796,7 +796,7 @@
     const b = ev.currentTarget; b.disabled = true; b.textContent = "Testing…";
     try {
       const r = await api("/api/admin/remote-storage");
-      alert([r.verdict, "", ...(r.probe || []).map((p) => `${p.label} address: ${p.found ? "FOUND the bucket" : "not found (" + (p.status || p.code) + ")"}`), "", `Bucket: ${r.bucket}`, `Address: ${r.endpoint}`, `Buckets this key can see: ${r.buckets ? (r.buckets.join(", ") || "none") : "(couldn't list)"}`, `Account ID: ${r.account}`, `Access key ID: ${r.accessKeyId}`, `Secret length: ${r.secretLength}`, "", ...r.steps.map((s) => (s.ok ? "OK    " : "FAILED ") + s.name + (s.error ? `\n      ${s.error}${s.status ? " (HTTP " + s.status + ")" : ""}` : ""))].join("\n"));
+      alert([r.verdict, "", ...(r.probe || []).map((p) => `${p.label} address: ${p.found ? "FOUND the bucket" : "not found (" + (p.status || p.code) + ")"}`), "", `Bucket: ${r.bucket} — ${r.bucketChars}`, `Address: ${r.endpoint}`, `Buckets this key can see: ${r.buckets ? (r.buckets.join(", ") || "none") : "(couldn't list)"}`, `Account ID: ${r.account}`, `Access key ID: ${r.accessKeyId}`, `Secret length: ${r.secretLength}`, "", ...r.steps.map((s) => (s.ok ? "OK    " : "FAILED ") + s.name + (s.error ? `\n      ${s.error}${s.status ? " (HTTP " + s.status + ")" : ""}` : ""))].join("\n"));
     } catch (e) { alert(e.message); }
     b.disabled = false; b.textContent = "Test storage";
   });

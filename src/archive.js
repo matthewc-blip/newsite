@@ -3,6 +3,9 @@
 // Optional: without the R2 keys, recordings stay in Zoom only and nothing here runs.
 const E = process.env;
 const clean = (v) => String(v || "").trim();
+// Values pasted from a web page can carry invisible characters. Bucket names are only a-z, 0-9, "." and "-"; account IDs and access keys are hex.
+const bucketName = () => String(process.env.R2_BUCKET || "").toLowerCase().replace(/[^a-z0-9.-]/g, "");
+const hexOf = (v) => String(v || "").replace(/[^A-Za-z0-9]/g, "");
 
 const r2On = () => !!(E.R2_ACCOUNT_ID && E.R2_ACCESS_KEY_ID && E.R2_SECRET_ACCESS_KEY && E.R2_BUCKET);
 
@@ -10,7 +13,7 @@ const r2On = () => !!(E.R2_ACCOUNT_ID && E.R2_ACCESS_KEY_ID && E.R2_SECRET_ACCES
 function endpoint() {
   if (clean(E.R2_ENDPOINT)) { try { return new URL(clean(E.R2_ENDPOINT)).origin; } catch { return clean(E.R2_ENDPOINT).replace(/\/+$/, ""); } } // keeps only the address, so a pasted ".../rinsessions" still works
   const j = clean(E.R2_JURISDICTION).toLowerCase();
-  return `https://${clean(E.R2_ACCOUNT_ID)}.${j ? j + "." : ""}r2.cloudflarestorage.com`;
+  return `https://${hexOf(E.R2_ACCOUNT_ID)}.${j ? j + "." : ""}r2.cloudflarestorage.com`;
 }
 
 function makeClient(ep) {
@@ -19,7 +22,7 @@ function makeClient(ep) {
     region: "auto",
     endpoint: ep,
     forcePathStyle: true,
-    credentials: { accessKeyId: clean(E.R2_ACCESS_KEY_ID), secretAccessKey: clean(E.R2_SECRET_ACCESS_KEY) },
+    credentials: { accessKeyId: hexOf(E.R2_ACCESS_KEY_ID), secretAccessKey: hexOf(E.R2_SECRET_ACCESS_KEY) },
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
   });
@@ -32,7 +35,7 @@ function s3() {
       region: "auto",
       endpoint: endpoint(),
       forcePathStyle: true, // bucket goes in the path, the form R2 documents for S3 clients
-      credentials: { accessKeyId: String(E.R2_ACCESS_KEY_ID).trim(), secretAccessKey: String(E.R2_SECRET_ACCESS_KEY).trim() },
+      credentials: { accessKeyId: hexOf(E.R2_ACCESS_KEY_ID), secretAccessKey: hexOf(E.R2_SECRET_ACCESS_KEY) },
       // Newer SDK versions add checksum headers by default; R2 only wants them when an operation requires one.
       requestChecksumCalculation: "WHEN_REQUIRED",
       responseChecksumValidation: "WHEN_REQUIRED",
@@ -46,7 +49,7 @@ async function putStream(key, body, meta = {}) {
   const { Upload } = require("@aws-sdk/lib-storage");
   const up = new Upload({
     client: s3(),
-    params: { Bucket: clean(E.R2_BUCKET), Key: key, Body: body, ContentType: meta.contentType || "application/octet-stream", Metadata: meta.metadata || {} },
+    params: { Bucket: bucketName(), Key: key, Body: body, ContentType: meta.contentType || "application/octet-stream", Metadata: meta.metadata || {} },
     queueSize: 3,
     partSize: 16 * 1024 * 1024,
   });
@@ -58,7 +61,7 @@ async function putStream(key, body, meta = {}) {
 async function sha256Of(key) {
   const crypto = require("crypto");
   const { GetObjectCommand } = require("@aws-sdk/client-s3");
-  const r = await s3().send(new GetObjectCommand({ Bucket: clean(E.R2_BUCKET), Key: key }));
+  const r = await s3().send(new GetObjectCommand({ Bucket: bucketName(), Key: key }));
   const h = crypto.createHash("sha256"); let n = 0;
   for await (const c of r.Body) { h.update(c); n += c.length; }
   return { sha256: h.digest("hex"), size: n };
@@ -67,9 +70,9 @@ async function sha256Of(key) {
 // Tries each storage step on its own so a failure says which permission or setting is wrong. Uses the unlocked "healthcheck/" prefix.
 async function selfTest() {
   const c = require("@aws-sdk/client-s3");
-  const bucket = clean(E.R2_BUCKET), key = `healthcheck/${Date.now()}.txt`;
+  const bucket = bucketName(), key = `healthcheck/${Date.now()}.txt`;
   const mask = (v) => { v = clean(v); return v.length > 8 ? `${v.slice(0, 4)}…${v.slice(-4)} (${v.length} characters)` : `(${v.length} characters)`; };
-  const out = { endpoint: endpoint().replace(clean(E.R2_ACCOUNT_ID), "<account>"), buckets: null, account: mask(E.R2_ACCOUNT_ID), accessKeyId: mask(E.R2_ACCESS_KEY_ID), secretLength: clean(E.R2_SECRET_ACCESS_KEY).length, bucket, steps: [] };
+  const out = { endpoint: endpoint().replace(clean(E.R2_ACCOUNT_ID), "<account>"), buckets: null, account: mask(E.R2_ACCOUNT_ID), accessKeyId: mask(E.R2_ACCESS_KEY_ID), secretLength: clean(E.R2_SECRET_ACCESS_KEY).length, bucket, bucketChars: `${bucket.length} characters (Render value is ${String(process.env.R2_BUCKET || "").length} before cleaning)`, steps: [] };
   const step = async (name, fn) => {
     try { await fn(); out.steps.push({ name, ok: true }); return true; }
     catch (e) { out.steps.push({ name, ok: false, error: `${e.name || "Error"}: ${e.message}`, status: e.$metadata?.httpStatusCode }); return false; }
@@ -77,16 +80,16 @@ async function selfTest() {
   // Which address actually holds the bucket? Buckets in the EU or FedRAMP jurisdictions are invisible at the default address.
   out.probe = [];
   for (const [label, j] of [["default", ""], ["EU", "eu.", "R2_JURISDICTION=eu"], ["FedRAMP", "fedramp.", "R2_JURISDICTION=fedramp"]].map((x) => [x[0], x[1], x[2]])) {
-    const ep = `https://${clean(E.R2_ACCOUNT_ID)}.${j}r2.cloudflarestorage.com`;
+    const ep = `https://${hexOf(E.R2_ACCOUNT_ID)}.${j}r2.cloudflarestorage.com`;
     try { await makeClient(ep).send(new c.HeadBucketCommand({ Bucket: bucket })); out.probe.push({ label, found: true }); }
     catch (e) { out.probe.push({ label, found: false, status: e.$metadata?.httpStatusCode, code: e.name }); }
   }
-  try { const { S3Client } = require("@aws-sdk/client-s3"); await new S3Client({ region: "auto", endpoint: `https://${clean(E.R2_ACCOUNT_ID)}.r2.cloudflarestorage.com`, forcePathStyle: false, credentials: { accessKeyId: clean(E.R2_ACCESS_KEY_ID), secretAccessKey: clean(E.R2_SECRET_ACCESS_KEY) }, requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED" }).send(new c.HeadBucketCommand({ Bucket: bucket })); out.probe.push({ label: "default (bucket in web address)", found: true }); }
+  try { const { S3Client } = require("@aws-sdk/client-s3"); await new S3Client({ region: "auto", endpoint: `https://${hexOf(E.R2_ACCOUNT_ID)}.r2.cloudflarestorage.com`, forcePathStyle: false, credentials: { accessKeyId: clean(E.R2_ACCESS_KEY_ID), secretAccessKey: clean(E.R2_SECRET_ACCESS_KEY) }, requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED" }).send(new c.HeadBucketCommand({ Bucket: bucket })); out.probe.push({ label: "default (bucket in web address)", found: true }); }
   catch (e) { out.probe.push({ label: "default (bucket in web address)", found: false, status: e.$metadata?.httpStatusCode, code: e.name }); }
   const hit = out.probe.find((p) => p.found);
   out.verdict = hit ? (hit.label.startsWith("default") ? "Bucket found at the default address. No jurisdiction setting is needed." : `Bucket found at the ${hit.label} address. Set ${hit.label === "EU" ? "R2_JURISDICTION=eu" : "R2_JURISDICTION=fedramp"} in Render.`) : "Bucket not found at any address. Either the name differs from R2_BUCKET, or this key can't reach it (check the token's permission, and that the Account ID belongs to the account that owns the bucket).";
   // Every step runs even if an earlier one fails: some tokens can upload but not "find" the bucket, and the pattern tells us which permission is missing.
-  await step("List buckets (optional; object-only tokens are not allowed to)", async () => { out.buckets = ((await s3().send(new c.ListBucketsCommand({}))).Buckets || []).map((b) => b.Name); });
+  await step("List buckets (optional; object-only tokens are not allowed to)", async () => { out.buckets = ((await s3().send(new c.ListBucketsCommand({}))).Buckets || []).map((b) => `${b.Name} (${b.Name.length} characters)`); });
   await step("Find the bucket (HeadBucket)", () => s3().send(new c.HeadBucketCommand({ Bucket: bucket })));
   await step("List files in the bucket", () => s3().send(new c.ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 })));
   const up = await step("Upload a small file", () => s3().send(new c.PutObjectCommand({ Bucket: bucket, Key: key, Body: "storage test" })));
