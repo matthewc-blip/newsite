@@ -56,7 +56,9 @@ const crumbSchema = (url, items) => ({ "@type": "BreadcrumbList", itemListElemen
 function layout({ req, biz, title, description, path, crumbs, body, schema, noindex }) {
   const url = base(req);
   const canonical = url + path;
-  const graph = { "@context": "https://schema.org", "@graph": schema };
+  // Every page with a visible trail also gets matching BreadcrumbList markup, even if the page didn't add it itself.
+  const hasCrumbLd = (schema || []).some((s) => s && s["@type"] === "BreadcrumbList");
+  const graph = { "@context": "https://schema.org", "@graph": crumbs && crumbs.length > 1 && !hasCrumbLd ? [...(schema || []), crumbSchema(url, crumbs)] : schema };
   const json = JSON.stringify(graph).replace(/</g, "\\u003c");
   const phone = esc(biz.phone), email = esc(biz.email);
   return `<!doctype html>
