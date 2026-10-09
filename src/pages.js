@@ -46,6 +46,19 @@ function register(app) {
             <p>Alongside MCC, I complete data and strategy projects through Parker Dewey's micro-internship program for organizations ranging from a Fortune 500 consumer-goods subsidiary to a talent agency, a private equity firm and a venture-backed founder. The work has included a territory expansion plan with a prioritized account list, a data-driven talent pipeline tool, an asset-management data and strategy project, and a lead list of funded technology and healthcare companies. The habit is the same one I bring to your paperwork: get the numbers right, then make them usable.</p>
           </div>
         </div></section>
+        <section class="band alt"><div class="wrap">
+          <div class="sec-head"><p class="eyebrow">Our mission</p><h2>What we're here to do</h2></div>
+          <p class="lede" style="max-width:820px">MCC Solutions makes the paperwork of life simple for New Jersey families and businesses, with clear prices, honest answers and work done right. We also give new notaries and bookkeepers a real chance to prove themselves, because everyone good started somewhere.</p>
+          <div class="sec-head" style="margin-top:34px"><p class="eyebrow">Core values</p><h2>How we do it</h2></div>
+          <div class="grid g2">
+            <div class="svc"><span class="code">HONEST</span><h3>Honest first</h3><p>Prices are posted. We tell you what we can and can't do, and we don't make up reviews, numbers or promises.</p></div>
+            <div class="svc"><span class="code">RIGHT</span><h3>Done right</h3><p>Every notary is verified and every package is checked before it ships, because a closing that fails costs real people real time.</p></div>
+            <div class="svc"><span class="code">CHANCE</span><h3>A chance to prove yourself</h3><p>New notaries and bookkeepers get a fair start. We show you how to qualify, set clear expectations and judge you on your work.</p></div>
+            <div class="svc"><span class="code">ON TIME</span><h3>Respect people's time</h3><p>We show up when we say we will, answer when you reach out and keep you updated so you never have to chase us.</p></div>
+            <div class="svc"><span class="code">CARE</span><h3>Careful with your information</h3><p>Your documents stay in private storage, are shared only with the people who need them, and are deleted when the job is done.</p></div>
+            <div class="svc"><span class="code">LANE</span><h3>Know our lane</h3><p>We're notaries and bookkeepers, not lawyers or CPAs. When something needs a licensed professional, we say so and point you to one.</p></div>
+          </div>
+        </div></section>
         <section class="band"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">Credentials</p><h2>Licensed, certified and insured</h2></div>
           <ul class="cred-list">${CREDENTIALS.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join("")}</ul>
