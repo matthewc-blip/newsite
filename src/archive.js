@@ -13,6 +13,16 @@ function endpoint() {
   return `https://${clean(E.R2_ACCOUNT_ID)}.${j ? j + "." : ""}r2.cloudflarestorage.com`;
 }
 
+function makeClient(ep) {
+  const { S3Client } = require("@aws-sdk/client-s3");
+  return new S3Client({
+    region: "auto",
+    endpoint: ep,
+    credentials: { accessKeyId: clean(E.R2_ACCESS_KEY_ID), secretAccessKey: clean(E.R2_SECRET_ACCESS_KEY) },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
+}
 let client;
 function s3() {
   if (!client) {
@@ -62,8 +72,17 @@ async function selfTest() {
     try { await fn(); out.steps.push({ name, ok: true }); return true; }
     catch (e) { out.steps.push({ name, ok: false, error: `${e.name || "Error"}: ${e.message}`, status: e.$metadata?.httpStatusCode }); return false; }
   };
+  // Which address actually holds the bucket? Buckets in the EU or FedRAMP jurisdictions are invisible at the default address.
+  out.probe = [];
+  for (const [label, j] of [["default", ""], ["EU", "eu.", "R2_JURISDICTION=eu"], ["FedRAMP", "fedramp.", "R2_JURISDICTION=fedramp"]].map((x) => [x[0], x[1], x[2]])) {
+    const ep = `https://${clean(E.R2_ACCOUNT_ID)}.${j}r2.cloudflarestorage.com`;
+    try { await makeClient(ep).send(new c.HeadBucketCommand({ Bucket: bucket })); out.probe.push({ label, found: true }); }
+    catch (e) { out.probe.push({ label, found: false, status: e.$metadata?.httpStatusCode, code: e.name }); }
+  }
+  const hit = out.probe.find((p) => p.found);
+  out.verdict = hit ? (hit.label === "default" ? "Bucket found at the default address. No jurisdiction setting is needed." : `Bucket found at the ${hit.label} address. Set ${hit.label === "EU" ? "R2_JURISDICTION=eu" : "R2_JURISDICTION=fedramp"} in Render.`) : "Bucket not found at any address. Either the name differs from R2_BUCKET, or this key can't reach it (check the token's permission, and that the Account ID belongs to the account that owns the bucket).";
   // Every step runs even if an earlier one fails: some tokens can upload but not "find" the bucket, and the pattern tells us which permission is missing.
-  await step("See which buckets this key can access", async () => { out.buckets = ((await s3().send(new c.ListBucketsCommand({}))).Buckets || []).map((b) => b.Name); });
+  await step("List buckets (optional; object-only tokens are not allowed to)", async () => { out.buckets = ((await s3().send(new c.ListBucketsCommand({}))).Buckets || []).map((b) => b.Name); });
   await step("Find the bucket (HeadBucket)", () => s3().send(new c.HeadBucketCommand({ Bucket: bucket })));
   await step("List files in the bucket", () => s3().send(new c.ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 })));
   const up = await step("Upload a small file", () => s3().send(new c.PutObjectCommand({ Bucket: bucket, Key: key, Body: "storage test" })));
