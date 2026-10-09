@@ -180,6 +180,7 @@ const BOOKS = [
     faqs: [["Can you set up mileage tracking?", "Yes. We'll suggest a simple method that fits how you work."], ["Do you do payroll for a team?", "Ask us. See the bookkeeping page for payroll and filings."], ["Can you chase unpaid invoices?", "We track them and flag them. Collections are a separate matter."]],
   },
 ];
+BOOKS.push(...require("./seo-niche-crisis"));
 
 const paths = () => NOTARY.map((p) => [p.path, "0.6"]);
 const bkPaths = () => BOOKS.map((p) => [p.path, "0.5"]);
