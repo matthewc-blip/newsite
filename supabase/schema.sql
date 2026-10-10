@@ -566,6 +566,53 @@ alter table remote_hashes add column if not exists retain_until date;         --
 create index if not exists remote_hashes_session on remote_hashes(session_id);
 alter table remote_hashes enable row level security;
 
+-- ===== Seals: append-only link between a session's fingerprints and its shipping tracking number (safe to re-run) =====
+-- One row per seal. Rows can never be updated or deleted (triggers below), and each row's seal_hash covers the
+-- previous row's seal_hash, so any edit or removal anywhere in the history breaks every later hash.
+create table if not exists remote_seals (
+  id serial primary key,
+  session_id integer not null references remote_sessions(id) on delete restrict,
+  session_ref text not null,
+  tracking text not null,
+  carrier text,
+  manifest jsonb not null,       -- [{kind, filename, size_bytes, sha256}] exactly as sealed
+  manifest_sha256 text not null, -- SHA-256 of the canonical manifest text
+  prev_seal_hash text not null,  -- 64 zeros for the first seal
+  seal_hash text not null,       -- SHA-256 over prev, ref, tracking, manifest hash and sealed_at
+  sealed_at timestamptz not null,
+  sealed_by text
+);
+create index if not exists remote_seals_session on remote_seals(session_id);
+alter table remote_seals enable row level security;
+create or replace function remote_seals_block() returns trigger language plpgsql as $f$
+begin raise exception 'remote_seals is append-only: % is not allowed', tg_op using errcode = '42501'; end $f$;
+drop trigger if exists remote_seals_no_change on remote_seals;
+create trigger remote_seals_no_change before update or delete on remote_seals for each row execute function remote_seals_block();
+drop trigger if exists remote_seals_no_truncate on remote_seals;
+create trigger remote_seals_no_truncate before truncate on remote_seals for each statement execute function remote_seals_block();
+-- Once a session is sealed, its fingerprints and tracking number can no longer be changed or removed.
+create or replace function remote_hashes_sealed_guard() returns trigger language plpgsql as $f$
+begin
+  if exists (select 1 from remote_seals where session_id = old.session_id) then
+    if tg_op = 'DELETE' then raise exception 'This session is sealed; its fingerprints cannot be deleted' using errcode = '42501'; end if;
+    if new.sha256 is distinct from old.sha256 or new.session_id is distinct from old.session_id or new.filename is distinct from old.filename or new.size_bytes is distinct from old.size_bytes or new.kind is distinct from old.kind then
+      raise exception 'This session is sealed; its fingerprints cannot be changed' using errcode = '42501'; end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if; return new;
+end $f$;
+drop trigger if exists remote_hashes_sealed on remote_hashes;
+create trigger remote_hashes_sealed before update or delete on remote_hashes for each row execute function remote_hashes_sealed_guard();
+create or replace function remote_sessions_sealed_guard() returns trigger language plpgsql as $f$
+begin
+  if exists (select 1 from remote_seals where session_id = old.id) then
+    if tg_op = 'DELETE' then raise exception 'This session is sealed and cannot be deleted' using errcode = '42501'; end if;
+    if new.tracking is distinct from old.tracking then raise exception 'This session is sealed; the tracking number is locked' using errcode = '42501'; end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if; return new;
+end $f$;
+drop trigger if exists remote_sessions_sealed on remote_sessions;
+create trigger remote_sessions_sealed before update or delete on remote_sessions for each row execute function remote_sessions_sealed_guard();
+
 -- ===== Bookkeeping billing (added in v20; safe to re-run) =====
 -- Invoices for bookkeeping clients hang off the lead instead of a booking. period_key ("2026-10") makes a monthly invoice happen once per month.
 alter table invoices add column if not exists kind text default 'notary';

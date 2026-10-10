@@ -137,6 +137,41 @@ async function personaRefresh(id) {
 }
 
 /* ---------- data ---------- */
+
+/* ---------- Seals: recording fingerprints + shipping tracking number, written once to an append-only table ---------- */
+const canon = (m) => JSON.stringify(m.map((h) => ({ kind: h.kind, filename: h.filename ?? null, size_bytes: h.size_bytes == null ? null : Number(h.size_bytes), sha256: h.sha256 })));
+const sha = (t) => crypto.createHash("sha256").update(t).digest("hex");
+const ZERO = "0".repeat(64);
+const sealText = (prev, ref, tracking, manifestHash, at) => [prev, ref, tracking, manifestHash, at].join("|");
+async function sealSession(s, by, carrier) {
+  const tracking = String(s.tracking || "").trim();
+  if (!tracking) throw bad("Enter the tracking number first.");
+  return db.tx(async (t) => {
+    await t.run("select pg_advisory_xact_lock(7340211)");
+    if (await t.one("select id from remote_seals where session_id=$1", [s.id])) throw bad("This session is already sealed. Seals can't be changed.");
+    const hs = await t.all("select kind, filename, size_bytes, sha256 from remote_hashes where session_id=$1 order by sha256", [s.id]);
+    if (!hs.some((h) => h.kind === "recording")) throw bad("There is no recording fingerprint yet. Wait for Zoom to finish, or use Retry fingerprint.");
+    const manifest = JSON.parse(canon(hs));
+    const mh = sha(canon(manifest));
+    const prev = (await t.one("select seal_hash from remote_seals order by id desc limit 1"))?.seal_hash || ZERO;
+    const at = new Date().toISOString();
+    const seal = sha(sealText(prev, s.ref, tracking, mh, at));
+    return t.one("insert into remote_seals (session_id,session_ref,tracking,carrier,manifest,manifest_sha256,prev_seal_hash,seal_hash,sealed_at,sealed_by) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *", [s.id, s.ref, tracking, carrier || null, JSON.stringify(manifest), mh, prev, seal, at, by || "admin"]);
+  });
+}
+// Re-computes every hash in the chain from the stored values. Reports the first row that doesn't match.
+async function verifySeals() {
+  const rows = await db.all("select * from remote_seals order by id");
+  let prev = ZERO;
+  for (const r of rows) {
+    const mh = sha(canon(r.manifest));
+    const at = new Date(r.sealed_at).toISOString();
+    if (r.prev_seal_hash !== prev || r.manifest_sha256 !== mh || r.seal_hash !== sha(sealText(prev, r.session_ref, r.tracking, mh, at))) return { ok: false, count: rows.length, brokenAt: r.id, ref: r.session_ref };
+    prev = r.seal_hash;
+  }
+  return { ok: true, count: rows.length, head: prev };
+}
+
 const ref = () => "RS-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 const get = (id) => db.one("select * from remote_sessions where id=$1", [id]);
 const view = (s) => ({ ...s, hoursLeft: s.paper_due_at && !s.paper_received_at ? Math.round((new Date(s.paper_due_at) - Date.now()) / 36e5) : null });
@@ -262,9 +297,18 @@ function register(app, { requireAdmin }) {
     sessions: await (async () => {
       const rows = (await db.all("select * from remote_sessions order by coalesce(scheduled_at, created_at) desc limit 100")).map(view);
       const hs = await db.all("select * from remote_hashes where session_id = any($1::int[]) order by created_at", [rows.map((r) => r.id)]);
-      return rows.map((r) => ({ ...r, hashes: hs.filter((h) => h.session_id === r.id) }));
+      const sl = await db.all("select * from remote_seals where session_id = any($1::int[])", [rows.map((r) => r.id)]);
+      return rows.map((r) => ({ ...r, hashes: hs.filter((h) => h.session_id === r.id), seal: sl.find((x) => x.session_id === r.id) || null }));
     })(),
   })));
+  app.get("/api/admin/remote-seals/verify", requireAdmin, wrap(async () => verifySeals()));
+  app.post("/api/admin/remote/:id/seal", requireAdmin, wrap(async (req) => {
+    const s = await load(req), b = req.body || {};
+    if (b.tracking !== undefined) { const tr = str(b.tracking, 120); if (tr) await db.run("update remote_sessions set tracking=$2 where id=$1", [s.id, tr]); }
+    const row = await sealSession(await get(s.id), req.admin?.email || "admin", str(b.carrier, 40));
+    mail.deskNotice(`Sealed: ${row.session_ref}`, `Session ${row.session_ref} sealed.\nTracking: ${row.tracking}\nFingerprints: ${row.manifest.map((h) => `${h.kind} ${h.filename || ""} SHA-256 ${h.sha256}`).join("\n  ")}\nManifest SHA-256: ${row.manifest_sha256}\nSeal: ${row.seal_hash}\nPrevious seal: ${row.prev_seal_hash}\nSealed at: ${new Date(row.sealed_at).toISOString()}\n\nKeep this email as an independent, dated copy.`);
+    return { seal: row };
+  }));
   app.post("/api/admin/remote/:id/hashes", requireAdmin, wrap(async (req) => {
     const s = await load(req), b = req.body || {};
     const kind = KINDS.includes(b.kind) ? b.kind : "other", sha = String(b.sha256 || "").trim().toLowerCase();
@@ -363,4 +407,4 @@ function register(app, { requireAdmin }) {
   app.delete("/api/admin/remote/:id", requireAdmin, wrap(async (req) => { await db.run("delete from remote_sessions where id=$1 and completed_at is null", [Number(req.params.id) || 0]); return { ok: true }; }));
 }
 
-module.exports = { register, startJob, zoomWebhook, personaWebhook, runAlerts, hashRecording, hashZoomFile, CHECKS };
+module.exports = { sealSession, verifySeals, register, startJob, zoomWebhook, personaWebhook, runAlerts, hashRecording, hashZoomFile, CHECKS };

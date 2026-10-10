@@ -760,7 +760,8 @@
             <input type="file" data-hfile="${s.id}"></label>
           <label style="font-size:.84rem;display:block;margin-top:8px">Check a file against the saved fingerprints <input type="file" data-hcheck="${s.id}"></label>
           <p class="form-msg" data-hmsg="${s.id}" style="font-size:.84rem"></p></details>
-        <label style="font-size:.86rem">Tracking number for the signed paper <input data-rtrack="${s.id}" value="${esc(s.tracking || "")}" style="width:100%"></label>
+        <label style="font-size:.86rem">Tracking number for the signed paper <input data-rtrack="${s.id}" value="${esc(s.tracking || "")}" ${s.seal ? "readonly" : ""} style="width:100%"></label>
+        ${s.seal ? `<div style="font-size:.78rem;margin:8px 0;word-break:break-all;border:1px solid var(--line);padding:8px"><b style="color:var(--ok,#1a7f37)">Sealed</b> ${esc(full(s.seal.sealed_at))} · tracking <b>${esc(s.seal.tracking)}</b>${s.seal.carrier ? " (" + esc(s.seal.carrier) + ")" : ""}<br>Seal <code>${esc(s.seal.seal_hash)}</code><br>Previous <code>${esc(s.seal.prev_seal_hash)}</code><br>Locked in the database: it cannot be edited or deleted.</div>` : `<p style="margin:6px 0"><button class="btn btn-ghost btn-sm" data-rseal="${s.id}">Seal recording hash to tracking</button></p><p class="form-msg" data-sealmsg="${s.id}" style="font-size:.84rem"></p>`}
         <div class="actions" style="margin-top:10px;flex-wrap:wrap">
           ${!s.zoom_join_url && REM.zoom ? `<button class="btn btn-ghost btn-sm" data-ract="zoom" data-id="${s.id}">Create Zoom</button>` : ""}
           ${REM.persona ? `<button class="btn btn-ghost btn-sm" data-ract="persona" data-id="${s.id}">${s.persona_inquiry_id ? "New ID check link" : "Start ID check"}</button>` : ""}
@@ -799,8 +800,18 @@
       try { const h = await sha(f), m = (s.hashes || []).find((x) => x.sha256 === h); hm(id, m ? `Match: this file is identical to the saved ${m.kind.replace("_", " ")} (${m.filename || ""}).` : "No match. This file differs from every saved fingerprint.", !!m); }
       catch (e) { hm(id, "Could not read that file."); }
     }));
+    $$("[data-rseal]").forEach((b) => (b.onclick = async () => {
+      const id = b.dataset.rseal, m = $(`[data-sealmsg="${id}"]`), tr = $(`[data-rtrack="${id}"]`).value.trim();
+      if (!tr) { m.textContent = "Enter the tracking number first."; return; }
+      if (!confirm(`Seal tracking ${tr} to this session's recording fingerprint?\n\nThis is permanent. It cannot be edited or deleted afterward.`)) return;
+      b.disabled = true;
+      try { await api(`/api/admin/remote/${id}/seal`, { method: "POST", body: { tracking: tr } }); await loadRemote(); } catch (e) { m.textContent = e.message; b.disabled = false; }
+    }));
     $$("[data-rtrack]").forEach((b) => (b.onchange = () => post(b.dataset.rtrack, { tracking: b.value })));
   }
+  $("#remVerify")?.addEventListener("click", async () => {
+    try { const r = await api("/api/admin/remote-seals/verify"); alert(r.ok ? `All ${r.count} seal(s) check out. Every hash re-computed and the chain is unbroken.\n\nLatest seal:\n${r.head || "none yet"}` : `CHAIN BROKEN at seal #${r.brokenAt} (${r.ref}). A stored value no longer matches its hash.`); } catch (e) { alert(e.message); }
+  });
   $("#remTest")?.addEventListener("click", async (ev) => {
     const b = ev.currentTarget; b.disabled = true; b.textContent = "Testing…";
     try {
