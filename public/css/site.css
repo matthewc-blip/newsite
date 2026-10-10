@@ -406,3 +406,10 @@ footer .frow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 
 footer .flinks{display:flex;gap:22px}
 footer .fcounties ul.foot-counties{display:grid;columns:auto;column-gap:20px}
 footer .fcounties ul.foot-counties li{margin:0}
+/* Town pages: sourced local facts */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);margin:0}
+.facts div{background:var(--surface);padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.facts dt{font-size:.78rem;color:var(--muted);margin-bottom:4px}
+.facts dd{margin:0;font-weight:600;color:var(--ink);line-height:1.35}
+.sources{margin-top:22px;font-size:.85rem;color:var(--muted);line-height:1.5}
+.sources a{color:inherit;text-decoration:underline}

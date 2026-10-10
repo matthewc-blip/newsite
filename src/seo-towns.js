@@ -4,6 +4,7 @@
 const { getSettings } = require("./db");
 const prices = require("./prices");
 const { fit } = require("./titles");
+const FACTS = require("./seo-towns-facts");
 // Use the long form of a title/description unless it would be cut off in search results.
 const snip = (long, short, max = 60) => (long.length <= max ? long : short);
 
@@ -127,9 +128,38 @@ function register(app, c) {
   const { layout, business, base, faqHtml, faqSchema, crumbSchema, esc, telHref } = c;
   const nearLinks = (t, pathFn) => `<ul class="county-links">${t.near.map((s) => BY[s]).filter(Boolean).map((n) => `<li><a href="${pathFn(n)}">${esc(n.name)}</a></li>`).join("")}</ul>`;
   const allLinks = (pathFn, skip) => `<ul class="county-links">${TOWNS.filter((n) => n.slug !== skip).map((n) => `<li><a href="${pathFn(n)}">${esc(n.name)}</a></li>`).join("")}</ul>`;
+
+  /* ----- sourced local facts (see seo-towns-facts.js) ----- */
+  const fx = (t) => FACTS[t.slug] || {};
+  const num = (n) => Number(n).toLocaleString("en-US");
+  const wikiUrl = (t) => `https://en.wikipedia.org/wiki/${fx(t).wiki}`;
+  const lis = (a) => a.map((x) => `<li>${esc(x)}</li>`).join("");
+  const glance = (t, title) => {
+    const f = fx(t); if (!f.pop) return "";
+    const cells = [["Municipality", `${KIND[t.kind]} ${t.name}, Union County`], ["Population, 2020 Census", num(f.pop)], ["Area", `${f.area} square miles`], ["Government", f.gov], ["Incorporated", f.inc], ["ZIP codes", t.zips]];
+    return `<section class="band"><div class="wrap"><div class="sec-head"><p class="eyebrow">${esc(t.name)} at a glance</p><h2>${esc(title)}</h2></div>
+      <dl class="facts">${cells.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></div></section>`;
+  };
+  const places = (t) => {
+    const f = fx(t); const parts = [];
+    if (f.hoods && f.hoods.length) parts.push(`<p><b>Neighborhoods and areas:</b> ${esc(list(f.hoods))}.</p>`);
+    if (f.marks && f.marks.length) parts.push(`<p><b>Places people know:</b> ${esc(list(f.marks))}.</p>`);
+    return parts.join("");
+  };
+  const getting = (t) => {
+    const f = fx(t); const li = [];
+    (f.rail || []).forEach((r) => li.push(`Rail: ${r}.`));
+    if (f.roads && f.roads.length) li.push(`Roads: ${list(f.roads)}.`);
+    if (f.bus) li.push(`Bus: ${f.bus}`);
+    if (f.air) li.push(f.air);
+    return li.length ? `<ul class="checks">${lis(li)}</ul>` : "";
+  };
+  const sources = (t, extra) => `<p class="sources">Sources: <a href="${wikiUrl(t)}" rel="noopener">${esc(t.name)}, New Jersey on Wikipedia</a> (population is the 2020 Census count)${extra || ""}. Facts are checked against those pages and may change.</p>`;
+  const CLERK = `<a href="https://clerk.ucnj.org/" rel="noopener">Union County Clerk</a>`;
+  const uezLine = (t) => fx(t).uez ? `Parts of ${t.name} have been designated an Urban Enterprise Zone, which allows qualifying retailers to charge a reduced 3.3125% sales tax rate instead of New Jersey's 6.625%. Zone boundaries and status change over time, so we confirm the exact address with the NJ Division of Taxation before setting up sales tax.` : "";
   const svc = (url, name, type, desc, path, t) => ({ "@type": "Service", name, serviceType: type, description: desc, url: url + path,
     provider: { "@type": "ProfessionalService", name: "MCC Solutions", url: url + "/", address: { "@type": "PostalAddress", addressLocality: "Cranford", addressRegion: "NJ", addressCountry: "US" } },
-    areaServed: { "@type": "City", name: `${t.name}, NJ` } });
+    areaServed: { "@type": "City", name: `${t.name}, NJ`, sameAs: wikiUrl(t), containedInPlace: { "@type": "AdministrativeArea", name: "Union County, New Jersey" } } });
 
   /* ----- service-area hubs (the middle step of the town breadcrumbs) ----- */
   const areaHub = (path, label, topPath, pathFn, what) => app.get(path, async (req, res) => {
@@ -164,6 +194,8 @@ function register(app, c) {
       [`Do you handle loan signings in ${t.name}?`, `Yes. Loan signing agents handle purchases, refinances, HELOCs and reverse mortgages in ${t.name}. Printing and scanbacks are included, and we coordinate with your title company or lender.`],
       [`Where do I record a deed signed in ${t.name}?`, `Deeds for ${t.name} are recorded with the Union County Clerk in Elizabeth. We can notarize the deed here, and our document recording service can file it for you.`],
       [`What should I have ready for a notary visit in ${t.name}?`, `An unexpired government photo ID for every signer, the complete documents (unsigned), and every signer present. A notary cannot give legal advice or choose the document for you.`],
+      [`How do commuters get from ${t.name} to Newark or New York, and can I sign after work?`, `${(((fx(t).rail || [])[0] || "") ? (fx(t).rail[0][0].toUpperCase() + fx(t).rail[0].slice(1) + ". ") : "")}${fx(t).bus || ""} Evening and Saturday notary times are offered, and the booking page shows the exact slots open for ${t.name}.`.trim()],
+      ...(fx(t).med ? [[`Can a notary come to ${fx(t).med.split(" (")[0]} in or near ${t.name}?`, `Yes. Hospital and care-facility visits are part of our service. Tell us the unit and the visiting hours when you book, because we have to be admitted, and the signer must be alert, willing to sign and able to show ID.`]] : []),
     ];
     res.send(layout({
       req, biz, path, crumbs,
@@ -172,8 +204,17 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Mobile notary and loan signing agents in ${esc(t.name)}, NJ</h1><p class="lede" style="margin-top:14px">MCC Solutions is a Cranford, NJ firm that sends commissioned notaries and certified signing agents to ${esc(t.name)} homes, offices, hospitals and care facilities.${mobile ? ` Mobile notary visits start at ${prices.money(mobile.price)}, plus state notarial fees.` : ""}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#order">Book a notary in ${esc(t.name)}</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
-          <div class="stack"><p class="eyebrow">About ${esc(t.name)}</p><h2>Signing in ${esc(t.name)}</h2><p class="lede">${esc(t.line)}</p><p>${esc(t.notary)}</p></div>
+          <div class="stack"><p class="eyebrow">About ${esc(t.name)}</p><h2>Signing in ${esc(t.name)}</h2><p class="lede">${esc(t.line)}</p><p>${esc(t.notary)}</p>${fx(t).n ? `<p>${esc(fx(t).n)}</p>` : ""}</div>
           <div class="stack"><h3>Places we work in and around ${esc(t.name)}</h3><ul class="checks">${t.anchors.map((a) => `<li>${esc(a)}</li>`).join("")}</ul><p style="color:var(--muted);font-size:.9rem">ZIP codes: ${esc(t.zips)}.</p></div>
+        </div></section>
+        ${glance(t, `${t.name} by the numbers`)}
+        <section class="band alt"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">Getting around</p><h2>Rail, roads and buses in ${esc(t.name)}</h2>${getting(t)}</div>
+          <div class="stack"><h3>Where signings happen</h3>${places(t)}${fx(t).med ? `<p><b>Nearby medical care:</b> ${esc(fx(t).med)}. Bedside signings are routine, and we confirm the unit and visiting hours before we go.</p>` : ""}${(fx(t).employers || []).length ? `<p><b>Local employers:</b> ${esc(list(fx(t).employers))}.</p>` : ""}</div>
+        </div></section>
+        <section class="band"><div class="wrap" style="max-width:860px"><p class="eyebrow">Deeds and recording</p><h2>Recording documents signed in ${esc(t.name)}</h2>
+          <p>Deeds, mortgages and other land documents for ${esc(t.name)} are recorded with the ${CLERK}, 2 Broad Street, Elizabeth, NJ 07207, (908) 527-4787. New Jersey law (N.J.S.A. 46:26A-5) requires a cover sheet with each individual land document, and the clerk's office returns documents that arrive without one unless an indexing fee is included. We notarize the document and can file it for you through our <a href="/notary/document-recording">document recording service</a>.</p>
+          ${sources(t, ` and the ${"Union County Clerk's recording cover sheet notice"}`)}
         </div></section>
         <section class="band alt"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">What we handle</p><h2>Notary services in ${esc(t.name)}</h2></div>
@@ -212,6 +253,7 @@ function register(app, c) {
       [`What does monthly bookkeeping for a ${t.name} business include?`, `Categorizing transactions, reconciling bank and card accounts, and monthly financial reports, in QuickBooks Online, Xero or another platform. Payroll processing and NJ filings can be added.`],
       [`My books are behind. Can you catch me up?`, `Yes. Cleanup work brings past months up to date and reconciled before regular monthly service begins. We give a written quote first.`],
       [`Do you file NJ payroll and sales tax?`, `We can prepare and file NJ payroll reports and sales tax filings as an add-on, along with annual report and renewal reminders. Government fees are extra.`],
+      ...(uezLine(t) ? [[`Does ${t.name} have a reduced sales tax rate?`, uezLine(t)]] : []),
       [`How much does it cost?`, t1 ? `Monthly bookkeeping starts at $${t1} for the smallest tier and rises with transaction volume. The bookkeeping page has a live estimate, and we confirm a written quote before starting.` : `Pricing depends on transaction volume and how far behind the books are. Request a quote on the bookkeeping page and we reply with a written estimate.`],
     ];
     res.send(layout({
@@ -221,8 +263,16 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Bookkeeping for ${esc(t.name)}, NJ small businesses</h1><p class="lede" style="margin-top:14px">MCC Solutions keeps the books for small businesses in ${esc(t.name)} and across Union County: monthly bookkeeping, catch-up cleanup, payroll and NJ filings, from a firm based in nearby Cranford.${t1 ? ` Monthly bookkeeping starts at $${t1}.` : ""}</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/bookkeeping/#interest">Get a bookkeeping quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
-          <div class="stack"><p class="eyebrow">${esc(t.name)} businesses</p><h2>Who we work with here</h2><p class="lede">${esc(t.line)}</p><p>${esc(t.biz)}</p></div>
+          <div class="stack"><p class="eyebrow">${esc(t.name)} businesses</p><h2>Who we work with here</h2><p class="lede">${esc(t.line)}</p><p>${esc(t.biz)}</p>${fx(t).b ? `<p>${esc(fx(t).b)}</p>` : ""}</div>
           <div class="stack"><h3>What we handle</h3><ul class="checks"><li>Monthly bookkeeping and bank and card reconciliation</li><li>Cleanup when the books are months behind</li><li>Monthly profit and loss and balance sheet</li><li>Payroll processing and NJ payroll filings</li><li>Sales tax and annual report reminders and filings</li><li>QuickBooks Online, Xero and spreadsheets</li></ul></div>
+        </div></section>
+        ${glance(t, `${t.name} business context`)}
+        <section class="band alt"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">The local economy</p><h2>What ${esc(t.name)} businesses deal with</h2>
+            ${fx(t).biz ? `<p>${esc(fx(t).biz)}</p>` : ""}${(fx(t).employers || []).length ? `<p><b>Major local names:</b> ${esc(list(fx(t).employers))}.</p>` : ""}${fx(t).college ? `<p><b>College nearby:</b> ${esc(fx(t).college)}.</p>` : ""}${uezLine(t) ? `<p>${esc(uezLine(t))}</p>` : ""}</div>
+          <div class="stack"><h3>New Jersey items we track for you</h3>
+            <ul class="checks"><li>Sales tax at New Jersey's 6.625% rate, with returns filed on the schedule on your state account (quarterly ST-50 for most small filers)</li><li>Payroll reports to the state each quarter (NJ-927 and WR-30)</li><li>The annual report to the NJ Division of Revenue and Enterprise Services</li><li>1099-NEC and W-2 preparation support at year-end</li></ul>
+            <p style="color:var(--muted);font-size:.9rem">Your filing frequency and due dates depend on your own state account, so we confirm them before the first filing.</p></div>
         </div></section>
         <section class="band alt"><div class="wrap">
           <div class="sec-head"><p class="eyebrow">Why local</p><h2>A Union County firm, not a call center</h2></div>
@@ -233,6 +283,7 @@ function register(app, c) {
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(t.name)} bookkeeping questions</h2></div>
           ${faqHtml(faqs)}
           <h3 style="margin-top:36px;margin-bottom:12px">Nearby towns</h3>${nearLinks(t, bookPath)}
+          ${sources(t)}
           <p style="margin-top:14px;color:var(--ink-2)">Also in ${esc(t.name)}: <a href="${webPath(t)}">websites and local SEO</a> · <a href="${notaryPath(t)}">mobile notary</a> · <a href="/bookkeeping/software">bookkeeping by software</a> · <a href="/bookkeeping/guides">bookkeeping guides</a></p>
         </div></section>`,
         ctaTitle: `Bookkeeping help in ${t.name}? Ask for a quote.`, ctaHref: "/bookkeeping/#interest", ctaLabel: "Get a Quote",
@@ -250,6 +301,7 @@ function register(app, c) {
     const faqs = [
       [`What does local SEO mean for a ${t.name} business?`, `Making it easy for people searching nearby to find you: a complete Google Business Profile, clear service pages, your ${t.name} location and service area on the site, and a fast, mobile-friendly design.`],
       [`Can you guarantee a first-page ranking in ${t.name}?`, `No one honestly can. We do the work that improves your chances, set up Search Console so you can see what is happening, and explain results in plain terms.`],
+      ...((fx(t).hoods || []).length + (fx(t).marks || []).length ? [[`Which ${t.name} place names should my business site mention?`, `Use the ones your customers actually use and that apply to you. In ${t.name} those include ${list([...(fx(t).hoods || []).slice(0, 3), ...(fx(t).marks || []).slice(0, 2)])}. We add only the ones that are true for your business, since search engines compare them with your Google Business Profile.`]] : []),
       [`Do I own my website and domain?`, `Yes. You own the domain, hosting accounts and content. If you ever leave, everything goes with you.`],
       [`How much does a website cost?`, `We give a fixed written quote after a short call about what the site needs to do. Pricing depends on the number of pages, bookings or forms, and whether you need local SEO.`],
       [`Do you fix or update an existing site?`, `Yes. Speed, broken forms, outdated content and price updates are common jobs, and we can set up monthly check-ups.`],
@@ -261,11 +313,16 @@ function register(app, c) {
       body: {
         hero: `<p class="eyebrow">Union County · ${esc(t.name)}, NJ</p><h1 style="margin-top:10px">Website design and local SEO for ${esc(t.name)}, NJ businesses</h1><p class="lede" style="margin-top:14px">MCC Solutions builds clear, fast websites and does the local SEO work that helps nearby customers find you. We are based in Cranford, close to ${esc(t.name)}, and every project starts with a fixed written quote.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/websites/#contact">Get a website quote</a><a class="btn btn-ghost" href="${telHref(biz.phone)}">Call the desk</a></div>`,
         main: `<section class="band"><div class="wrap split">
-          <div class="stack"><p class="eyebrow">${esc(t.name)} businesses</p><h2>Built for how ${esc(t.name)} customers search</h2><p class="lede">${esc(t.line)}</p><p>${esc(t.biz)} For businesses like these, most new customers start with a phone search such as "[service] near ${esc(t.name)}", so a fast mobile site and a complete Google Business Profile matter most.</p></div>
+          <div class="stack"><p class="eyebrow">${esc(t.name)} businesses</p><h2>Built for how ${esc(t.name)} customers search</h2><p class="lede">${esc(t.line)}</p>${fx(t).w ? `<p>${esc(fx(t).w)}</p>` : ""}<p>${esc(t.biz)} For businesses like these, most new customers start with a phone search such as "[service] near ${esc(t.name)}", so a fast mobile site and a complete Google Business Profile matter most.</p></div>
           <div class="stack"><h3>What we do</h3><ul class="checks"><li>New websites: mobile-first, fast and accessible</li><li>Google Business Profile setup or cleanup</li><li>Service and ${esc(t.name)} location pages, titles and schema</li><li>Sitemap and Search Console set up</li><li>Fixes and updates for an existing site</li><li>You own the domain, hosting and content</li></ul></div>
         </div></section>
-        <section class="band alt"><div class="wrap">
-          <div class="sec-head"><p class="eyebrow">How we work</p><h2>Four steps, no surprises</h2></div>
+        ${glance(t, `${t.name} search context`)}
+        <section class="band alt"><div class="wrap split">
+          <div class="stack"><p class="eyebrow">Local signals</p><h2>The names ${esc(t.name)} customers actually use</h2>${places(t)}<p>${esc(fx(t).biz || "")}</p></div>
+          <div class="stack"><h3>How we use them</h3><ul class="checks"><li>Name the neighborhoods and landmarks you actually serve on your service pages</li><li>${(fx(t).rail || []).length ? "Mention the train station or main road customers use to find you" : "Mention the main roads and nearby towns customers use to find you"}</li><li>List ${esc(list(t.near.map((n) => BY[n] && BY[n].name).filter(Boolean).slice(0, 4)))} as places you also serve, if you do</li><li>Keep your Google Business Profile address and service area the same as your site</li></ul></div>
+        </div></section>
+        <section class="band">
+          <div class="wrap"><div class="sec-head"><p class="eyebrow">How we work</p><h2>Four steps, no surprises</h2></div>
           <ol class="steps"><li><b>Short call</b><span>Tell us about the business and what you want the site to do.</span></li><li><b>Written quote</b><span>A fixed price and timeline before any work starts.</span></li><li><b>Build and review</b><span>You see it, we adjust it, you approve it.</span></li><li><b>Launch and support</b><span>We publish, set up Search Console, and stay available for changes.</span></li></ol>
           <p style="margin-top:16px;color:var(--ink-2)">We do not promise rankings. We do solid work and explain what is happening.</p>
         </div></section>
@@ -273,6 +330,7 @@ function register(app, c) {
           <div class="sec-head"><p class="eyebrow">FAQ</p><h2>${esc(t.name)} website and SEO questions</h2></div>
           ${faqHtml(faqs)}
           <h3 style="margin-top:36px;margin-bottom:12px">Nearby towns</h3>${nearLinks(t, webPath)}
+          ${sources(t)}
           <p style="margin-top:14px;color:var(--ink-2)">Also in ${esc(t.name)}: <a href="${bookPath(t)}">bookkeeping</a> · <a href="${notaryPath(t)}">mobile notary</a></p>
         </div></section>`,
         ctaTitle: `Website or local SEO help in ${t.name}? Ask for a quote.`, ctaHref: "/websites/#contact", ctaLabel: "Get a Quote",
