@@ -91,22 +91,27 @@ async function bookingCreated(b, settings, ics) {
   });
 }
 
+const REVIEW_URL = "https://g.page/r/CfJOQzBK1Yq0ECE/review";
+
 async function bookingStatusChanged(b, settings, notary) {
   const msgs = {
     confirmed: ["Your booking is confirmed", "Your appointment is confirmed. We will send the notary's details once assigned."],
     assigned: ["Your notary is assigned", notary ? `Your notary is ${notary.name}${notary.phone ? ", " + notary.phone : ""}.` : "A notary has been assigned to your appointment."],
     canceled: ["Your booking was canceled", "This booking has been canceled. Contact the desk if this is a mistake."],
-    completed: ["Thank you", "Your signing is complete. Thank you for choosing MCC Solutions."],
+    completed: ["Thank you", "Your signing is complete. Thank you for your business and for choosing MCC Solutions."],
   };
   const m = msgs[b.status];
   if (!m) return;
   const lines = summaryLines(b, settings);
   const link = manageUrl(b);
+  // After a completed job, thank them and ask for a Google review.
+  const review = b.status === "completed";
+  const ask = "If you could please take a few minutes of your time and leave a brief review, we'd really appreciate it.";
   await send({
     to: b.contact_email,
     subject: `${m[0]} · ${b.ref}`,
-    text: `${m[1]}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${link}`,
-    html: wrapHtml(m[0], esc(m[1]), lines, `<a href="${esc(link)}">View booking</a>`),
+    text: `${m[1]}${review ? `\n\n${ask}\n${REVIEW_URL}` : ""}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${link}`,
+    html: wrapHtml(m[0], esc(m[1]) + (review ? `</p><p>${esc(ask)}</p><p style="margin:18px 0"><a href="${esc(REVIEW_URL)}" style="background:#1f5f46;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;display:inline-block">Leave a review</a></p><p style="font-size:13px;color:#6a7a72;word-break:break-all">Or open this link: ${esc(REVIEW_URL)}` : ""), lines, `<a href="${esc(link)}">View booking</a>`),
   });
 }
 
