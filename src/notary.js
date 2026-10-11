@@ -66,7 +66,15 @@ function compliance(n, docs, today) {
     state: !signed ? "missing" : n.agreement_version !== current ? "warn" : "ok",
     detail: !signed ? "Not signed" : n.agreement_version !== current ? "Signed an older version" : `Signed ${n.agreement_at.slice(0, 10)}`,
   });
-  return { ready: items.every((i) => i.state === "ok" || i.state === "warn"), items };
+  let ready = items.every((i) => i.state === "ok" || i.state === "warn");
+  // Owner override: skips the checklist, but never an expired commission, since an expired notary can't legally notarize.
+  if (n.owner_override_at) {
+    const lapsed = !witness && !server && items.some((i) => i.key === "commission" && i.state === "expired");
+    items.push({ key: "override", label: "Owner override", state: lapsed ? "expired" : "warn",
+      detail: lapsed ? "Override is on, but the commission has expired, so this notary is still blocked" : `Approved by ${n.owner_override_by || "owner"} on ${String(n.owner_override_at instanceof Date ? n.owner_override_at.toISOString() : n.owner_override_at).slice(0, 10)}${n.owner_override_note ? " · " + n.owner_override_note : ""}` });
+    ready = !lapsed;
+  }
+  return { ready, items };
 }
 
 async function today() {
@@ -505,6 +513,18 @@ function register(app, { requireAdmin }) {
     res.json({ ok: true });
   });
 
+  // Owner override: lets the admin approve a notary to work (offers, auto-dispatch, accepting jobs) without the full checklist.
+  app.post("/api/admin/notaries/:id/override", requireAdmin, async (req, res) => {
+    const n = await db.one("SELECT id, name, email FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
+    if (!n) return res.status(404).json({ error: "Not found" });
+    const on = !!req.body.on, note = str(req.body.note, 300), by = (req.admin && (req.admin.email || req.admin.name)) || "admin";
+    if (on && note.length < 5) return res.status(400).json({ error: "Add a short reason for the override." });
+    if (on) await db.run("UPDATE notaries SET owner_override_at = now(), owner_override_by = $2, owner_override_note = $3 WHERE id = $1", [n.id, by, note]);
+    else await db.run("UPDATE notaries SET owner_override_at = NULL, owner_override_by = NULL, owner_override_note = NULL WHERE id = $1", [n.id]);
+    await db.run("INSERT INTO security_events(kind, subject_id, subject_label, action, method, note) VALUES($1,$2,$3,$4,$5,$6)",
+      ["notary", n.id, `${n.name || ""} <${n.email || ""}>`.trim(), on ? "owner_override_on" : "owner_override_off", "admin", on ? note : null]);
+    res.json({ ok: true });
+  });
   app.post("/api/admin/notaries/:id/reset-passkeys", requireAdmin, async (req, res) => {
     const n = await db.one("SELECT id, name, email, phone FROM notaries WHERE id = $1", [Number(req.params.id) || 0]);
     if (!n) return res.status(404).json({ error: "Not found" });

@@ -566,6 +566,11 @@ alter table remote_hashes add column if not exists retain_until date;         --
 create index if not exists remote_hashes_session on remote_hashes(session_id);
 alter table remote_hashes enable row level security;
 
+-- Owner override: the admin can approve a notary to work without finishing the onboarding checklist (logged in security_events)
+alter table notaries add column if not exists owner_override_at timestamptz;
+alter table notaries add column if not exists owner_override_by text;
+alter table notaries add column if not exists owner_override_note text;
+
 -- ===== Seals: append-only link between a session's fingerprints and its shipping tracking number (safe to re-run) =====
 -- One row per seal. Rows can never be updated or deleted (triggers below), and each row's seal_hash covers the
 -- previous row's seal_hash, so any edit or removal anywhere in the history breaks every later hash.

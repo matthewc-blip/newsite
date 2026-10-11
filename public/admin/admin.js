@@ -524,6 +524,9 @@
       ${note ? `<p class="form-msg ok">${esc(note)}</p>` : ""}
       <div class="dsec"><h4>Onboarding</h4><ul class="log" style="gap:10px">${n.compliance.items.map((i) => `<li style="grid-template-columns:120px 1fr"><span><span class="pill ${CSTATE[i.state][1]}">${CSTATE[i.state][0]}</span></span><span><b style="color:var(--ink)">${esc(i.label)}</b> · ${esc(i.detail)}</span></li>`).join("")}</ul>
         ${n.agreement_at ? `<p style="font-size:.85rem;color:var(--muted);margin-top:10px">Agreement signed as "${esc(n.agreement_name)}" on ${esc(full(n.agreement_at))} from ${esc(n.agreement_ip || "?")} · version ${esc(n.agreement_version)}</p>` : ""}</div>
+      <div class="dsec"><h4>Owner override</h4>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:8px">${n.owner_override_at ? "This notary is approved to work by your override, even if checklist items are missing. Expired commissions still block." : "Approve this notary to receive and accept jobs now, without finishing the checklist. It's logged with your reason."}</p>
+        <button class="btn ${n.owner_override_at ? "btn-ghost" : "btn-primary"} btn-sm" id="ndOverride" type="button">${n.owner_override_at ? "Remove override" : "Approve to work (override)"}</button></div>
       <div class="dsec"><h4>Portal access</h4>
         <div class="inline"><button class="btn btn-primary btn-sm" id="ndSend" type="button" ${n.email ? "" : "disabled"}>Email Onboarding Link</button><button class="btn btn-ghost btn-sm" id="ndCopy" type="button">Copy Sign-In Link</button></div>
         <div class="copyline" style="margin-top:8px" hidden id="ndLinkRow"><input id="ndLink" readonly></div>
@@ -538,6 +541,12 @@
       <p class="form-msg" id="ndMsg"></p>`;
     openDrawer($("#notaryDrawer"));
     const getLink = async (send) => (await api(`/api/admin/notaries/${n.id}/login-link`, { method: "POST", body: { send } })).link;
+    $("#ndOverride").onclick = async () => {
+      const on = !n.owner_override_at; let note = "";
+      if (on) { note = prompt(`Approve ${n.name} to work without finishing onboarding.\nReason (kept in the log):`, "Owner approved"); if (note === null) return; }
+      try { await api(`/api/admin/notaries/${n.id}/override`, { method: "POST", body: { on, note } }); await loadNotaries(); openNotary(n.id, on ? "Approved to work by owner override. It's logged." : "Override removed."); renderNotaries(); loadSecurityEvents(); }
+      catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; }
+    };
     $("#ndSend").onclick = async () => { try { await getLink(true); $("#ndMsg").className = "form-msg ok"; $("#ndMsg").textContent = `Onboarding email sent to ${n.email}.`; } catch (e) { $("#ndMsg").className = "form-msg"; $("#ndMsg").textContent = e.message; } };
     $("#ndCopy").onclick = async () => { const l = await getLink(false); $("#ndLinkRow").hidden = false; $("#ndLink").value = l; $("#ndLink").select(); navigator.clipboard?.writeText(l).then(() => ($("#ndCopy").textContent = "Copied")).catch(() => {}); };
     if ($("#ndReset")) $("#ndReset").onclick = async () => {
