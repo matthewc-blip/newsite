@@ -120,6 +120,29 @@ const TYPES = {
       { key: "deliver", label: "Deliver to (email or address)" },
     ],
   },
+  jail_notary: {
+    label: "Correctional facility notary visit", page: "jail-and-prison-notary", roles: ["notary"],
+    blurb: "A notary visit to a jail, prison or detention center, arranged with the facility, for signers who are incarcerated.",
+    fields: [
+      { key: "facility", label: "Facility name and town", required: true, wide: true },
+      { key: "inmate", label: "Name of the person signing", required: true },
+      { key: "inmate_id", label: "Inmate or booking number, if you have it" },
+      { key: "documents", label: "What needs to be notarized (e.g. power of attorney, affidavit, consent)", required: true, wide: true, textarea: true },
+      { key: "contact", label: "Who arranged the visit (attorney, family, facility contact)", wide: true },
+    ],
+  },
+  estate_package: {
+    label: "Estate planning signing package", page: "estate-planning-signing-package", roles: ["notary", "witness"],
+    blurb: "A notary and the witnesses needed to sign wills, powers of attorney and healthcare directives in one visit.",
+    fields: [
+      { key: "documents", label: "Documents being signed (will, power of attorney, healthcare directive…)", required: true, wide: true, textarea: true },
+      { key: "signers", label: "Number of people signing", required: true },
+      { key: "location", label: "Where the signing happens (address, town)", required: true, wide: true },
+      { key: "attorney", label: "Attorney or firm preparing the documents" },
+      { key: "witnesses", label: "Witnesses needed from us?", options: ["Yes, two witnesses", "Yes, one witness", "No, we have our own", "Not sure"] },
+      { key: "when", label: "Preferred date and time" },
+    ],
+  },
   i9_verification: {
     label: "I-9 authorized representative", page: "i9-verification", roles: ["notary"],
     blurb: "A local representative meets your remote hire, examines their documents in person and completes Section 2 of Form I-9.",

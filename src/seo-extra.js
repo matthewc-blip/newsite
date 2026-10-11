@@ -163,6 +163,18 @@ const EXTRA = {
     turnaround: "Most visits happen within 1 to 2 business days. Section 2 is due within 3 business days of the first day of work, so book early.",
     faqs: [["Do you keep copies of the employee's documents?", "No. We send the form and any copies to you and don't keep them."]],
   },
+  "jail-and-prison-notary": {
+    steps: [["Send the details", "Tell us the facility, the person signing and what needs to be notarized."], ["We contact the facility", "We ask about visiting and legal-visit rules and any approvals needed."], ["Visit scheduled", "We confirm the date, the fee and what to bring with the facility's answer."], ["Notarized and returned", "We notarize on site and send the documents back the way you choose."]],
+    ready: ["The facility name and town", "The signer's name and booking or inmate number, if known", "The document, unsigned, and who requested it", "A contact at the facility or the arranging attorney"],
+    turnaround: "Timing depends on the facility. Some need advance approval, so tell us as early as you can.",
+    faqs: [["Can you notarize through glass or by video?", "That depends on the facility's setup and the law for the document. We tell you what is possible once we've spoken with the facility."]],
+  },
+  "estate-planning-signing-package": {
+    steps: [["Tell us the plan", "Send the documents being signed, the number of signers and where the signing happens."], ["We confirm the team", "We schedule a notary and the witnesses you need."], ["Signing day", "The notary and witnesses attend, check IDs and follow the attorney's instructions."], ["Documents back", "Originals go to the attorney or client the way you ask."]],
+    ready: ["The final documents, unsigned, in the attorney's signing order", "A current photo ID for every signer", "The attorney's written signing instructions", "The number of witnesses you need from us"],
+    turnaround: "Many signings can be scheduled within a few days, including at care facilities. Same-day is sometimes possible.",
+    faqs: [["Do you keep copies of the documents?", "No. Originals and any scans go to you, and we don't keep them after delivery."]],
+  },
   "vehicle-title-notary": {
     steps: [["Book or call", "Tell us what's being signed and how many people are signing."], ["Notary arrives", "A commissioned New Jersey notary meets you at home, work or the dealership."], ["IDs checked", "Each signer shows a current photo ID and signs in front of the notary."], ["Done", "The documents are notarized on the spot and ready for the MVC or the other state's DMV."]],
     ready: ["The title and any forms the receiving office requires, unsigned", "A current photo ID for each signer", "Every signer present", "Letters testamentary or a death certificate if handling a deceased owner's vehicle"],
