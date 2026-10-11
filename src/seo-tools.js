@@ -40,7 +40,7 @@ function register(app, c) {
     res.send(layout({
       req, biz, path: FINDER, crumbs,
       title: "Which Notary Service Do I Need? Free Quiz | MCC Solutions",
-      description: "Answer four quick questions and find out whether you need a mobile notary, a loan signing agent, a hospital visit, remote online notarization or an apostille in New Jersey.",
+      description: "Answer four quick questions to find out whether you need a mobile notary, loan signing agent, hospital visit, RON or an apostille in New Jersey.",
       body: {
         hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Which notary service do I need?</h1><p class="lede" style="margin-top:14px">Four quick questions. We'll point you to the right service and tell you what happens next.</p>`,
         main: quizKit.mainHtml({ engine: finder.engine, checkApi: "/api/notary/which-service", leadApi: "", event: "notary_finder", allGood: "", mode: "recommend",

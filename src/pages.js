@@ -104,7 +104,7 @@ function register(app) {
     res.send(layout({
       req, biz, path: "/notary/law-firms", crumbs,
       title: "Process Serving, Notaries & Witnesses for NJ Law Firms | MCC",
-      description: "Process serving with every attempt emailed and the affidavit uploaded, plus notaries, witnesses, apostilles and recording for New Jersey law firms. One account, one invoice.",
+      description: "Process serving with every attempt emailed and the affidavit uploaded, plus notaries, witnesses, apostilles and recording for NJ law firms.",
       body: {
         hero: `<p class="eyebrow">For law firms</p><h1 style="margin-top:10px">Process serving, notaries and witnesses from one desk</h1><p class="lede" style="margin-top:14px">Send serves, estate signings, apostilles and recordings from one portal. Every serve attempt is emailed to you as it happens, the affidavit is uploaded when it's done, and your file number is on every invoice.</p>${ps ? `<p class="from-price"><span>Process serving from</span> <b>${require("./prices").money(ps.price)}</b> <small>${esc(ps.note)}</small></p>` : ""}<div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#account">Request a firm account</a><a class="btn btn-ghost" href="/notary/process-serving#request">Send a serve now</a></div>`,
         main: `<section class="band"><div class="wrap">
@@ -112,6 +112,8 @@ function register(app) {
           <div class="grid g3">
             <a class="svc" href="/notary/process-serving"><span class="code">PROCESS SERVING</span><h3>Serves with a paper trail</h3><p>Personal and substitute service as the court rules allow. Attempts at different times of day, each one logged and emailed to you, then a signed affidavit of service.</p><span class="more">Process serving →</span></a>
             <a class="svc" href="/notary/estate-planning-notary"><span class="code">ESTATE SIGNINGS</span><h3>Notaries and witnesses</h3><p>Wills, trusts, powers of attorney and advance directives, with independent witnesses, at the client's home, office or hospital bed.</p><span class="more">Estate signings →</span></a>
+            <a class="svc" href="/notary/estate-planning-signing-package"><span class="code">ESTATE PACKAGE</span><h3>Signing day, handled</h3><p>A notary and the witnesses you need for wills, powers of attorney and directives, in one visit. We notarize and witness; you draft and advise.</p><span class="more">Estate package →</span></a>
+            <a class="svc" href="/notary/jail-and-prison-notary"><span class="code">FACILITY VISITS</span><h3>Jail and prison notarizations</h3><p>Visits arranged with the facility for incarcerated clients, within each facility's rules.</p><span class="more">Facility visits →</span></a>
             <a class="svc" href="/notary/apostille-services"><span class="code">INTERNATIONAL</span><h3>Apostilles and legalization</h3><p>Documents notarized and certified for use abroad, including embassy legalization for countries outside the Hague Convention.</p><span class="more">Apostilles →</span></a>
             <a class="svc" href="/notary/document-recording"><span class="code">RECORDING</span><h3>Deeds and releases recorded</h3><p>Submitted to the county with the recorded copy back to you.</p><span class="more">Recording →</span></a>
             <a class="svc" href="/notary/court-filing"><span class="code">COURT RUNS</span><h3>Filings and courthouse runs</h3><p>Walk-in filings, hand deliveries and copies from the court file, plus affidavits filed after a serve.</p><span class="more">Court runs →</span></a>
@@ -408,7 +410,7 @@ function register(app) {
     res.send(layout({
       req, biz, path: "/notary/become-a-process-server", crumbs,
       title: "Become a Process Server in New Jersey | MCC Solutions",
-      description: "Serve court papers for law firms across New Jersey. Per-serve pay, flexible schedule, assignments near you. Requires a driver's license and a registered, insured vehicle.",
+      description: "Serve court papers for NJ law firms. Per-serve pay, flexible schedule, assignments near you. Needs a license and a registered, insured vehicle.",
       body: {
         hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Serve papers for law firms near you</h1><p class="lede" style="margin-top:14px">MCC Solutions handles process serving for attorneys across New Jersey. We send you serves near home, you log your attempts in the portal, and you're paid for every completed serve. Property inspections and courier runs are available too.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="#apply">Apply now</a></div>`,
         main: `<section class="band"><div class="wrap split">
@@ -542,7 +544,7 @@ function register(app) {
     res.send(layout({
       req, biz, path: "/notary/become-a-notary", crumbs,
       title: "Become a Notary or Loan Signing Agent in New Jersey | MCC",
-      description: "Take mobile notary, loan signing and RON assignments across New Jersey as an independent contractor. Paid per job at 50% of the service fee, shown before you accept. See the requirements and apply.",
+      description: "Take mobile notary, loan signing and RON jobs across New Jersey as a contractor. Paid per job, shown before you accept. See requirements and apply.",
       body: {
         hero: `<p class="eyebrow">Join the team</p><h1 style="margin-top:10px">Take notary and loan signing jobs near you</h1><p class="lede" style="margin-top:14px">MCC Solutions sends mobile notary, loan signing and remote online notarization (RON) assignments to commissioned notaries across New Jersey. You accept the jobs that fit your schedule and your area, and the pay is shown before you say yes.</p><div class="hero-ctas" style="margin-top:22px"><a class="btn btn-primary" href="/notary/#notaries">Apply now</a></div>`,
         main: `<section class="band"><div class="wrap split">

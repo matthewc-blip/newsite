@@ -139,7 +139,7 @@ function register(app, c) {
     ];
     res.send(layout({
       req, biz, path: CHECKUP, crumbs, noindex,
-      title: "Free Bookkeeping Health Check for Small Businesses | MCC Solutions",
+      title: "Free Bookkeeping Health Check for Small Business | MCC",
       description: "Answer 12 quick questions about your books and get a score with a plain-English list of what to fix first. Free, no sign-up to see results.",
       body: {
         hero: `<p class="eyebrow">Free tool</p><h1 style="margin-top:10px">Free bookkeeping health check</h1><p class="lede" style="margin-top:14px">Answer a few quick questions about how your books are kept and see what to tackle first, with a guide for each item. No sign-up to see the results.</p>`,

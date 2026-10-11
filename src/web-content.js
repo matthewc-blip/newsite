@@ -233,7 +233,7 @@ const GUIDES = [
       ["Accessibility", ["Readable text, enough contrast, labeled forms and alt text on images. It helps everyone and reduces legal risk."]],
     ],
     faqs: [["Do I need a blog?", "Not necessarily. A few helpful guides on real customer questions are enough."], ["Do I need online booking?", "Only if it helps customers. A clear form or phone number often does the job."]] },
-  { slug: "own-your-domain-and-hosting", title: "Who owns your domain and hosting? Check before it is a problem", updated: "2026-10-07", services: ["website-design", "website-care"],
+  { slug: "own-your-domain-and-hosting", title: "Who owns your domain and hosting? Check now", updated: "2026-10-07", services: ["website-design", "website-care"],
     description: "How to check who owns your domain, hosting and Google accounts, why it matters when you change web providers, and how to take control.",
     intro: "Many owners find out too late that their web developer registered the domain in the developer's name. A five-minute check prevents that.",
     sections: [

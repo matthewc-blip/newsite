@@ -136,7 +136,7 @@ module.exports = [
   },
   {
     path: `${B}/help/switching-accounting-software`, eyebrow: "Moving to QuickBooks",
-    title: "Switch to QuickBooks From Spreadsheets or Other Software (NJ)",
+    title: "Switch to QuickBooks From Spreadsheets or Other Tools (NJ)",
     description: "Moving from spreadsheets, Wave, Xero, Sage or an old desktop file to QuickBooks Online? A ProAdvisor handles setup and conversion for any NJ business.",
     h1: "Switching accounting software without losing your history",
     lede: "Whether your books live in a spreadsheet, retiring desktop software or a tool that stopped fitting, we move them over with opening balances that tie out.",

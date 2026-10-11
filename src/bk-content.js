@@ -253,7 +253,7 @@ const GUIDES = [
     faqs: [["Can I shred paper receipts after scanning?", "Generally yes if the scan is clear and complete, but ask your tax professional, especially for large purchases."], ["Where should I keep digital records?", "In a secure, backed-up cloud folder that you own, not only on one computer."]],
   },
   {
-    slug: "how-to-switch-accounting-software", title: "How to switch accounting software without losing your history", updated: "2026-10-07",
+    slug: "how-to-switch-accounting-software", title: "How to switch accounting software and keep your history", updated: "2026-10-07",
     description: "How to move from one accounting program to another (Wave, QuickBooks, Xero and others): what carries over, what does not, and how to pick the cutover date.",
     intro: "Switching software is a project, not a button. Done well, you keep your history and gain cleaner books. Done badly, you create duplicate entries and wrong balances.",
     software: ["quickbooks-online", "xero", "wave"],
