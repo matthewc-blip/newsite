@@ -100,7 +100,7 @@ const GUIDES = [
   },
   {
     slug: "notarizing-a-power-of-attorney-in-a-hospital",
-    title: "Getting a power of attorney or directive notarized in a hospital",
+    title: "Power of attorney or directive notarized in a hospital",
     description: "How to get a power of attorney, healthcare proxy or advance directive signed and notarized for someone in a New Jersey hospital, nursing home or hospice.",
     services: ["hospital-notary", "witness-services", "estate-planning-notary"],
     updated: "2026-10-02",
